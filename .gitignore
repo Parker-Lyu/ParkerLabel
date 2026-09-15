@@ -1,14 +1,36 @@
-*
-!.gitignore
-!README.md
-!main.py
-!config/
-config/*
-!config/categories.json
-!parker_label_app/
-!parker_label_app/**
-!tests/
-!tests/**
-**/__pycache__/
+# Python cache and tooling
+__pycache__/
 *.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local environments and settings
+.venv/
+venv/
+.env
+.env.*
+.idea/
+.vscode/
 .DS_Store
+
+# Local project instructions
+AGENTS.md
+
+# Legacy implementation
+parker_label.py
+check_panoptic.py
+export_mobilesam_encoder.py
+export_mobilesam_decoder.py
+mobile_sam/
+
+# Models and sample data
+pretrain/
+example_img/
+config/*.xlsx
+
+# Generated annotation artifacts
+*.mask.png
+*.npy
