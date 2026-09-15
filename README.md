@@ -1,6 +1,6 @@
 # Parker Label
 
-Parker Label is a desktop tool for object detection and instance segmentation annotation. Each instance owns an independent binary mask, and its bounding box is calculated from that mask.
+Parker Label is a lightweight, interactive annotation tool for object detection and instance segmentation, powered by MobileSAM. It runs without a GPU and completes a single inference in approximately 20 ms on a modern Apple M5 Pro chip.
 
 ## Run
 
