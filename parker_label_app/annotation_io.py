@@ -1,17 +1,24 @@
 import json
 from pathlib import Path
 
-import cv2
 import numpy as np
 
-from .image_utils import id_mask_to_rgb, load_rgb_image, rgb_to_color_id
+import cv2
+
+from .image_utils import id_mask_to_rgb, load_rgb_image
 from .models import AnnotationDocument, Segment
 
 
 def artifact_paths(image_path: Path):
-    """Return embedding, mask, and annotation paths for an image."""
+    """Return embedding and annotation paths for an image."""
     stem = image_path.with_suffix("")
-    return Path(f"{stem}.npy"), Path(f"{stem}.mask.png"), Path(f"{stem}.json")
+    return Path(f"{stem}.npy"), Path(f"{stem}.json")
+
+
+def preview_mask_path(image_path: Path):
+    """Return the color mask preview path for an image."""
+    stem = Path(image_path).with_suffix("")
+    return Path(f"{stem}.mask.png")
 
 
 def encode_uncompressed_rle(mask: np.ndarray):
@@ -63,38 +70,27 @@ class AnnotationRepository:
         """Load an image and any matching annotation artifacts."""
         image_path = Path(image_path)
         image_rgb, source_size = load_rgb_image(image_path, self.target_size)
-        embedding_path, mask_path, annotation_path = artifact_paths(image_path)
-        mask_id = np.zeros(image_rgb.shape[:2], dtype=np.int32)
+        embedding_path, annotation_path = artifact_paths(image_path)
         segments = []
-        if mask_path.exists() and annotation_path.exists():
-            mask_bgr = cv2.imread(str(mask_path), cv2.IMREAD_COLOR)
-            if mask_bgr is None:
-                raise ValueError(f"Unable to read mask: {mask_path}")
-            mask_rgb = cv2.cvtColor(mask_bgr, cv2.COLOR_BGR2RGB)
-            if mask_rgb.shape[:2] != image_rgb.shape[:2]:
-                mask_rgb = cv2.resize(
-                    mask_rgb,
-                    (image_rgb.shape[1], image_rgb.shape[0]),
-                    interpolation=cv2.INTER_NEAREST,
-                )
-            mask_id = rgb_to_color_id(mask_rgb)
+        if annotation_path.exists():
             with annotation_path.open("r", encoding="utf-8") as handle:
                 payload = json.load(handle)
+            if payload.get("format") != "parker-label-instance-v1":
+                raise ValueError(f"Unsupported annotation format: {annotation_path}")
             raw_segments = payload.get("annotations", [])
             segments = [Segment.from_dict(value) for value in raw_segments]
             for segment, value in zip(segments, raw_segments):
                 segmentation = value.get("segmentation")
-                if isinstance(segmentation, dict) and isinstance(segmentation.get("counts"), list):
-                    decoded = decode_uncompressed_rle(segmentation)
-                    if decoded.shape != image_rgb.shape[:2]:
-                        decoded = cv2.resize(
-                            decoded,
-                            (image_rgb.shape[1], image_rgb.shape[0]),
-                            interpolation=cv2.INTER_NEAREST,
-                        )
-                    segment.mask = decoded.astype(np.uint8)
-                else:
-                    segment.mask = (mask_id == segment.color_id).astype(np.uint8)
+                if not isinstance(segmentation, dict) or not isinstance(segmentation.get("counts"), list):
+                    raise ValueError(f"Missing uncompressed RLE for annotation: {annotation_path}")
+                decoded = decode_uncompressed_rle(segmentation)
+                if decoded.shape != image_rgb.shape[:2]:
+                    decoded = cv2.resize(
+                        decoded,
+                        (image_rgb.shape[1], image_rgb.shape[0]),
+                        interpolation=cv2.INTER_NEAREST,
+                    )
+                segment.mask = decoded.astype(np.uint8)
         embedding = None
         if embedding_path.exists():
             embedding = np.load(embedding_path).astype(np.float32)
@@ -110,17 +106,18 @@ class AnnotationRepository:
         return document
 
     def save(self, document: AnnotationDocument):
-        """Save the color mask and JSON annotations beside the source image."""
-        _, mask_path, annotation_path = artifact_paths(document.image_path)
+        """Save per-instance JSON annotations and a color mask preview."""
+        _, annotation_path = artifact_paths(document.image_path)
         source_height, source_width = document.source_size
-        compatibility_mask = cv2.resize(
+        preview_mask = cv2.resize(
             document.composite_mask(),
             (source_width, source_height),
             interpolation=cv2.INTER_NEAREST,
         )
-        mask_rgb = id_mask_to_rgb(compatibility_mask)
-        if not cv2.imwrite(str(mask_path), cv2.cvtColor(mask_rgb, cv2.COLOR_RGB2BGR)):
-            raise OSError(f"Unable to write mask: {mask_path}")
+        preview_rgb = id_mask_to_rgb(preview_mask)
+        preview_path = preview_mask_path(document.image_path)
+        if not cv2.imwrite(str(preview_path), cv2.cvtColor(preview_rgb, cv2.COLOR_RGB2BGR)):
+            raise OSError(f"Unable to write mask preview: {preview_path}")
         annotations = []
         for index, segment in enumerate(document.segments, start=1):
             working_mask = segment.mask if segment.mask is not None else np.zeros(document.image_rgb.shape[:2], dtype=np.uint8)
@@ -143,7 +140,7 @@ class AnnotationRepository:
             )
             annotations.append(annotation)
         payload = {
-            "format": "coco-instance-per-image-v1",
+            "format": "parker-label-instance-v1",
             "image": {
                 "id": 1,
                 "file_name": document.image_path.name,
@@ -159,5 +156,5 @@ class AnnotationRepository:
 
     def save_embedding(self, document: AnnotationDocument):
         """Save an image embedding beside its source image."""
-        embedding_path, _, _ = artifact_paths(document.image_path)
+        embedding_path, _ = artifact_paths(document.image_path)
         np.save(embedding_path, document.embedding)

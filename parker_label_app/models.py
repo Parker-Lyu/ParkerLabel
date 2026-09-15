@@ -106,7 +106,7 @@ class AnnotationDocument:
         self.dirty = True
 
     def composite_mask(self, visible_only=False):
-        """Compose instance masks into a color identifier mask for display or compatibility."""
+        """Compose instance masks into a color identifier mask for display."""
         result = np.zeros(self.image_rgb.shape[:2], dtype=np.int32)
         for segment in self.segments:
             if visible_only and not segment.visible:

@@ -27,12 +27,6 @@ def color_id_to_rgb(color_id: int):
     return color_id % 256, (color_id // 256) % 256, color_id // 65536
 
 
-def rgb_to_color_id(mask_rgb: np.ndarray):
-    """Convert an RGB mask into packed segment identifiers."""
-    values = mask_rgb.astype(np.int32)
-    return values[:, :, 0] + values[:, :, 1] * 256 + values[:, :, 2] * 65536
-
-
 def id_mask_to_rgb(mask_id: np.ndarray):
     """Convert packed segment identifiers into an RGB mask."""
     result = np.empty((*mask_id.shape, 3), dtype=np.uint8)

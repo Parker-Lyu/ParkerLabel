@@ -319,7 +319,7 @@ class MainWindow(QWidget):
             self.table.selectRow(self.current_index)
 
     def create_category_combo(self, current_name):
-        """Create a category selector that preserves unavailable legacy values."""
+        """Create a category selector that preserves unavailable current values."""
         combo = QComboBox(self)
         combo.setEditable(True)
         names = [category.name for category in self.categories]

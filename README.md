@@ -15,11 +15,28 @@ The application reads `config/categories.json`. The default configuration contai
 
 ## Annotation files
 
-Each source image uses neighboring artifact files:
+Each source image uses three neighboring artifact files:
 
 - `.npy` stores the reusable image embedding.
 - `.json` stores per-instance category, bounding box, area, and uncompressed COCO RLE at source-image resolution.
-- `.mask.png` stores a flattened color preview for compatibility. The JSON RLE remains authoritative because a single color image cannot preserve overlapping instances.
+- `.mask.png` stores a flattened color preview at source-image resolution. When instances overlap, later instances appear on top. The JSON instance masks remain authoritative.
+
+The per-image JSON uses COCO annotation fields but is not a complete COCO dataset file. A complete COCO dataset export requires top-level `images`, `annotations`, and `categories` arrays in one dataset JSON.
+
+### JSON fields
+
+- `format` identifies the local annotation schema.
+- `image` records the image identifier, file name, width, and height.
+- `annotations` contains one record per instance.
+- `id` is the instance identifier within the image file.
+- `image_id` links the instance to the image record.
+- `category_id` references `config/categories.json`.
+- `category_name` keeps the readable category name.
+- `color_id` controls the display and preview color.
+- `bbox` stores `[x, y, width, height]` in source-image pixels.
+- `area` stores the instance pixel area at source-image resolution.
+- `iscrowd` follows the COCO crowd flag convention.
+- `segmentation` stores the independent instance mask as uncompressed COCO RLE.
 
 ## Modules
 

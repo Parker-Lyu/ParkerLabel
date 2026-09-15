@@ -87,12 +87,26 @@ class DocumentTests(unittest.TestCase):
             repository.save(document)
             with image_path.with_suffix(".json").open("r", encoding="utf-8") as handle:
                 payload = json.load(handle)
-            self.assertEqual(payload["format"], "coco-instance-per-image-v1")
+            self.assertEqual(payload["format"], "parker-label-instance-v1")
+            preview = cv2.imread(str(image_path.parent / "sample.mask.png"), cv2.IMREAD_COLOR)
+            self.assertIsNotNone(preview)
+            self.assertEqual(preview.shape[:2], (8, 10))
+            self.assertEqual(preview[3, 3].tolist(), [0, 0, 200])
             self.assertEqual(payload["annotations"][0]["bbox"], [1, 1, 4, 4])
             loaded = repository.open(image_path)
             self.assertEqual(len(loaded.segments), 2)
             self.assertEqual(loaded.segments[0].mask[3, 3], 1)
             self.assertEqual(loaded.segments[1].mask[3, 3], 1)
+
+    def test_repository_rejects_unsupported_annotation_format(self):
+        """Verify the repository does not load legacy annotation data."""
+        with tempfile.TemporaryDirectory() as directory:
+            image_path = Path(directory) / "legacy.jpg"
+            cv2.imwrite(str(image_path), np.zeros((8, 10, 3), dtype=np.uint8))
+            with image_path.with_suffix(".json").open("w", encoding="utf-8") as handle:
+                json.dump({"file_name": image_path.name, "annotations": []}, handle)
+            with self.assertRaisesRegex(ValueError, "Unsupported annotation format"):
+                AnnotationRepository(target_size=10).open(image_path)
 
     def test_repository_saves_geometry_at_source_resolution(self):
         """Verify saved boxes and masks use original image coordinates."""
@@ -113,6 +127,8 @@ class DocumentTests(unittest.TestCase):
             self.assertEqual(payload["image"]["height"], 16)
             self.assertEqual(payload["annotations"][0]["bbox"], [2, 2, 8, 8])
             self.assertEqual(payload["annotations"][0]["segmentation"]["size"], [16, 20])
+            preview = cv2.imread(str(image_path.parent / "large.mask.png"), cv2.IMREAD_COLOR)
+            self.assertEqual(preview.shape[:2], (16, 20))
 
     def test_validation_does_not_require_background_annotation(self):
         """Verify instance validation permits unlabeled background pixels."""
