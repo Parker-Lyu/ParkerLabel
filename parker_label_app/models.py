@@ -9,7 +9,6 @@ class Category:
     id: int
     name: str
     supercategory: str
-    color: tuple[int, int, int]
     description: str = ""
     enabled: bool = True
 
@@ -20,7 +19,6 @@ class Category:
             id=int(value["id"]),
             name=str(value["name"]).strip(),
             supercategory=str(value.get("supercategory", "")).strip(),
-            color=tuple(int(channel) for channel in value.get("color", [0, 0, 0])),
             description=str(value.get("description", "")).strip(),
             enabled=bool(value.get("enabled", True)),
         )
@@ -31,7 +29,6 @@ class Category:
             "id": self.id,
             "name": self.name,
             "supercategory": self.supercategory,
-            "color": list(self.color),
             "description": self.description,
             "enabled": self.enabled,
         }

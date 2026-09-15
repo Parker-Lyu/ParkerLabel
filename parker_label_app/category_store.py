@@ -74,8 +74,6 @@ class CategoryStore:
                 raise CategoryConfigError(f"Duplicate category identifier: {category.id}")
             if normalized_name in names:
                 raise CategoryConfigError(f"Duplicate category name: {category.name}")
-            if len(category.color) != 3 or any(channel < 0 or channel > 255 for channel in category.color):
-                raise CategoryConfigError(f"Invalid RGB color for category: {category.name}")
             ids.add(category.id)
             names.add(normalized_name)
 

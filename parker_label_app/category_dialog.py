@@ -16,7 +16,7 @@ from .models import Category
 
 
 class CategoryConfigDialog(QDialog):
-    COLUMNS = ("启用", "ID", "名称", "上级类别", "R", "G", "B", "描述")
+    COLUMNS = ("启用", "ID", "名称", "上级类别", "描述")
 
     def __init__(self, store, parent=None):
         """Create an editable dialog for the local category configuration."""
@@ -33,8 +33,6 @@ class CategoryConfigDialog(QDialog):
         self.table.setColumnWidth(1, 64)
         self.table.setColumnWidth(2, 150)
         self.table.setColumnWidth(3, 140)
-        for column in (4, 5, 6):
-            self.table.setColumnWidth(column, 48)
         self.table.horizontalHeader().setStretchLastSection(True)
         add_button = QPushButton("新增")
         delete_button = QPushButton("删除选中")
@@ -72,9 +70,7 @@ class CategoryConfigDialog(QDialog):
         self.table.setItem(row, 1, QTableWidgetItem(str(category.id)))
         self.table.setItem(row, 2, QTableWidgetItem(category.name))
         self.table.setItem(row, 3, QTableWidgetItem(category.supercategory))
-        for offset, channel in enumerate(category.color):
-            self.table.setItem(row, 4 + offset, QTableWidgetItem(str(channel)))
-        self.table.setItem(row, 7, QTableWidgetItem(category.description))
+        self.table.setItem(row, 4, QTableWidgetItem(category.description))
 
     def add_empty_row(self):
         """Add a new editable category row with a unique identifier."""
@@ -87,7 +83,7 @@ class CategoryConfigDialog(QDialog):
                 except ValueError:
                     pass
         next_id = max(identifiers, default=0) + 1
-        self.append_category(Category(next_id, "", "", (128, 128, 128)))
+        self.append_category(Category(next_id, "", ""))
         self.table.scrollToBottom()
         self.table.setCurrentCell(self.table.rowCount() - 1, 2)
         self.table.editItem(self.table.currentItem())
@@ -123,8 +119,7 @@ class CategoryConfigDialog(QDialog):
                     id=int(self._text(row, 1)),
                     name=self._text(row, 2),
                     supercategory=self._text(row, 3),
-                    color=tuple(int(self._text(row, column)) for column in (4, 5, 6)),
-                    description=self._text(row, 7),
+                    description=self._text(row, 4),
                     enabled=enabled,
                 )
             except ValueError as error:

@@ -4,13 +4,12 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PyQt5.QtCore import QPoint, Qt
+from PyQt5.QtCore import QPoint, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QFont, QPainter, QPen, QPixmap
 from PyQt5.QtWidgets import (
     QApplication,
     QButtonGroup,
     QCheckBox,
-    QColorDialog,
     QComboBox,
     QFileDialog,
     QHBoxLayout,
@@ -22,6 +21,7 @@ from PyQt5.QtWidgets import (
     QScrollArea,
     QSlider,
     QTableWidget,
+    QTableWidgetItem,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -33,7 +33,49 @@ from .category_dialog import CategoryConfigDialog
 from .category_store import CategoryStore
 from .image_utils import color_id_to_rgb, id_mask_to_rgb, qimage_from_rgb
 from .inference import SegmentationEngine
-from .validation import validate_document
+
+
+class VisibilityHeader(QHeaderView):
+    visibilityChanged = pyqtSignal(bool)
+
+    def __init__(self, display_column, parent=None):
+        """Create a header with a checkbox for global visibility."""
+        super().__init__(Qt.Horizontal, parent)
+        self.display_column = display_column
+        self.checkbox = QCheckBox("显示", self)
+        self.checkbox.setTristate(True)
+        self.checkbox.stateChanged.connect(self.emit_visibility)
+        self.sectionResized.connect(self.update_checkbox_geometry)
+        self.sectionMoved.connect(self.update_checkbox_geometry)
+
+    def emit_visibility(self, state):
+        """Emit global visibility changes for checked and unchecked states."""
+        if state != Qt.PartiallyChecked:
+            self.visibilityChanged.emit(state == Qt.Checked)
+
+    def set_visibility_state(self, state, enabled):
+        """Update the header checkbox without emitting a user action."""
+        self.checkbox.blockSignals(True)
+        self.checkbox.setCheckState(state)
+        self.checkbox.setEnabled(enabled)
+        self.checkbox.blockSignals(False)
+
+    def update_checkbox_geometry(self):
+        """Center the global visibility checkbox in its header section."""
+        position = self.sectionViewportPosition(self.display_column)
+        width = self.sectionSize(self.display_column)
+        hint = self.checkbox.sizeHint()
+        self.checkbox.setGeometry(
+            position + max(0, (width - hint.width()) // 2),
+            max(0, (self.height() - hint.height()) // 2),
+            min(width, hint.width()),
+            hint.height(),
+        )
+
+    def resizeEvent(self, event):
+        """Keep the global visibility checkbox aligned after resizing."""
+        super().resizeEvent(event)
+        self.update_checkbox_geometry()
 
 
 class MainWindow(QWidget):
@@ -43,7 +85,6 @@ class MainWindow(QWidget):
     COL_CATEGORY = 3
     COL_COLOR = 4
     COL_DELETE = 5
-    COL_COMMIT = 6
 
     def __init__(self):
         """Initialize application services, state, and interface."""
@@ -112,21 +153,19 @@ class MainWindow(QWidget):
         layout.addLayout(controls, 2)
 
     def build_primary_controls(self):
-        """Create file, category, segment, save, and validation actions."""
+        """Create file, category, segment, and save actions."""
         layout = QHBoxLayout()
         open_button = QPushButton("打开图片")
         category_button = QPushButton("类别配置")
         add_button = QPushButton("增加目标")
         save_button = QPushButton("保存到磁盘")
-        validate_button = QPushButton("检查标注")
         add_button.setShortcut("A")
         save_button.setShortcut("Ctrl+S")
         open_button.clicked.connect(self.choose_image)
         category_button.clicked.connect(self.configure_categories)
         add_button.clicked.connect(self.add_segment)
         save_button.clicked.connect(self.save_document)
-        validate_button.clicked.connect(self.validate_current_document)
-        for button in (open_button, category_button, add_button, save_button, validate_button):
+        for button in (open_button, category_button, add_button, save_button):
             layout.addWidget(button)
         layout.addStretch(1)
         return layout
@@ -186,14 +225,20 @@ class MainWindow(QWidget):
 
     def build_segment_table(self):
         """Create the segment table used to edit document-backed records."""
-        table = QTableWidget(0, 7, self)
-        table.setHorizontalHeaderLabels(["ID", "编辑", "显示", "类别", "颜色", "删除", "提交"])
+        table = QTableWidget(0, 6, self)
+        header = VisibilityHeader(self.COL_SHOW, table)
+        table.setHorizontalHeader(header)
+        table.setHorizontalHeaderLabels(["ID", "编辑", "", "类别", "颜色", "删除"])
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setSectionResizeMode(self.COL_CATEGORY, QHeaderView.Stretch)
-        for column in (self.COL_ID, self.COL_EDIT, self.COL_SHOW):
+        header.visibilityChanged.connect(self.set_all_segments_visible)
+        table.cellClicked.connect(self.handle_segment_cell_click)
+        for column in (self.COL_ID, self.COL_EDIT):
             table.setColumnWidth(column, 48)
-        for column in (self.COL_COLOR, self.COL_DELETE, self.COL_COMMIT):
+        table.setColumnWidth(self.COL_SHOW, 76)
+        for column in (self.COL_COLOR, self.COL_DELETE):
             table.setColumnWidth(column, 76)
+        header.update_checkbox_geometry()
         return table
 
     def reset_document_view(self):
@@ -285,38 +330,69 @@ class MainWindow(QWidget):
     def refresh_table(self):
         """Rebuild table widgets from the annotation document."""
         self.table.setRowCount(0)
-        self.edit_group = QButtonGroup(self)
-        self.edit_group.setExclusive(True)
         if self.document is None:
+            self.update_visibility_header()
             return
         for index, segment in enumerate(self.document.segments):
             self.table.insertRow(index)
             self.table.setCellWidget(index, self.COL_ID, QLabel(str(index + 1)))
-            edit = QRadioButton()
-            edit.setChecked(index == self.current_index)
-            edit.clicked.connect(lambda checked, row=index: self.select_segment(row) if checked else None)
-            self.edit_group.addButton(edit)
-            self.table.setCellWidget(index, self.COL_EDIT, edit)
-            visible = QCheckBox()
-            visible.setChecked(segment.visible)
-            visible.toggled.connect(lambda checked, row=index: self.set_segment_visibility(row, checked))
-            self.table.setCellWidget(index, self.COL_SHOW, visible)
+            self.table.setItem(index, self.COL_EDIT, self.create_action_item("●" if index == self.current_index else "○"))
+            self.table.setItem(index, self.COL_SHOW, self.create_action_item("☑" if segment.visible else "☐"))
             category = self.create_category_combo(segment.category_name)
+            category.setEnabled(index == self.current_index)
             category.currentTextChanged.connect(lambda name, row=index: self.set_segment_category(row, name))
             self.table.setCellWidget(index, self.COL_CATEGORY, category)
             color = QPushButton(self.color_button_text(segment.color_id))
             color.setStyleSheet(self.color_button_style(segment.color_id))
-            color.clicked.connect(lambda checked=False, row=index: self.choose_segment_color(row))
+            color.setEnabled(index == self.current_index)
+            color.clicked.connect(lambda checked=False, row=index: self.assign_random_color(row))
             self.table.setCellWidget(index, self.COL_COLOR, color)
             delete = QPushButton("删除")
             delete.clicked.connect(lambda checked=False, row=index: self.delete_segment(row))
             self.table.setCellWidget(index, self.COL_DELETE, delete)
-            commit = QPushButton("提交")
-            commit.setEnabled(index == self.current_index and self.edit_dirty)
-            commit.clicked.connect(lambda checked=False, row=index: self.commit_current_segment() if row == self.current_index else None)
-            self.table.setCellWidget(index, self.COL_COMMIT, commit)
         if self.current_index is not None and self.current_index < self.table.rowCount():
             self.table.selectRow(self.current_index)
+        self.update_visibility_header()
+
+    def create_action_item(self, text):
+        """Create a centered full-cell action item."""
+        item = QTableWidgetItem(text)
+        item.setTextAlignment(Qt.AlignCenter)
+        item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        return item
+
+    def handle_segment_cell_click(self, row, column):
+        """Handle full-cell edit selection and visibility toggling."""
+        if self.document is None or row >= len(self.document.segments):
+            return
+        if column == self.COL_EDIT:
+            self.select_segment(row)
+        elif column == self.COL_SHOW:
+            self.set_segment_visibility(row, not self.document.segments[row].visible)
+
+    def update_visibility_header(self):
+        """Synchronize the header checkbox with segment visibility."""
+        header = self.table.horizontalHeader()
+        if self.document is None or not self.document.segments:
+            header.set_visibility_state(Qt.Unchecked, False)
+            return
+        states = [segment.visible for segment in self.document.segments]
+        if all(states):
+            state = Qt.Checked
+        elif any(states):
+            state = Qt.PartiallyChecked
+        else:
+            state = Qt.Unchecked
+        header.set_visibility_state(state, True)
+
+    def set_all_segments_visible(self, visible):
+        """Set the visibility of every segment from the header checkbox."""
+        if self.document is None:
+            return
+        for segment in self.document.segments:
+            segment.visible = visible
+        self.refresh_table()
+        self.refresh_canvas()
 
     def create_category_combo(self, current_name):
         """Create a category selector that preserves unavailable current values."""
@@ -361,7 +437,7 @@ class MainWindow(QWidget):
         if not self.resolve_pending_edit():
             return
         category = self.categories[0]
-        color_id = self.generate_color_id(category.color)
+        color_id = self.generate_color_id()
         self.document.add_segment(category, color_id)
         self.current_index = len(self.document.segments) - 1
         self.mode = "smart"
@@ -371,14 +447,9 @@ class MainWindow(QWidget):
         self.update_tool_controls()
         self.refresh_canvas()
 
-    def generate_color_id(self, preferred_color=None):
+    def generate_color_id(self):
         """Generate a unique nonzero packed RGB identifier."""
         used = self.document.used_color_ids() if self.document is not None else set()
-        if preferred_color is not None:
-            red, green, blue = preferred_color
-            preferred_id = red + green * 256 + blue * 65536
-            if preferred_id and preferred_id not in used:
-                return preferred_id
         while True:
             red, green, blue = (random.randrange(256) for _ in range(3))
             color_id = red + green * 256 + blue * 65536
@@ -420,6 +491,10 @@ class MainWindow(QWidget):
         if self.document is None or index >= len(self.document.segments):
             return
         self.document.segments[index].visible = visible
+        item = self.table.item(index, self.COL_SHOW)
+        if item is not None:
+            item.setText("☑" if visible else "☐")
+        self.update_visibility_header()
         self.refresh_canvas()
 
     def set_segment_category(self, index, name):
@@ -435,26 +510,13 @@ class MainWindow(QWidget):
         self.document.change_segment_category(index, category)
         self.refresh_canvas()
 
-    def choose_segment_color(self, index):
-        """Choose a unique color identifier for a segment."""
-        if self.document is None or index >= len(self.document.segments):
+    def assign_random_color(self, index):
+        """Assign a new random display color to the current segment."""
+        if self.document is None or index != self.current_index:
             return
-        old_id = self.document.segments[index].color_id
-        old_rgb = color_id_to_rgb(old_id)
-        selected = QColorDialog.getColor(QColor(*old_rgb), self, "选择目标颜色")
-        if not selected.isValid():
-            return
-        color_id = selected.red() + selected.green() * 256 + selected.blue() * 65536
-        if color_id == 0:
-            self.log_error("黑色保留给未标注像素，请选择其他颜色")
-            return
-        if color_id != old_id and color_id in self.document.used_color_ids():
-            self.log_error("该颜色已被其他目标使用")
-            return
-        if color_id != old_id:
-            self.document.change_segment_color(index, color_id)
-            self.refresh_table()
-            self.refresh_canvas()
+        self.document.change_segment_color(index, self.generate_color_id())
+        self.refresh_table()
+        self.refresh_canvas()
 
     def delete_segment(self, index):
         """Delete a segment after user confirmation."""
@@ -598,22 +660,6 @@ class MainWindow(QWidget):
         except Exception as error:
             self.log_exception("保存标注失败", error)
             return False
-
-    def validate_current_document(self):
-        """Validate the active document and display a concise report."""
-        if self.document is None:
-            self.log_error("没有可检查的标注")
-            return
-        report = validate_document(self.document)
-        if report.valid:
-            self.log("检查通过，没有发现问题")
-            return
-        messages = []
-        if report.empty_segments:
-            messages.append(f"没有 mask 的目标：{report.empty_segments}")
-        if report.noisy_segments:
-            messages.append(f"可能含有小噪点的 ID：{report.noisy_segments}")
-        self.log_error("；".join(messages))
 
     def ensure_embedding(self):
         """Load or compute the active image embedding."""

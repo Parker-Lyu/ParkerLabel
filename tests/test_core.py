@@ -13,7 +13,6 @@ from parker_label_app.annotation_io import (
 )
 from parker_label_app.category_store import CategoryStore
 from parker_label_app.models import AnnotationDocument, Category
-from parker_label_app.validation import validate_document
 
 
 class CategoryStoreTests(unittest.TestCase):
@@ -24,6 +23,7 @@ class CategoryStoreTests(unittest.TestCase):
         self.assertEqual(len(categories), 80)
         self.assertEqual(categories[0].name, "person")
         self.assertEqual(categories[-1].name, "toothbrush")
+        self.assertNotIn("color", categories[0].to_dict())
 
 
 class RleTests(unittest.TestCase):
@@ -57,8 +57,8 @@ class DocumentTests(unittest.TestCase):
     def test_independent_instance_masks_can_overlap(self):
         """Verify separate instance masks retain overlapping pixels."""
         document = self.make_document(Path("image.jpg"))
-        first = document.add_segment(Category(1, "person", "person", (200, 10, 10)), 100)
-        second = document.add_segment(Category(3, "car", "vehicle", (10, 10, 200)), 200)
+        first = document.add_segment(Category(1, "person", "person"), 100)
+        second = document.add_segment(Category(3, "car", "vehicle"), 200)
         first_mask = np.zeros((8, 10), dtype=np.uint8)
         second_mask = np.zeros((8, 10), dtype=np.uint8)
         first_mask[1:5, 1:5] = 1
@@ -75,8 +75,8 @@ class DocumentTests(unittest.TestCase):
             image_path = Path(directory) / "sample.jpg"
             cv2.imwrite(str(image_path), np.zeros((8, 10, 3), dtype=np.uint8))
             document = self.make_document(image_path)
-            document.add_segment(Category(1, "person", "person", (200, 10, 10)), 100)
-            document.add_segment(Category(3, "car", "vehicle", (10, 10, 200)), 200)
+            document.add_segment(Category(1, "person", "person"), 100)
+            document.add_segment(Category(3, "car", "vehicle"), 200)
             first_mask = np.zeros((8, 10), dtype=np.uint8)
             second_mask = np.zeros((8, 10), dtype=np.uint8)
             first_mask[1:5, 1:5] = 1
@@ -115,7 +115,7 @@ class DocumentTests(unittest.TestCase):
             cv2.imwrite(str(image_path), np.zeros((16, 20, 3), dtype=np.uint8))
             document = self.make_document(image_path)
             document.source_size = (16, 20)
-            document.add_segment(Category(1, "person", "person", (200, 10, 10)), 100)
+            document.add_segment(Category(1, "person", "person"), 100)
             mask = np.zeros((8, 10), dtype=np.uint8)
             mask[1:5, 1:5] = 1
             document.commit_mask(0, mask)
@@ -129,17 +129,6 @@ class DocumentTests(unittest.TestCase):
             self.assertEqual(payload["annotations"][0]["segmentation"]["size"], [16, 20])
             preview = cv2.imread(str(image_path.parent / "large.mask.png"), cv2.IMREAD_COLOR)
             self.assertEqual(preview.shape[:2], (16, 20))
-
-    def test_validation_does_not_require_background_annotation(self):
-        """Verify instance validation permits unlabeled background pixels."""
-        document = self.make_document(Path("image.jpg"))
-        document.add_segment(Category(1, "person", "person", (200, 10, 10)), 100)
-        mask = np.zeros((8, 10), dtype=np.uint8)
-        mask[1:5, 1:5] = 1
-        document.commit_mask(0, mask)
-        report = validate_document(document)
-        self.assertTrue(report.valid)
-
 
 if __name__ == "__main__":
     unittest.main()

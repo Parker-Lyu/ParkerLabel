@@ -11,7 +11,7 @@ python main.py
 
 ## Categories
 
-The application reads `config/categories.json`. The default configuration contains the 80 COCO detection categories. Use the **类别配置** button to add, delete, disable, rename, or recolor categories.
+The application reads `config/categories.json`. The default configuration contains the 80 COCO detection categories. Use the **类别配置** button to add, delete, disable, or rename categories.
 
 ## Annotation files
 
@@ -47,4 +47,3 @@ The per-image JSON uses COCO annotation fields but is not a complete COCO datase
 - `parker_label_app/annotation_io.py` loads and saves annotation artifacts.
 - `parker_label_app/category_store.py` validates and persists category configuration.
 - `parker_label_app/category_dialog.py` provides category editing in the interface.
-- `parker_label_app/validation.py` checks empty and noisy instance masks.
