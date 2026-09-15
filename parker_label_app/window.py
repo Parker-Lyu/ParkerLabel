@@ -1,0 +1,874 @@
+import random
+import traceback
+from pathlib import Path
+
+import cv2
+import numpy as np
+from PyQt5.QtCore import QPoint, Qt
+from PyQt5.QtGui import QColor, QFont, QPainter, QPen, QPixmap
+from PyQt5.QtWidgets import (
+    QApplication,
+    QButtonGroup,
+    QCheckBox,
+    QColorDialog,
+    QComboBox,
+    QFileDialog,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QRadioButton,
+    QScrollArea,
+    QSlider,
+    QTableWidget,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
+from .annotation_io import AnnotationRepository
+from .canvas import AnnotationCanvas
+from .category_dialog import CategoryConfigDialog
+from .category_store import CategoryStore
+from .image_utils import color_id_to_rgb, id_mask_to_rgb, qimage_from_rgb
+from .inference import SegmentationEngine
+from .validation import validate_document
+
+
+class MainWindow(QWidget):
+    COL_ID = 0
+    COL_EDIT = 1
+    COL_SHOW = 2
+    COL_CATEGORY = 3
+    COL_COLOR = 4
+    COL_DELETE = 5
+    COL_COMMIT = 6
+
+    def __init__(self):
+        """Initialize application services, state, and interface."""
+        super().__init__()
+        root = Path(__file__).resolve().parent.parent
+        self.category_store = CategoryStore(root / "config" / "categories.json")
+        self.repository = AnnotationRepository(target_size=1024)
+        self.engine = SegmentationEngine(
+            root / "pretrain" / "encoder.onnx",
+            root / "pretrain" / "H" / "decoder.onnx",
+            target_size=1024,
+        )
+        self.categories = []
+        self.categories_by_name = {}
+        self.document = None
+        self.current_index = None
+        self.edit_mask = None
+        self.edit_dirty = False
+        self.prompt_points = []
+        self.prompt_labels = []
+        self.previous_logits = None
+        self.mode = "query"
+        self.view_mode = "overlay"
+        self.zoom_factor = 1.0
+        self.minimum_zoom = 0.1
+        self.maximum_zoom = 10.0
+        self.zoom_step = 1.15
+        self.base_canvas_size = (1, 1)
+        self.canvas_size = (1, 1)
+        self.panning = False
+        self.pan_origin = None
+        self.painting = None
+        self.morph_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        self.load_categories()
+        self.build_ui()
+        self.reset_document_view()
+        self.log("初始化完成，请打开图片")
+
+    def load_categories(self):
+        """Load enabled category records from the local JSON configuration."""
+        self.categories = self.category_store.enabled()
+        self.categories_by_name = {category.name: category for category in self.categories}
+
+    def build_ui(self):
+        """Build the annotation workspace and connect user actions."""
+        self.setWindowTitle("Parker Label")
+        screen = QApplication.primaryScreen().availableSize()
+        self.resize(max(1100, screen.width() - 80), max(720, screen.height() - 80))
+        self.canvas = AnnotationCanvas(self)
+        self.canvas.setText("请打开图片")
+        self.scroll_area = QScrollArea(self)
+        self.scroll_area.setWidget(self.canvas)
+        self.scroll_area.setWidgetResizable(False)
+        self.scroll_area.setAlignment(Qt.AlignCenter)
+        controls = QVBoxLayout()
+        controls.addLayout(self.build_primary_controls())
+        controls.addLayout(self.build_tool_controls())
+        self.table = self.build_segment_table()
+        controls.addWidget(self.table, 1)
+        self.log_area = QTextEdit(self)
+        self.log_area.setReadOnly(True)
+        self.log_area.setMaximumHeight(170)
+        controls.addWidget(self.log_area)
+        layout = QHBoxLayout(self)
+        layout.addWidget(self.scroll_area, 3)
+        layout.addLayout(controls, 2)
+
+    def build_primary_controls(self):
+        """Create file, category, segment, save, and validation actions."""
+        layout = QHBoxLayout()
+        open_button = QPushButton("打开图片")
+        category_button = QPushButton("类别配置")
+        add_button = QPushButton("增加目标")
+        save_button = QPushButton("保存到磁盘")
+        validate_button = QPushButton("检查标注")
+        add_button.setShortcut("A")
+        save_button.setShortcut("Ctrl+S")
+        open_button.clicked.connect(self.choose_image)
+        category_button.clicked.connect(self.configure_categories)
+        add_button.clicked.connect(self.add_segment)
+        save_button.clicked.connect(self.save_document)
+        validate_button.clicked.connect(self.validate_current_document)
+        for button in (open_button, category_button, add_button, save_button, validate_button):
+            layout.addWidget(button)
+        layout.addStretch(1)
+        return layout
+
+    def build_tool_controls(self):
+        """Create drawing, viewing, morphology, and brush controls."""
+        outer = QVBoxLayout()
+        first = QHBoxLayout()
+        first.addWidget(QLabel("工具"))
+        self.mode_group = QButtonGroup(self)
+        modes = (("手动", "brush"), ("智能", "smart"), ("查询", "query"))
+        for label, value in modes:
+            button = QRadioButton(label)
+            button.setProperty("value", value)
+            self.mode_group.addButton(button)
+            first.addWidget(button)
+            if value == self.mode:
+                button.setChecked(True)
+        self.mode_group.buttonClicked.connect(self.change_mode)
+        first.addSpacing(18)
+        first.addWidget(QLabel("视图"))
+        self.view_group = QButtonGroup(self)
+        views = (("原图", "image"), ("Mask", "mask"), ("叠加", "overlay"))
+        for label, value in views:
+            button = QRadioButton(label)
+            button.setProperty("value", value)
+            self.view_group.addButton(button)
+            first.addWidget(button)
+            if value == self.view_mode:
+                button.setChecked(True)
+        self.view_group.buttonClicked.connect(self.change_view)
+        first.addStretch(1)
+        second = QHBoxLayout()
+        self.dilate_button = QPushButton("膨胀")
+        self.erode_button = QPushButton("腐蚀")
+        revert_button = QPushButton("撤销当前编辑")
+        commit_button = QPushButton("提交当前目标")
+        self.dilate_button.clicked.connect(self.dilate_edit_mask)
+        self.erode_button.clicked.connect(self.erode_edit_mask)
+        revert_button.clicked.connect(self.discard_edit)
+        commit_button.clicked.connect(self.commit_current_segment)
+        self.brush_slider = QSlider(Qt.Horizontal)
+        self.brush_slider.setRange(1, 50)
+        self.brush_slider.setValue(5)
+        self.brush_label = QLabel("笔刷 5")
+        self.brush_slider.valueChanged.connect(lambda value: self.brush_label.setText(f"笔刷 {value}"))
+        second.addWidget(self.dilate_button)
+        second.addWidget(self.erode_button)
+        second.addWidget(revert_button)
+        second.addWidget(commit_button)
+        second.addWidget(self.brush_label)
+        second.addWidget(self.brush_slider, 1)
+        outer.addLayout(first)
+        outer.addLayout(second)
+        self.update_tool_controls()
+        return outer
+
+    def build_segment_table(self):
+        """Create the segment table used to edit document-backed records."""
+        table = QTableWidget(0, 7, self)
+        table.setHorizontalHeaderLabels(["ID", "编辑", "显示", "类别", "颜色", "删除", "提交"])
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setSectionResizeMode(self.COL_CATEGORY, QHeaderView.Stretch)
+        for column in (self.COL_ID, self.COL_EDIT, self.COL_SHOW):
+            table.setColumnWidth(column, 48)
+        for column in (self.COL_COLOR, self.COL_DELETE, self.COL_COMMIT):
+            table.setColumnWidth(column, 76)
+        return table
+
+    def reset_document_view(self):
+        """Reset table and canvas state when no document is active."""
+        self.current_index = None
+        self.edit_mask = None
+        self.edit_dirty = False
+        self.prompt_points = []
+        self.prompt_labels = []
+        self.previous_logits = None
+        self.table.setRowCount(0)
+        self.canvas.setText("请打开图片")
+        self.canvas.setFixedSize(640, 480)
+
+    def choose_image(self):
+        """Open a file picker and load the selected image."""
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "打开图片",
+            "",
+            "Images (*.jpg *.jpeg *.png *.bmp)",
+        )
+        if path:
+            self.open_image(path)
+
+    def open_image(self, path):
+        """Open an image and its existing annotation artifacts."""
+        suffix = Path(path).suffix.lower()
+        if suffix not in {".jpg", ".jpeg", ".png", ".bmp"}:
+            self.log_error("仅支持 jpg、jpeg、png 和 bmp 图片")
+            return
+        if not self.confirm_document_transition():
+            return
+        try:
+            self.document = self.repository.open(Path(path))
+            self.current_index = None
+            self.clear_edit_state()
+            self.zoom_factor = 1.0
+            self.calculate_base_canvas_size()
+            self.refresh_table()
+            self.refresh_canvas()
+            self.log(f"已打开图片：{self.document.image_path.name}")
+            if self.document.embedding is None:
+                self.log("首次使用智能工具时将生成图片特征")
+            else:
+                self.log("已读取现有图片特征")
+        except Exception as error:
+            self.log_exception("打开图片失败", error)
+
+    def confirm_document_transition(self):
+        """Ask how to handle unsaved work before replacing the document."""
+        if self.document is None or not (self.document.dirty or self.edit_dirty):
+            return True
+        answer = QMessageBox.question(
+            self,
+            "未保存的修改",
+            "当前标注有未保存的修改，是否保存？",
+            QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+            QMessageBox.Yes,
+        )
+        if answer == QMessageBox.Cancel:
+            return False
+        if answer == QMessageBox.Yes:
+            return self.save_document()
+        return True
+
+    def calculate_base_canvas_size(self):
+        """Fit the active image inside the initial canvas area."""
+        if self.document is None:
+            return
+        image_height, image_width = self.document.image_rgb.shape[:2]
+        viewport_width = max(320, int(self.width() * 0.56))
+        viewport_height = max(320, self.height() - 80)
+        scale = min(viewport_width / image_width, viewport_height / image_height)
+        scale = min(scale, 1.0)
+        self.base_canvas_size = (
+            max(1, int(round(image_width * scale))),
+            max(1, int(round(image_height * scale))),
+        )
+        self.apply_canvas_size()
+
+    def apply_canvas_size(self):
+        """Apply the current zoom factor to the canvas dimensions."""
+        width = max(1, int(round(self.base_canvas_size[0] * self.zoom_factor)))
+        height = max(1, int(round(self.base_canvas_size[1] * self.zoom_factor)))
+        self.canvas_size = (width, height)
+        self.canvas.setFixedSize(width, height)
+
+    def refresh_table(self):
+        """Rebuild table widgets from the annotation document."""
+        self.table.setRowCount(0)
+        self.edit_group = QButtonGroup(self)
+        self.edit_group.setExclusive(True)
+        if self.document is None:
+            return
+        for index, segment in enumerate(self.document.segments):
+            self.table.insertRow(index)
+            self.table.setCellWidget(index, self.COL_ID, QLabel(str(index + 1)))
+            edit = QRadioButton()
+            edit.setChecked(index == self.current_index)
+            edit.clicked.connect(lambda checked, row=index: self.select_segment(row) if checked else None)
+            self.edit_group.addButton(edit)
+            self.table.setCellWidget(index, self.COL_EDIT, edit)
+            visible = QCheckBox()
+            visible.setChecked(segment.visible)
+            visible.toggled.connect(lambda checked, row=index: self.set_segment_visibility(row, checked))
+            self.table.setCellWidget(index, self.COL_SHOW, visible)
+            category = self.create_category_combo(segment.category_name)
+            category.currentTextChanged.connect(lambda name, row=index: self.set_segment_category(row, name))
+            self.table.setCellWidget(index, self.COL_CATEGORY, category)
+            color = QPushButton(self.color_button_text(segment.color_id))
+            color.setStyleSheet(self.color_button_style(segment.color_id))
+            color.clicked.connect(lambda checked=False, row=index: self.choose_segment_color(row))
+            self.table.setCellWidget(index, self.COL_COLOR, color)
+            delete = QPushButton("删除")
+            delete.clicked.connect(lambda checked=False, row=index: self.delete_segment(row))
+            self.table.setCellWidget(index, self.COL_DELETE, delete)
+            commit = QPushButton("提交")
+            commit.setEnabled(index == self.current_index and self.edit_dirty)
+            commit.clicked.connect(lambda checked=False, row=index: self.commit_current_segment() if row == self.current_index else None)
+            self.table.setCellWidget(index, self.COL_COMMIT, commit)
+        if self.current_index is not None and self.current_index < self.table.rowCount():
+            self.table.selectRow(self.current_index)
+
+    def create_category_combo(self, current_name):
+        """Create a category selector that preserves unavailable legacy values."""
+        combo = QComboBox(self)
+        combo.setEditable(True)
+        names = [category.name for category in self.categories]
+        if current_name and current_name not in names:
+            names.insert(0, current_name)
+        combo.addItems(names)
+        combo.setCurrentText(current_name)
+        for index, name in enumerate(names):
+            category = self.categories_by_name.get(name)
+            if category is not None:
+                description = category.description or "无描述"
+                combo.setItemData(index, f"{category.supercategory}\n{description}", Qt.ToolTipRole)
+        return combo
+
+    def configure_categories(self):
+        """Open the local JSON category editor and refresh selectors after saving."""
+        try:
+            dialog = CategoryConfigDialog(self.category_store, self)
+            if dialog.exec_():
+                self.load_categories()
+                self.refresh_table()
+                self.log(f"类别配置已更新，共启用 {len(self.categories)} 个类别")
+        except Exception as error:
+            self.log_exception("打开类别配置失败", error)
+
+    def add_segment(self):
+        """Add an empty segment using the first enabled category."""
+        if self.document is None:
+            self.log_error("请先打开图片")
+            return
+        if not self.categories:
+            self.log_error("类别配置中没有启用的类别")
+            return
+        if self.current_index is not None:
+            current_mask = self.document.segments[self.current_index].mask
+            if (current_mask is None or not np.any(current_mask)) and not self.edit_dirty:
+                self.log_error("当前目标尚未标注，不能继续增加目标")
+                return
+        if not self.resolve_pending_edit():
+            return
+        category = self.categories[0]
+        color_id = self.generate_color_id(category.color)
+        self.document.add_segment(category, color_id)
+        self.current_index = len(self.document.segments) - 1
+        self.mode = "smart"
+        self.set_checked_button(self.mode_group, "smart")
+        self.clear_edit_state()
+        self.refresh_table()
+        self.update_tool_controls()
+        self.refresh_canvas()
+
+    def generate_color_id(self, preferred_color=None):
+        """Generate a unique nonzero packed RGB identifier."""
+        used = self.document.used_color_ids() if self.document is not None else set()
+        if preferred_color is not None:
+            red, green, blue = preferred_color
+            preferred_id = red + green * 256 + blue * 65536
+            if preferred_id and preferred_id not in used:
+                return preferred_id
+        while True:
+            red, green, blue = (random.randrange(256) for _ in range(3))
+            color_id = red + green * 256 + blue * 65536
+            if color_id and color_id not in used:
+                return color_id
+
+    def select_segment(self, index):
+        """Select a segment after resolving any pending mask edit."""
+        if index == self.current_index:
+            return
+        if not self.resolve_pending_edit():
+            self.refresh_table()
+            return
+        self.current_index = index
+        self.clear_edit_state()
+        self.refresh_table()
+        self.refresh_canvas()
+
+    def resolve_pending_edit(self):
+        """Ask whether to commit or discard a pending mask edit."""
+        if not self.edit_dirty:
+            return True
+        answer = QMessageBox.question(
+            self,
+            "当前目标未提交",
+            "是否提交当前目标的编辑？",
+            QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+            QMessageBox.Yes,
+        )
+        if answer == QMessageBox.Cancel:
+            return False
+        if answer == QMessageBox.Yes:
+            return self.commit_current_segment()
+        self.discard_edit()
+        return True
+
+    def set_segment_visibility(self, index, visible):
+        """Update segment visibility without changing saved mask data."""
+        if self.document is None or index >= len(self.document.segments):
+            return
+        self.document.segments[index].visible = visible
+        self.refresh_canvas()
+
+    def set_segment_category(self, index, name):
+        """Assign a selected configured category to a segment."""
+        if self.document is None or index >= len(self.document.segments):
+            return
+        category = self.categories_by_name.get(name)
+        if category is None:
+            return
+        segment = self.document.segments[index]
+        if segment.category_id == category.id and segment.category_name == category.name:
+            return
+        self.document.change_segment_category(index, category)
+        self.refresh_canvas()
+
+    def choose_segment_color(self, index):
+        """Choose a unique color identifier for a segment."""
+        if self.document is None or index >= len(self.document.segments):
+            return
+        old_id = self.document.segments[index].color_id
+        old_rgb = color_id_to_rgb(old_id)
+        selected = QColorDialog.getColor(QColor(*old_rgb), self, "选择目标颜色")
+        if not selected.isValid():
+            return
+        color_id = selected.red() + selected.green() * 256 + selected.blue() * 65536
+        if color_id == 0:
+            self.log_error("黑色保留给未标注像素，请选择其他颜色")
+            return
+        if color_id != old_id and color_id in self.document.used_color_ids():
+            self.log_error("该颜色已被其他目标使用")
+            return
+        if color_id != old_id:
+            self.document.change_segment_color(index, color_id)
+            self.refresh_table()
+            self.refresh_canvas()
+
+    def delete_segment(self, index):
+        """Delete a segment after user confirmation."""
+        if self.document is None or index >= len(self.document.segments):
+            return
+        answer = QMessageBox.question(
+            self,
+            "删除确认",
+            "确认删除该目标及其全部 mask？",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if answer != QMessageBox.Yes:
+            return
+        self.document.remove_segment(index)
+        if self.current_index == index:
+            self.current_index = None
+            self.clear_edit_state()
+        elif self.current_index is not None and self.current_index > index:
+            self.current_index -= 1
+        self.refresh_table()
+        self.refresh_canvas()
+
+    def change_mode(self, button):
+        """Switch the active canvas interaction mode."""
+        next_mode = button.property("value")
+        if next_mode != self.mode and self.edit_dirty and not self.resolve_pending_edit():
+            self.set_checked_button(self.mode_group, self.mode)
+            return
+        self.mode = next_mode
+        self.clear_edit_state()
+        self.update_tool_controls()
+        self.refresh_canvas()
+
+    def change_view(self, button):
+        """Switch the active image visualization mode."""
+        self.view_mode = button.property("value")
+        self.refresh_canvas()
+
+    def set_checked_button(self, group, value):
+        """Check a button group member by its stored value."""
+        for button in group.buttons():
+            if button.property("value") == value:
+                button.setChecked(True)
+                return
+
+    def update_tool_controls(self):
+        """Enable editing controls that apply to the current mode."""
+        manual = self.mode == "brush"
+        editable = self.mode in {"brush", "smart"}
+        if hasattr(self, "brush_slider"):
+            self.brush_slider.setEnabled(manual)
+            self.brush_label.setEnabled(manual)
+            self.dilate_button.setEnabled(editable)
+            self.erode_button.setEnabled(editable)
+        if hasattr(self, "canvas"):
+            cursor = {
+                "brush": Qt.CrossCursor,
+                "smart": Qt.UpArrowCursor,
+                "query": Qt.WhatsThisCursor,
+            }[self.mode]
+            self.canvas.setCursor(cursor)
+
+    def ensure_edit_mask(self):
+        """Initialize the editable mask for the selected segment."""
+        if self.document is None or self.current_index is None:
+            self.log_error("请先选择一个目标")
+            return False
+        if self.edit_mask is None:
+            if self.mode == "smart":
+                self.edit_mask = np.zeros(self.document.image_rgb.shape[:2], dtype=np.uint8)
+            else:
+                segment_mask = self.document.segments[self.current_index].mask
+                self.edit_mask = segment_mask.copy() if segment_mask is not None else np.zeros(self.document.image_rgb.shape[:2], dtype=np.uint8)
+        return True
+
+    def clear_edit_state(self):
+        """Clear pending masks and smart prompt history."""
+        self.edit_mask = None
+        self.edit_dirty = False
+        self.prompt_points = []
+        self.prompt_labels = []
+        self.previous_logits = None
+
+    def discard_edit(self):
+        """Discard the pending edit for the selected segment."""
+        self.clear_edit_state()
+        self.refresh_table()
+        self.refresh_canvas()
+
+    def commit_current_segment(self):
+        """Commit the pending mask for the selected segment."""
+        if self.document is None or self.current_index is None or self.edit_mask is None:
+            return True
+        if not np.any(self.edit_mask):
+            self.log_error("当前目标没有 mask，无法提交")
+            return False
+        self.document.commit_mask(
+            self.current_index,
+            self.edit_mask,
+        )
+        self.clear_edit_state()
+        self.refresh_table()
+        self.refresh_canvas()
+        self.log("当前目标已提交")
+        return True
+
+    def dilate_edit_mask(self):
+        """Dilate the pending binary mask by one iteration."""
+        if not self.ensure_edit_mask():
+            return
+        self.edit_mask = cv2.dilate(self.edit_mask, self.morph_kernel, iterations=1)
+        self.edit_dirty = True
+        self.refresh_table()
+        self.refresh_canvas()
+
+    def erode_edit_mask(self):
+        """Erode the pending binary mask by one iteration."""
+        if not self.ensure_edit_mask():
+            return
+        self.edit_mask = cv2.erode(self.edit_mask, self.morph_kernel, iterations=1)
+        self.edit_dirty = True
+        self.refresh_table()
+        self.refresh_canvas()
+
+    def save_document(self):
+        """Commit pending work and persist the active annotation document."""
+        if self.document is None:
+            self.log_error("没有可保存的图片")
+            return False
+        if self.edit_dirty and not self.commit_current_segment():
+            return False
+        empty = [index + 1 for index, segment in enumerate(self.document.segments) if segment.mask is None or not np.any(segment.mask)]
+        if empty:
+            self.log_error(f"目标 {empty} 没有 mask，无法保存")
+            return False
+        try:
+            self.repository.save(self.document)
+            self.log("标注已保存到磁盘")
+            return True
+        except Exception as error:
+            self.log_exception("保存标注失败", error)
+            return False
+
+    def validate_current_document(self):
+        """Validate the active document and display a concise report."""
+        if self.document is None:
+            self.log_error("没有可检查的标注")
+            return
+        report = validate_document(self.document)
+        if report.valid:
+            self.log("检查通过，没有发现问题")
+            return
+        messages = []
+        if report.empty_segments:
+            messages.append(f"没有 mask 的目标：{report.empty_segments}")
+        if report.noisy_segments:
+            messages.append(f"可能含有小噪点的 ID：{report.noisy_segments}")
+        self.log_error("；".join(messages))
+
+    def ensure_embedding(self):
+        """Load or compute the active image embedding."""
+        if self.document.embedding is not None:
+            return True
+        try:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            embedding, elapsed_ms = self.engine.encode(self.document.image_rgb)
+            self.document.embedding = embedding
+            self.repository.save_embedding(self.document)
+            self.log(f"图片特征生成完成：{elapsed_ms:.2f} ms")
+            return True
+        except Exception as error:
+            self.log_exception("生成图片特征失败", error)
+            return False
+        finally:
+            QApplication.restoreOverrideCursor()
+
+    def run_smart_prediction(self, x, y, positive):
+        """Update the pending mask with a smart positive or negative point."""
+        if not self.ensure_edit_mask() or not self.ensure_embedding():
+            return
+        self.prompt_points.append((x, y))
+        self.prompt_labels.append(1 if positive else 0)
+        try:
+            mask, logits, elapsed_ms = self.engine.predict(
+                self.document.embedding,
+                self.document.image_rgb.shape[:2],
+                self.prompt_points,
+                self.prompt_labels,
+                self.previous_logits,
+            )
+            self.edit_mask = mask
+            self.previous_logits = logits
+            self.edit_dirty = True
+            self.refresh_table()
+            self.refresh_canvas()
+            self.log(f"智能分割完成：{elapsed_ms:.2f} ms")
+        except Exception as error:
+            self.log_exception("智能分割失败", error)
+
+    def canvas_mouse_press(self, event):
+        """Handle query, smart point, brush, and canvas pan actions."""
+        if self.document is None:
+            return
+        if event.button() == Qt.MiddleButton:
+            self.panning = True
+            self.pan_origin = event.globalPos()
+            self.canvas.setCursor(Qt.ClosedHandCursor)
+            return
+        position = self.image_position(event.pos())
+        if position is None:
+            return
+        x, y = position
+        if self.mode == "query":
+            index = self.document.segment_index_for_pixel(x, y)
+            if index is None:
+                self.log("点击位置没有目标")
+            else:
+                self.select_segment(index)
+            return
+        if self.current_index is None:
+            self.log_error("请先选择一个目标")
+            return
+        if self.mode == "smart" and event.button() in {Qt.LeftButton, Qt.RightButton}:
+            self.run_smart_prediction(x, y, event.button() == Qt.LeftButton)
+            return
+        if self.mode == "brush" and event.button() in {Qt.LeftButton, Qt.RightButton}:
+            if not self.ensure_edit_mask():
+                return
+            self.painting = 1 if event.button() == Qt.LeftButton else 0
+            self.paint_at(x, y)
+
+    def canvas_mouse_move(self, event):
+        """Continue an active pan or brush stroke."""
+        if self.panning and self.pan_origin is not None:
+            delta = event.globalPos() - self.pan_origin
+            self.pan_origin = event.globalPos()
+            horizontal = self.scroll_area.horizontalScrollBar()
+            vertical = self.scroll_area.verticalScrollBar()
+            horizontal.setValue(horizontal.value() - delta.x())
+            vertical.setValue(vertical.value() - delta.y())
+            return
+        if self.painting is None:
+            return
+        position = self.image_position(event.pos())
+        if position is not None:
+            self.paint_at(*position)
+
+    def canvas_mouse_release(self, event):
+        """End an active pan or brush stroke."""
+        if event.button() == Qt.MiddleButton:
+            self.panning = False
+            self.pan_origin = None
+            self.update_tool_controls()
+        self.painting = None
+
+    def paint_at(self, x, y):
+        """Paint or erase a circular area in the pending mask."""
+        radius = self.brush_slider.value()
+        cv2.circle(self.edit_mask, (x, y), radius, self.painting, -1)
+        self.edit_dirty = True
+        self.refresh_table()
+        self.refresh_canvas()
+
+    def canvas_wheel(self, event):
+        """Zoom the canvas while keeping the cursor position anchored."""
+        if self.document is None:
+            event.ignore()
+            return
+        steps = event.angleDelta().y() / 120.0
+        if not steps:
+            return
+        old_width, old_height = self.canvas_size
+        anchor = event.pos()
+        viewport_point = self.canvas.mapTo(self.scroll_area.viewport(), anchor)
+        x_ratio = anchor.x() / max(1, old_width)
+        y_ratio = anchor.y() / max(1, old_height)
+        self.zoom_factor = min(
+            self.maximum_zoom,
+            max(self.minimum_zoom, self.zoom_factor * (self.zoom_step ** steps)),
+        )
+        self.apply_canvas_size()
+        self.refresh_canvas()
+        self.scroll_area.horizontalScrollBar().setValue(
+            int(round(x_ratio * self.canvas_size[0] - viewport_point.x()))
+        )
+        self.scroll_area.verticalScrollBar().setValue(
+            int(round(y_ratio * self.canvas_size[1] - viewport_point.y()))
+        )
+        event.accept()
+
+    def image_position(self, canvas_position):
+        """Map a canvas position to an image pixel."""
+        if self.document is None:
+            return None
+        canvas_width, canvas_height = self.canvas_size
+        if not (0 <= canvas_position.x() < canvas_width and 0 <= canvas_position.y() < canvas_height):
+            return None
+        image_height, image_width = self.document.image_rgb.shape[:2]
+        x = min(image_width - 1, int((canvas_position.x() + 0.5) * image_width / canvas_width))
+        y = min(image_height - 1, int((canvas_position.y() + 0.5) * image_height / canvas_height))
+        return x, y
+
+    def preview_mask(self):
+        """Build the visible identifier mask including a pending edit."""
+        mask = self.document.visible_mask()
+        if self.current_index is None or self.edit_mask is None:
+            return mask
+        segment = self.document.segments[self.current_index]
+        if not segment.visible:
+            return mask
+        mask[mask == segment.color_id] = 0
+        mask[self.edit_mask.astype(bool)] = segment.color_id
+        return mask
+
+    def refresh_canvas(self):
+        """Render the active image, mask, overlay, boxes, and smart prompts."""
+        if self.document is None:
+            return
+        identifier_mask = self.preview_mask()
+        color_mask = id_mask_to_rgb(identifier_mask)
+        if self.view_mode == "image":
+            display = self.document.image_rgb.copy()
+        elif self.view_mode == "mask":
+            display = color_mask
+        else:
+            display = cv2.addWeighted(self.document.image_rgb, 0.5, color_mask, 0.5, 0)
+        pixmap = QPixmap.fromImage(qimage_from_rgb(display)).scaled(
+            self.canvas_size[0],
+            self.canvas_size[1],
+            Qt.IgnoreAspectRatio,
+            Qt.FastTransformation if self.view_mode == "mask" else Qt.SmoothTransformation,
+        )
+        if self.view_mode == "overlay":
+            self.draw_segment_labels(pixmap, identifier_mask)
+        self.draw_prompt_points(pixmap)
+        self.canvas.setPixmap(pixmap)
+
+    def draw_segment_labels(self, pixmap, identifier_mask):
+        """Draw tight boxes and category labels for visible segments."""
+        painter = QPainter(pixmap)
+        painter.setFont(QFont("Arial", 10, QFont.Bold))
+        image_height, image_width = identifier_mask.shape
+        scale_x = pixmap.width() / image_width
+        scale_y = pixmap.height() / image_height
+        for segment in self.document.segments:
+            if not segment.visible:
+                continue
+            if segment.mask is None:
+                continue
+            active_mask = self.edit_mask if self.current_index is not None and self.document.segments[self.current_index] is segment and self.edit_mask is not None else segment.mask
+            ys, xs = np.where(active_mask != 0)
+            if xs.size == 0:
+                continue
+            red, green, blue = color_id_to_rgb(segment.color_id)
+            color = QColor(red, green, blue)
+            painter.setPen(QPen(color, 2))
+            left = int(xs.min() * scale_x)
+            top = int(ys.min() * scale_y)
+            right = int((xs.max() + 1) * scale_x)
+            bottom = int((ys.max() + 1) * scale_y)
+            painter.drawRect(left, top, max(1, right - left), max(1, bottom - top))
+            label = segment.category_name
+            metrics = painter.fontMetrics()
+            label_width = metrics.horizontalAdvance(label) + 8
+            label_height = metrics.height() + 4
+            label_top = max(0, top - label_height)
+            painter.fillRect(left, label_top, label_width, label_height, color)
+            text_color = Qt.black if red * 299 + green * 587 + blue * 114 > 128000 else Qt.white
+            painter.setPen(text_color)
+            painter.drawText(left + 4, label_top + metrics.ascent() + 2, label)
+        painter.end()
+
+    def draw_prompt_points(self, pixmap):
+        """Draw positive and negative smart prompt markers."""
+        if not self.prompt_points or self.document is None:
+            return
+        painter = QPainter(pixmap)
+        image_height, image_width = self.document.image_rgb.shape[:2]
+        for (x, y), label in zip(self.prompt_points, self.prompt_labels):
+            point_x = int(x * pixmap.width() / image_width)
+            point_y = int(y * pixmap.height() / image_height)
+            color = QColor(0, 220, 0) if label == 1 else QColor(230, 30, 30)
+            painter.setPen(QPen(Qt.white, 2))
+            painter.setBrush(color)
+            painter.drawEllipse(QPoint(point_x, point_y), 5, 5)
+        painter.end()
+
+    def color_button_text(self, color_id):
+        """Return compact RGB text for a segment color button."""
+        return ",".join(str(channel) for channel in color_id_to_rgb(color_id))
+
+    def color_button_style(self, color_id):
+        """Return a readable button style for a packed RGB identifier."""
+        red, green, blue = color_id_to_rgb(color_id)
+        foreground = "black" if red * 299 + green * 587 + blue * 114 > 128000 else "white"
+        return f"background-color: rgb({red},{green},{blue}); color: {foreground}"
+
+    def log(self, message):
+        """Append an ordinary message to the application log."""
+        self.log_area.append(f"<span style='color:#222'>{message}</span>")
+
+    def log_error(self, message):
+        """Append an error message to the application log."""
+        self.log_area.append(f"<span style='color:#c62828'>{message}</span>")
+
+    def log_exception(self, context, error):
+        """Log an exception with its traceback for diagnosis."""
+        self.log_error(f"{context}：{error}")
+        self.log_error(traceback.format_exc().replace("\n", "<br>"))
+
+    def closeEvent(self, event):
+        """Resolve unsaved work before closing the application."""
+        if self.confirm_document_transition():
+            event.accept()
+        else:
+            event.ignore()

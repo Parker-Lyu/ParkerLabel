@@ -1,0 +1,14 @@
+*
+!.gitignore
+!README.md
+!main.py
+!config/
+config/*
+!config/categories.json
+!parker_label_app/
+!parker_label_app/**
+!tests/
+!tests/**
+**/__pycache__/
+*.py[cod]
+.DS_Store
