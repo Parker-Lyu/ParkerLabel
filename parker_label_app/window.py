@@ -165,9 +165,11 @@ class MainWindow(QWidget):
         category_button.clicked.connect(self.configure_categories)
         add_button.clicked.connect(self.add_segment)
         save_button.clicked.connect(self.save_document)
-        for button in (open_button, category_button, add_button, save_button):
+        for button in (open_button, add_button):
             layout.addWidget(button)
         layout.addStretch(1)
+        for button in (category_button, save_button):
+            layout.addWidget(button)
         return layout
 
     def build_tool_controls(self):
