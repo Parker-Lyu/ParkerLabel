@@ -5,7 +5,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from PyQt5.QtCore import QPoint, Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QFont, QPainter, QPalette, QPen, QPixmap
+from PyQt5.QtGui import QColor, QFont, QPainter, QPen, QPixmap
 from PyQt5.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -168,7 +168,6 @@ class MainWindow(QWidget):
         layout = QGridLayout()
         open_button = QPushButton("打开图片")
         self.quality_button = QPushButton("辅助质检 关")
-        self.quality_button_default_palette = QPalette(self.quality_button.palette())
         self.quality_button.setToolTip("标记当前编辑 Mask 中的碎片和孔洞")
         category_button = QPushButton("类别配置")
         save_button = QPushButton("保存到磁盘")
@@ -242,6 +241,7 @@ class MainWindow(QWidget):
         self.brush_slider.valueChanged.connect(
             lambda value: self.brush_label.setText(f"画笔尺寸：{value}")
         )
+        self.brush_slider.valueChanged.connect(lambda _value: self.canvas.update())
         brush_layout.addWidget(self.brush_label)
         brush_layout.addWidget(self.brush_slider, 1)
 
@@ -708,6 +708,8 @@ class MainWindow(QWidget):
             for control in self.manual_controls:
                 control.setEnabled(manual)
         if hasattr(self, "canvas"):
+            if not manual:
+                self.canvas.clear_brush_cursor()
             cursor = {
                 "brush": Qt.CrossCursor,
                 "smart": Qt.UpArrowCursor,
@@ -745,10 +747,14 @@ class MainWindow(QWidget):
         self.quality_button.setText(
             "辅助质检 开" if self.quality_check_enabled else "辅助质检 关"
         )
-        palette = QPalette(self.quality_button_default_palette)
-        if self.quality_check_enabled:
-            palette.setColor(QPalette.ButtonText, QColor(22, 163, 74))
-        self.quality_button.setPalette(palette)
+        self.quality_button.setStyleSheet(
+            "QPushButton { background-color: #2e7d32; color: white; "
+            "border: 1px solid #256628; border-radius: 6px; padding: 4px 8px; } "
+            "QPushButton:hover { background-color: #388e3c; } "
+            "QPushButton:pressed { background-color: #1b5e20; }"
+            if self.quality_check_enabled
+            else ""
+        )
         self.update_mask_quality()
         self.refresh_canvas()
 
