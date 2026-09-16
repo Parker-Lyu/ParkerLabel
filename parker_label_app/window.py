@@ -52,15 +52,14 @@ class QualityToggleButton(QPushButton):
         self.update()
 
     def paintEvent(self, event):
-        """Paint the native inactive state or a green active state."""
+        """Paint the native button with a green active label."""
         if not self.active:
             super().paintEvent(event)
             return
         option = QStyleOptionButton()
         self.initStyleOption(option)
         palette = QPalette(option.palette)
-        palette.setColor(QPalette.Button, QColor("#2e7d32"))
-        palette.setColor(QPalette.ButtonText, Qt.white)
+        palette.setColor(QPalette.ButtonText, QColor("#15803d"))
         option.palette = palette
         painter = QStylePainter(self)
         painter.drawControl(QStyle.CE_PushButton, option)
