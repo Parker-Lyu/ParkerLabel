@@ -178,8 +178,9 @@ class MainWindow(QWidget):
         save_button.clicked.connect(self.save_document)
         buttons = (open_button, self.quality_button, category_button, save_button)
         button_width = max(button.sizeHint().width() for button in buttons)
+        button_height = max(button.sizeHint().height() for button in buttons)
         for button in buttons:
-            button.setFixedWidth(button_width)
+            button.setFixedSize(button_width, button_height)
         layout.addWidget(open_button, 0, 0)
         layout.addWidget(self.quality_button, 0, 1)
         layout.addWidget(category_button, 1, 0)
@@ -749,7 +750,7 @@ class MainWindow(QWidget):
         )
         self.quality_button.setStyleSheet(
             "QPushButton { background-color: #2e7d32; color: white; "
-            "border: 1px solid #256628; border-radius: 6px; padding: 4px 8px; } "
+            "border: 1px solid #256628; border-radius: 6px; } "
             "QPushButton:hover { background-color: #388e3c; } "
             "QPushButton:pressed { background-color: #1b5e20; }"
             if self.quality_check_enabled
