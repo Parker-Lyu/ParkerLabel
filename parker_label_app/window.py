@@ -5,7 +5,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from PyQt5.QtCore import QPoint, Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QFont, QPainter, QPen, QPixmap
+from PyQt5.QtGui import QColor, QFont, QPainter, QPalette, QPen, QPixmap
 from PyQt5.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -22,6 +22,9 @@ from PyQt5.QtWidgets import (
     QRadioButton,
     QScrollArea,
     QSlider,
+    QStyle,
+    QStyleOptionButton,
+    QStylePainter,
     QTableWidget,
     QTextEdit,
     QVBoxLayout,
@@ -53,19 +56,14 @@ class QualityToggleButton(QPushButton):
         if not self.active:
             super().paintEvent(event)
             return
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        background = "#2e7d32"
-        if self.isDown():
-            background = "#1b5e20"
-        elif self.underMouse():
-            background = "#388e3c"
-        painter.setPen(QPen(QColor("#256628"), 1))
-        painter.setBrush(QColor(background))
-        painter.drawRoundedRect(self.rect().adjusted(1, 1, -1, -1), 6, 6)
-        painter.setPen(Qt.white)
-        painter.drawText(self.rect(), Qt.AlignCenter, self.text())
-        painter.end()
+        option = QStyleOptionButton()
+        self.initStyleOption(option)
+        palette = QPalette(option.palette)
+        palette.setColor(QPalette.Button, QColor("#2e7d32"))
+        palette.setColor(QPalette.ButtonText, Qt.white)
+        option.palette = palette
+        painter = QStylePainter(self)
+        painter.drawControl(QStyle.CE_PushButton, option)
 
 
 class VisibilityHeader(QHeaderView):
