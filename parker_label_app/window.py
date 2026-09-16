@@ -256,9 +256,10 @@ class MainWindow(QWidget):
         for group in (edit_group, view_group, interaction_group):
             group.setStyleSheet(group_style)
         lower_row = QHBoxLayout()
-        lower_row.addWidget(edit_group, 1)
-        lower_row.addWidget(view_group, 1)
-        outer.addWidget(interaction_group)
+        lower_row.addWidget(edit_group, 0, Qt.AlignLeft)
+        lower_row.addWidget(view_group, 0, Qt.AlignLeft)
+        lower_row.addStretch(1)
+        outer.addWidget(interaction_group, 0, Qt.AlignLeft)
         outer.addLayout(lower_row)
         self.update_tool_controls()
         return outer
