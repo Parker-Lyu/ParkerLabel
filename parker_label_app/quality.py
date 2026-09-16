@@ -1,12 +1,21 @@
+from dataclasses import dataclass
+
 import cv2
 import numpy as np
 
 
-def find_mask_quality_boxes(mask, primary_point=None):
-    """Return tight boxes for foreground fragments and enclosed holes."""
+@dataclass(frozen=True)
+class MaskQuality:
+    mask_region_count: int = 0
+    hole_count: int = 0
+    boxes: tuple[tuple[int, int, int, int], ...] = ()
+
+
+def inspect_mask_quality(mask, primary_point=None):
+    """Inspect foreground regions and enclosed holes in a binary mask."""
     binary = (mask != 0).astype(np.uint8)
     if not np.any(binary):
-        return []
+        return MaskQuality()
 
     count, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
     component_ids = list(range(1, count))
@@ -29,6 +38,7 @@ def find_mask_quality_boxes(mask, primary_point=None):
     background = 1 - binary
     hole_count, _, hole_stats, _ = cv2.connectedComponentsWithStats(background, connectivity=8)
     height, width = binary.shape
+    enclosed_hole_count = 0
     for index in range(1, hole_count):
         left, top, box_width, box_height = (
             int(value) for value in hole_stats[index, :4]
@@ -40,5 +50,6 @@ def find_mask_quality_boxes(mask, primary_point=None):
             or top + box_height == height
         ):
             continue
+        enclosed_hole_count += 1
         boxes.append((left, top, box_width, box_height))
-    return boxes
+    return MaskQuality(len(component_ids), enclosed_hole_count, tuple(boxes))

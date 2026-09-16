@@ -5,7 +5,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from PyQt5.QtCore import QPoint, Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QFont, QPainter, QPen, QPixmap
+from PyQt5.QtGui import QColor, QFont, QPainter, QPalette, QPen, QPixmap
 from PyQt5.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -34,7 +34,7 @@ from .category_dialog import CategoryConfigDialog
 from .category_store import CategoryStore
 from .image_utils import color_id_to_rgb, id_mask_to_rgb, qimage_from_rgb
 from .inference import SegmentationEngine
-from .quality import find_mask_quality_boxes
+from .quality import MaskQuality, inspect_mask_quality
 
 
 class VisibilityHeader(QHeaderView):
@@ -111,7 +111,7 @@ class MainWindow(QWidget):
         self.prompt_labels = []
         self.previous_logits = None
         self.quality_check_enabled = False
-        self.quality_boxes = []
+        self.mask_quality = MaskQuality()
         self.mode = "query"
         self.view_mode = "overlay"
         self.zoom_factor = 1.0
@@ -168,13 +168,13 @@ class MainWindow(QWidget):
         layout = QGridLayout()
         open_button = QPushButton("打开图片")
         self.quality_button = QPushButton("辅助质检 关")
-        self.quality_button.setCheckable(True)
+        self.quality_button_default_palette = QPalette(self.quality_button.palette())
         self.quality_button.setToolTip("标记当前编辑 Mask 中的碎片和孔洞")
         category_button = QPushButton("类别配置")
         save_button = QPushButton("保存到磁盘")
         save_button.setShortcut("Ctrl+S")
         open_button.clicked.connect(self.choose_image)
-        self.quality_button.toggled.connect(self.toggle_quality_check)
+        self.quality_button.clicked.connect(self.toggle_quality_check)
         category_button.clicked.connect(self.configure_categories)
         save_button.clicked.connect(self.save_document)
         buttons = (open_button, self.quality_button, category_button, save_button)
@@ -303,7 +303,7 @@ class MainWindow(QWidget):
         self.prompt_points = []
         self.prompt_labels = []
         self.previous_logits = None
-        self.quality_boxes = []
+        self.mask_quality = MaskQuality()
         self.table.setRowCount(0)
         self.canvas.setText("请打开图片")
         self.canvas.setFixedSize(640, 480)
@@ -537,6 +537,7 @@ class MainWindow(QWidget):
         self.mode = "smart"
         self.set_checked_button(self.mode_group, "smart")
         self.clear_edit_state()
+        self.update_mask_quality()
         self.refresh_table()
         self.update_tool_controls()
         self.refresh_canvas()
@@ -559,6 +560,7 @@ class MainWindow(QWidget):
             return
         self.current_index = index
         self.clear_edit_state()
+        self.update_mask_quality()
         self.refresh_table()
         self.refresh_canvas()
 
@@ -671,6 +673,7 @@ class MainWindow(QWidget):
             self.clear_edit_state()
         elif self.current_index is not None and self.current_index > index:
             self.current_index -= 1
+        self.update_mask_quality()
         self.refresh_table()
         self.refresh_canvas()
 
@@ -682,6 +685,7 @@ class MainWindow(QWidget):
             return
         self.mode = next_mode
         self.clear_edit_state()
+        self.update_mask_quality()
         self.update_tool_controls()
         self.refresh_canvas()
 
@@ -733,22 +737,36 @@ class MainWindow(QWidget):
         self.prompt_points = []
         self.prompt_labels = []
         self.previous_logits = None
-        self.quality_boxes = []
+        self.mask_quality = MaskQuality()
 
-    def toggle_quality_check(self, enabled):
+    def toggle_quality_check(self, _checked=False):
         """Toggle visual quality hints for the active mask."""
-        self.quality_check_enabled = enabled
-        self.quality_button.setText("辅助质检 开" if enabled else "辅助质检 关")
-        self.quality_button.setStyleSheet(
-            "background-color: #2563eb; color: white;" if enabled else ""
+        self.quality_check_enabled = not self.quality_check_enabled
+        self.quality_button.setText(
+            "辅助质检 开" if self.quality_check_enabled else "辅助质检 关"
         )
-        self.update_quality_boxes()
+        palette = QPalette(self.quality_button_default_palette)
+        if self.quality_check_enabled:
+            palette.setColor(QPalette.ButtonText, QColor(22, 163, 74))
+        self.quality_button.setPalette(palette)
+        self.update_mask_quality()
         self.refresh_canvas()
 
-    def update_quality_boxes(self):
-        """Refresh cached quality boxes for the active editable mask."""
-        self.quality_boxes = []
-        if not self.quality_check_enabled or self.edit_mask is None:
+    def current_quality_mask(self):
+        """Return the pending or committed mask for the selected target."""
+        if self.document is None or self.current_index is None:
+            return None
+        if not 0 <= self.current_index < len(self.document.segments):
+            return None
+        if self.edit_mask is not None:
+            return self.edit_mask
+        return self.document.segments[self.current_index].mask
+
+    def update_mask_quality(self):
+        """Refresh cached quality details for the selected target."""
+        self.mask_quality = MaskQuality()
+        quality_mask = self.current_quality_mask()
+        if not self.quality_check_enabled or quality_mask is None:
             return
         primary_point = next(
             (
@@ -758,7 +776,7 @@ class MainWindow(QWidget):
             ),
             None,
         )
-        self.quality_boxes = find_mask_quality_boxes(self.edit_mask, primary_point)
+        self.mask_quality = inspect_mask_quality(quality_mask, primary_point)
 
     def discard_edit(self):
         """Discard the pending edit for the selected segment."""
@@ -775,6 +793,7 @@ class MainWindow(QWidget):
             segment.color_id = color_id
             self.document.dirty = document_dirty
         self.clear_edit_state()
+        self.update_mask_quality()
         self.refresh_table()
         self.refresh_canvas()
 
@@ -798,6 +817,7 @@ class MainWindow(QWidget):
                 self.edit_mask,
             )
         self.clear_edit_state()
+        self.update_mask_quality()
         self.refresh_table()
         self.refresh_canvas()
         self.log("当前目标已提交")
@@ -809,7 +829,7 @@ class MainWindow(QWidget):
             return
         self.edit_mask = cv2.dilate(self.edit_mask, self.morph_kernel, iterations=1)
         self.edit_dirty = True
-        self.update_quality_boxes()
+        self.update_mask_quality()
         self.refresh_table()
         self.refresh_canvas()
 
@@ -819,7 +839,7 @@ class MainWindow(QWidget):
             return
         self.edit_mask = cv2.erode(self.edit_mask, self.morph_kernel, iterations=1)
         self.edit_dirty = True
-        self.update_quality_boxes()
+        self.update_mask_quality()
         self.refresh_table()
         self.refresh_canvas()
 
@@ -876,7 +896,7 @@ class MainWindow(QWidget):
             self.edit_mask = mask
             self.previous_logits = logits
             self.edit_dirty = True
-            self.update_quality_boxes()
+            self.update_mask_quality()
             self.refresh_table()
             self.refresh_canvas()
             self.log(f"智能分割完成：{elapsed_ms:.2f} ms")
@@ -913,7 +933,6 @@ class MainWindow(QWidget):
             if not self.ensure_edit_mask():
                 return
             self.painting = 1 if event.button() == Qt.LeftButton else 0
-            self.quality_boxes = []
             self.paint_at(x, y)
 
     def canvas_mouse_move(self, event):
@@ -938,17 +957,14 @@ class MainWindow(QWidget):
             self.panning = False
             self.pan_origin = None
             self.update_tool_controls()
-        was_painting = self.painting is not None
         self.painting = None
-        if was_painting:
-            self.update_quality_boxes()
-            self.refresh_canvas()
 
     def paint_at(self, x, y):
         """Paint or erase a circular area in the pending mask."""
         radius = self.brush_slider.value()
         cv2.circle(self.edit_mask, (x, y), radius, self.painting, -1)
         self.edit_dirty = True
+        self.update_mask_quality()
         self.refresh_table()
         self.refresh_canvas()
 
@@ -1023,10 +1039,12 @@ class MainWindow(QWidget):
         )
         if self.view_mode == "overlay":
             self.draw_segment_labels(pixmap, identifier_mask)
-        if self.quality_check_enabled and self.quality_boxes:
+        if self.quality_check_enabled and self.mask_quality.boxes:
             self.draw_quality_boxes(pixmap)
         if self.view_mode == "overlay":
             self.draw_prompt_points(pixmap)
+        if self.quality_check_enabled:
+            self.draw_quality_summary(pixmap)
         self.canvas.setPixmap(pixmap)
 
     def draw_quality_boxes(self, pixmap):
@@ -1036,15 +1054,39 @@ class MainWindow(QWidget):
         pen.setCosmetic(True)
         painter.setPen(pen)
         painter.setBrush(Qt.NoBrush)
-        image_height, image_width = self.edit_mask.shape
+        image_height, image_width = self.document.image_rgb.shape[:2]
         scale_x = pixmap.width() / image_width
         scale_y = pixmap.height() / image_height
-        for x, y, width, height in self.quality_boxes:
+        for x, y, width, height in self.mask_quality.boxes:
             left = int(round(x * scale_x))
             top = int(round(y * scale_y))
             right = int(round((x + width) * scale_x))
             bottom = int(round((y + height) * scale_y))
             painter.drawRect(left, top, max(1, right - left), max(1, bottom - top))
+        painter.end()
+
+    def draw_quality_summary(self, pixmap):
+        """Draw live quality counts in the image's upper-right corner."""
+        if self.current_quality_mask() is None:
+            text = "未选择目标"
+        else:
+            text = (
+                f"Mask 区域：{self.mask_quality.mask_region_count}  "
+                f"孔洞：{self.mask_quality.hole_count}"
+            )
+        painter = QPainter(pixmap)
+        painter.setFont(QFont("Arial", 11, QFont.Bold))
+        metrics = painter.fontMetrics()
+        padding = 7
+        width = metrics.horizontalAdvance(text) + padding * 2
+        height = metrics.height() + padding * 2
+        left = max(0, pixmap.width() - width - 8)
+        top = 8
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(0, 0, 0, 165))
+        painter.drawRoundedRect(left, top, width, height, 5, 5)
+        painter.setPen(Qt.white)
+        painter.drawText(left + padding, top + padding + metrics.ascent(), text)
         painter.end()
 
     def draw_segment_labels(self, pixmap, identifier_mask):
