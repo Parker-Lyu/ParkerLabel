@@ -166,12 +166,15 @@ class MainWindow(QWidget):
         category_button.clicked.connect(self.configure_categories)
         add_button.clicked.connect(self.add_segment)
         save_button.clicked.connect(self.save_document)
+        buttons = (open_button, add_button, category_button, save_button)
+        button_width = max(button.sizeHint().width() for button in buttons)
+        for button in buttons:
+            button.setFixedWidth(button_width)
         layout.addWidget(open_button, 0, 0)
         layout.addWidget(add_button, 0, 1)
         layout.addWidget(category_button, 1, 0)
         layout.addWidget(save_button, 1, 1)
-        layout.setColumnStretch(0, 1)
-        layout.setColumnStretch(1, 1)
+        layout.setAlignment(Qt.AlignLeft)
         return layout
 
     def build_tool_controls(self):
