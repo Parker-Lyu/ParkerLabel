@@ -179,7 +179,7 @@ class MainWindow(QWidget):
 
     def build_tool_controls(self):
         """Create drawing, viewing, morphology, and brush controls."""
-        outer = QHBoxLayout()
+        outer = QVBoxLayout()
 
         edit_group = QGroupBox("目标编辑")
         edit_layout = QVBoxLayout(edit_group)
@@ -255,8 +255,11 @@ class MainWindow(QWidget):
         )
         for group in (edit_group, view_group, interaction_group):
             group.setStyleSheet(group_style)
-            outer.addWidget(group)
-        outer.setStretchFactor(interaction_group, 1)
+        lower_row = QHBoxLayout()
+        lower_row.addWidget(edit_group, 1)
+        lower_row.addWidget(view_group, 1)
+        outer.addWidget(interaction_group)
+        outer.addLayout(lower_row)
         self.update_tool_controls()
         return outer
 
