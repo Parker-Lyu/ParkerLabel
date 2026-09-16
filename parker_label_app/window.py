@@ -410,11 +410,13 @@ class MainWindow(QWidget):
         """Size table columns and the control panel from their contents."""
         self.table.resizeColumnsToContents()
         category_probe = QComboBox()
-        category_probe.addItems([category.name for category in self.categories] or ["类别"])
-        self.table.setColumnWidth(
-            self.COL_CATEGORY,
-            max(self.table.columnWidth(self.COL_CATEGORY), category_probe.sizeHint().width()),
+        selected_categories = (
+            [segment.category_name for segment in self.document.segments]
+            if self.document is not None
+            else []
         )
+        category_probe.addItems(selected_categories or ["类别"])
+        self.table.setColumnWidth(self.COL_CATEGORY, category_probe.sizeHint().width())
         self.table.horizontalHeader().update_checkbox_geometry()
         if not hasattr(self, "control_panel"):
             return
@@ -590,6 +592,7 @@ class MainWindow(QWidget):
         if segment.category_id == category.id and segment.category_name == category.name:
             return
         self.document.change_segment_category(index, category)
+        self.resize_segment_table_columns()
         self.refresh_canvas()
 
     def assign_random_color(self, index):
