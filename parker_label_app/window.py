@@ -141,17 +141,22 @@ class MainWindow(QWidget):
         self.scroll_area.setWidgetResizable(False)
         self.scroll_area.setAlignment(Qt.AlignCenter)
         controls = QVBoxLayout()
-        controls.addLayout(self.build_primary_controls())
-        controls.addLayout(self.build_tool_controls())
+        self.primary_controls = self.build_primary_controls()
+        self.tool_controls = self.build_tool_controls()
+        controls.addLayout(self.primary_controls)
+        controls.addLayout(self.tool_controls)
         self.table = self.build_segment_table()
         controls.addWidget(self.table, 1)
         self.log_area = QTextEdit(self)
         self.log_area.setReadOnly(True)
         self.log_area.setMaximumHeight(170)
         controls.addWidget(self.log_area)
+        self.control_panel = QWidget(self)
+        self.control_panel.setLayout(controls)
         layout = QHBoxLayout(self)
-        layout.addWidget(self.scroll_area, 3)
-        layout.addLayout(controls, 2)
+        layout.addWidget(self.scroll_area, 1)
+        layout.addWidget(self.control_panel)
+        self.resize_segment_table_columns()
 
     def build_primary_controls(self):
         """Create file, category, segment, and save actions."""
@@ -369,6 +374,7 @@ class MainWindow(QWidget):
         self.table.setRowCount(0)
         if self.document is None:
             self.update_visibility_header()
+            self.resize_segment_table_columns()
             return
         for index, segment in enumerate(self.document.segments):
             self.table.insertRow(index)
@@ -398,8 +404,31 @@ class MainWindow(QWidget):
         if self.current_index is not None and self.current_index < self.table.rowCount():
             self.table.selectRow(self.current_index)
         self.update_visibility_header()
+        self.resize_segment_table_columns()
+
+    def resize_segment_table_columns(self):
+        """Size table columns and the control panel from their contents."""
         self.table.resizeColumnsToContents()
+        category_probe = QComboBox()
+        category_probe.addItems([category.name for category in self.categories] or ["类别"])
+        self.table.setColumnWidth(
+            self.COL_CATEGORY,
+            max(self.table.columnWidth(self.COL_CATEGORY), category_probe.sizeHint().width()),
+        )
         self.table.horizontalHeader().update_checkbox_geometry()
+        if not hasattr(self, "control_panel"):
+            return
+        table_width = self.table.frameWidth() * 2
+        table_width += sum(self.table.columnWidth(column) for column in range(self.table.columnCount()))
+        table_width += self.table.verticalScrollBar().sizeHint().width()
+        content_width = max(
+            table_width,
+            self.primary_controls.sizeHint().width(),
+            self.tool_controls.sizeHint().width(),
+            self.log_area.minimumSizeHint().width(),
+        )
+        margins = self.control_panel.layout().contentsMargins()
+        self.control_panel.setFixedWidth(content_width + margins.left() + margins.right())
 
     def create_centered_control(self, control):
         """Place a compact control in the center of a table cell."""
