@@ -28,8 +28,10 @@ mobile_sam/
 
 # Models and sample data
 pretrain/
-example_img/*.jpg
 tests/
+example_img/*
+!example_img/sa_224099.jpg
+!example_img/sa_226614.jpg
 config/*.xlsx
 
 # Generated annotation artifacts
