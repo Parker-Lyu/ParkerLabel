@@ -328,7 +328,7 @@ class MainWindow(QWidget):
             self.refresh_canvas()
             self.log(f"已打开图片：{self.document.image_path.name}")
             if self.document.embedding is None:
-                self.log("首次使用智能工具时将生成图片特征")
+                self.ensure_embedding()
             else:
                 self.log("已读取现有图片特征")
         except Exception as error:
