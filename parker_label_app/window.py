@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (
     QCheckBox,
     QComboBox,
     QFileDialog,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
@@ -154,7 +155,7 @@ class MainWindow(QWidget):
 
     def build_primary_controls(self):
         """Create file, category, segment, and save actions."""
-        layout = QHBoxLayout()
+        layout = QGridLayout()
         open_button = QPushButton("打开图片")
         category_button = QPushButton("类别配置")
         add_button = QPushButton("增加目标")
@@ -165,11 +166,12 @@ class MainWindow(QWidget):
         category_button.clicked.connect(self.configure_categories)
         add_button.clicked.connect(self.add_segment)
         save_button.clicked.connect(self.save_document)
-        for button in (open_button, add_button):
-            layout.addWidget(button)
-        layout.addStretch(1)
-        for button in (category_button, save_button):
-            layout.addWidget(button)
+        layout.addWidget(open_button, 0, 0)
+        layout.addWidget(add_button, 0, 1)
+        layout.addWidget(category_button, 1, 0)
+        layout.addWidget(save_button, 1, 1)
+        layout.setColumnStretch(0, 1)
+        layout.setColumnStretch(1, 1)
         return layout
 
     def build_tool_controls(self):
