@@ -182,7 +182,7 @@ class MainWindow(QWidget):
         controls.addWidget(self.table, 1)
         self.log_area = QTextEdit(self)
         self.log_area.setReadOnly(True)
-        self.log_area.setMaximumHeight(170)
+        self.log_area.setMaximumHeight(110)
         controls.addWidget(self.log_area)
         self.control_panel = QWidget(self)
         self.control_panel.setLayout(controls)
@@ -222,6 +222,7 @@ class MainWindow(QWidget):
 
         edit_group = QGroupBox("目标编辑")
         edit_layout = QVBoxLayout(edit_group)
+        edit_layout.setSpacing(2)
         self.undo_button = QPushButton("撤销")
         self.redo_button = QPushButton("重做")
         self.add_button = QPushButton("增加目标")
