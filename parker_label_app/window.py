@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (
     QCheckBox,
     QComboBox,
     QFileDialog,
+    QGroupBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -174,54 +175,84 @@ class MainWindow(QWidget):
 
     def build_tool_controls(self):
         """Create drawing, viewing, morphology, and brush controls."""
-        outer = QVBoxLayout()
-        first = QHBoxLayout()
-        first.addWidget(QLabel("工具"))
-        self.mode_group = QButtonGroup(self)
-        modes = (("手动", "brush"), ("智能", "smart"), ("查询", "query"))
-        for label, value in modes:
-            button = QRadioButton(label)
-            button.setProperty("value", value)
-            self.mode_group.addButton(button)
-            first.addWidget(button)
-            if value == self.mode:
-                button.setChecked(True)
-        self.mode_group.buttonClicked.connect(self.change_mode)
-        first.addSpacing(18)
-        first.addWidget(QLabel("视图"))
+        outer = QHBoxLayout()
+
+        edit_group = QGroupBox("目标编辑")
+        edit_layout = QVBoxLayout(edit_group)
+        self.undo_button = QPushButton("撤销")
+        self.redo_button = QPushButton("重做")
+        self.commit_button = QPushButton("提交当前目标")
+        self.commit_button.clicked.connect(self.commit_current_segment)
+        edit_layout.addWidget(self.undo_button)
+        edit_layout.addWidget(self.redo_button)
+        edit_layout.addWidget(self.commit_button)
+
+        view_group = QGroupBox("显示模式")
+        view_layout = QVBoxLayout(view_group)
         self.view_group = QButtonGroup(self)
         views = (("原图", "image"), ("Mask", "mask"), ("叠加", "overlay"))
         for label, value in views:
             button = QRadioButton(label)
             button.setProperty("value", value)
             self.view_group.addButton(button)
-            first.addWidget(button)
+            view_layout.addWidget(button)
             if value == self.view_mode:
                 button.setChecked(True)
         self.view_group.buttonClicked.connect(self.change_view)
-        first.addStretch(1)
-        second = QHBoxLayout()
-        self.dilate_button = QPushButton("膨胀")
-        self.erode_button = QPushButton("腐蚀")
-        revert_button = QPushButton("撤销当前编辑")
-        commit_button = QPushButton("提交当前目标")
-        self.dilate_button.clicked.connect(self.dilate_edit_mask)
-        self.erode_button.clicked.connect(self.erode_edit_mask)
-        revert_button.clicked.connect(self.discard_edit)
-        commit_button.clicked.connect(self.commit_current_segment)
+
+        interaction_group = QGroupBox("交互模式")
+        interaction_layout = QVBoxLayout(interaction_group)
+        mode_layout = QHBoxLayout()
+        self.mode_group = QButtonGroup(self)
+        modes = (("智能", "smart"), ("手动", "brush"), ("查询", "query"))
+        for label, value in modes:
+            button = QRadioButton(label)
+            button.setProperty("value", value)
+            self.mode_group.addButton(button)
+            mode_layout.addWidget(button)
+            if value == self.mode:
+                button.setChecked(True)
+        self.mode_group.buttonClicked.connect(self.change_mode)
+        mode_layout.addStretch(1)
+
+        brush_layout = QHBoxLayout()
+        self.brush_label = QLabel("画笔尺寸：5")
         self.brush_slider = QSlider(Qt.Horizontal)
         self.brush_slider.setRange(1, 50)
         self.brush_slider.setValue(5)
-        self.brush_label = QLabel("笔刷 5")
-        self.brush_slider.valueChanged.connect(lambda value: self.brush_label.setText(f"笔刷 {value}"))
-        second.addWidget(self.dilate_button)
-        second.addWidget(self.erode_button)
-        second.addWidget(revert_button)
-        second.addWidget(commit_button)
-        second.addWidget(self.brush_label)
-        second.addWidget(self.brush_slider, 1)
-        outer.addLayout(first)
-        outer.addLayout(second)
+        self.brush_slider.valueChanged.connect(
+            lambda value: self.brush_label.setText(f"画笔尺寸：{value}")
+        )
+        brush_layout.addWidget(self.brush_label)
+        brush_layout.addWidget(self.brush_slider, 1)
+
+        morphology_layout = QHBoxLayout()
+        self.erode_button = QPushButton("腐蚀")
+        self.dilate_button = QPushButton("膨胀")
+        self.erode_button.clicked.connect(self.erode_edit_mask)
+        self.dilate_button.clicked.connect(self.dilate_edit_mask)
+        morphology_layout.addWidget(self.erode_button)
+        morphology_layout.addWidget(self.dilate_button)
+
+        interaction_layout.addLayout(mode_layout)
+        interaction_layout.addLayout(brush_layout)
+        interaction_layout.addLayout(morphology_layout)
+        self.manual_controls = (
+            self.brush_label,
+            self.brush_slider,
+            self.erode_button,
+            self.dilate_button,
+        )
+
+        group_style = (
+            "QGroupBox { border: 1px solid #8c8c8c; border-radius: 3px; "
+            "margin-top: 8px; padding-top: 6px; } "
+            "QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }"
+        )
+        for group in (edit_group, view_group, interaction_group):
+            group.setStyleSheet(group_style)
+            outer.addWidget(group)
+        outer.setStretchFactor(interaction_group, 1)
         self.update_tool_controls()
         return outer
 
@@ -568,12 +599,9 @@ class MainWindow(QWidget):
     def update_tool_controls(self):
         """Enable editing controls that apply to the current mode."""
         manual = self.mode == "brush"
-        editable = self.mode in {"brush", "smart"}
-        if hasattr(self, "brush_slider"):
-            self.brush_slider.setEnabled(manual)
-            self.brush_label.setEnabled(manual)
-            self.dilate_button.setEnabled(editable)
-            self.erode_button.setEnabled(editable)
+        if hasattr(self, "manual_controls"):
+            for control in self.manual_controls:
+                control.setEnabled(manual)
         if hasattr(self, "canvas"):
             cursor = {
                 "brush": Qt.CrossCursor,
