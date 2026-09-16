@@ -22,7 +22,6 @@ from PyQt5.QtWidgets import (
     QScrollArea,
     QSlider,
     QTableWidget,
-    QTableWidgetItem,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -263,14 +262,10 @@ class MainWindow(QWidget):
         table.setHorizontalHeader(header)
         table.setHorizontalHeaderLabels(["ID", "编辑", "", "类别", "颜色", "删除"])
         table.verticalHeader().setVisible(False)
-        table.horizontalHeader().setSectionResizeMode(self.COL_CATEGORY, QHeaderView.Stretch)
+        table.horizontalHeader().setMinimumSectionSize(44)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         header.visibilityChanged.connect(self.set_all_segments_visible)
         table.cellClicked.connect(self.handle_segment_cell_click)
-        for column in (self.COL_ID, self.COL_EDIT):
-            table.setColumnWidth(column, 48)
-        table.setColumnWidth(self.COL_SHOW, 76)
-        for column in (self.COL_COLOR, self.COL_DELETE):
-            table.setColumnWidth(column, 76)
         header.update_checkbox_geometry()
         return table
 
@@ -368,9 +363,17 @@ class MainWindow(QWidget):
             return
         for index, segment in enumerate(self.document.segments):
             self.table.insertRow(index)
-            self.table.setCellWidget(index, self.COL_ID, QLabel(str(index + 1)))
-            self.table.setItem(index, self.COL_EDIT, self.create_action_item("●" if index == self.current_index else "○"))
-            self.table.setItem(index, self.COL_SHOW, self.create_action_item("☑" if segment.visible else "☐"))
+            identifier = QLabel(str(index + 1))
+            identifier.setAlignment(Qt.AlignCenter)
+            self.table.setCellWidget(index, self.COL_ID, identifier)
+            edit = QRadioButton()
+            edit.setChecked(index == self.current_index)
+            edit.clicked.connect(lambda checked=False, row=index: self.select_segment(row))
+            self.table.setCellWidget(index, self.COL_EDIT, self.create_centered_control(edit))
+            visible = QCheckBox()
+            visible.setChecked(segment.visible)
+            visible.toggled.connect(lambda checked, row=index: self.set_segment_visibility(row, checked))
+            self.table.setCellWidget(index, self.COL_SHOW, self.create_centered_control(visible))
             category = self.create_category_combo(segment.category_name)
             category.setEnabled(index == self.current_index)
             category.currentTextChanged.connect(lambda name, row=index: self.set_segment_category(row, name))
@@ -386,13 +389,18 @@ class MainWindow(QWidget):
         if self.current_index is not None and self.current_index < self.table.rowCount():
             self.table.selectRow(self.current_index)
         self.update_visibility_header()
+        self.table.resizeColumnsToContents()
+        self.table.horizontalHeader().update_checkbox_geometry()
 
-    def create_action_item(self, text):
-        """Create a centered full-cell action item."""
-        item = QTableWidgetItem(text)
-        item.setTextAlignment(Qt.AlignCenter)
-        item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-        return item
+    def create_centered_control(self, control):
+        """Place a compact control in the center of a table cell."""
+        container = QWidget(self.table)
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addStretch(1)
+        layout.addWidget(control)
+        layout.addStretch(1)
+        return container
 
     def handle_segment_cell_click(self, row, column):
         """Handle full-cell edit selection and visibility toggling."""
@@ -524,9 +532,12 @@ class MainWindow(QWidget):
         if self.document is None or index >= len(self.document.segments):
             return
         self.document.segments[index].visible = visible
-        item = self.table.item(index, self.COL_SHOW)
-        if item is not None:
-            item.setText("☑" if visible else "☐")
+        container = self.table.cellWidget(index, self.COL_SHOW)
+        checkbox = container.findChild(QCheckBox) if container is not None else None
+        if checkbox is not None and checkbox.isChecked() != visible:
+            checkbox.blockSignals(True)
+            checkbox.setChecked(visible)
+            checkbox.blockSignals(False)
         self.update_visibility_header()
         self.refresh_canvas()
 
@@ -866,7 +877,7 @@ class MainWindow(QWidget):
         )
         if self.view_mode == "overlay":
             self.draw_segment_labels(pixmap, identifier_mask)
-        self.draw_prompt_points(pixmap)
+            self.draw_prompt_points(pixmap)
         self.canvas.setPixmap(pixmap)
 
     def draw_segment_labels(self, pixmap, identifier_mask):
