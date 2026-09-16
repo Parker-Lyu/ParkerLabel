@@ -34,7 +34,7 @@ from PyQt5.QtWidgets import (
 from .annotation_io import AnnotationRepository
 from .canvas import AnnotationCanvas
 from .category_dialog import CategoryConfigDialog
-from .category_store import CategoryStore
+from .category_store import CategoryConfigManager
 from .image_utils import color_id_to_rgb, id_mask_to_rgb, qimage_from_rgb
 from .inference import SegmentationEngine
 from .quality import MaskQuality, inspect_mask_quality
@@ -120,7 +120,9 @@ class MainWindow(QWidget):
         """Initialize application services, state, and interface."""
         super().__init__()
         root = Path(__file__).resolve().parent.parent
-        self.category_store = CategoryStore(root / "config" / "categories.json")
+        self.category_manager = CategoryConfigManager(root / "config" / "categories.json")
+        self.active_category_config_id = None
+        self.category_config_name = ""
         self.repository = AnnotationRepository(target_size=1024)
         self.engine = SegmentationEngine(
             root / "pretrain" / "encoder.onnx",
@@ -156,11 +158,21 @@ class MainWindow(QWidget):
         self.build_ui()
         self.reset_document_view()
         self.log("初始化完成，请打开图片")
+        if self.category_manager.warning:
+            self.log(self.category_manager.warning)
 
-    def load_categories(self):
-        """Load enabled category records from the local JSON configuration."""
-        self.categories = self.category_store.enabled()
+    def load_categories(self, config_id=None):
+        """Load enabled category records from the selected or startup configuration."""
+        if config_id is None:
+            config_id, categories = self.category_manager.load_default()
+        else:
+            categories = self.category_manager.load(config_id)
+        self.active_category_config_id = config_id
+        self.category_config_name = self.category_manager.configuration(config_id).name
+        self.categories = [category for category in categories if category.enabled]
         self.categories_by_name = {category.name: category for category in self.categories}
+        if hasattr(self, "category_config_label"):
+            self.category_config_label.setText(f"当前类别：{self.category_config_name}")
 
     def build_ui(self):
         """Build the annotation workspace and connect user actions."""
@@ -213,6 +225,8 @@ class MainWindow(QWidget):
         layout.addWidget(self.quality_button, 0, 1)
         layout.addWidget(category_button, 1, 0)
         layout.addWidget(save_button, 1, 1)
+        self.category_config_label = QLabel(f"当前类别：{self.category_config_name}")
+        layout.addWidget(self.category_config_label, 2, 0, 1, 2)
         layout.setAlignment(Qt.AlignLeft)
         return layout
 
@@ -540,13 +554,24 @@ class MainWindow(QWidget):
         return combo
 
     def configure_categories(self):
-        """Open the local JSON category editor and refresh selectors after saving."""
+        """Open the category manager and apply the selected configuration."""
         try:
-            dialog = CategoryConfigDialog(self.category_store, self)
-            if dialog.exec_():
-                self.load_categories()
+            dialog = CategoryConfigDialog(
+                self.category_manager,
+                self.active_category_config_id,
+                self,
+            )
+            accepted = dialog.exec_()
+            config_id = dialog.applied_config_id if accepted else None
+            if dialog.active_config_id != self.active_category_config_id:
+                config_id = dialog.active_config_id
+            if config_id is not None:
+                self.load_categories(config_id)
                 self.refresh_table()
-                self.log(f"类别配置已更新，共启用 {len(self.categories)} 个类别")
+                self.log(
+                    f"已应用类别配置“{self.category_config_name}”，"
+                    f"共启用 {len(self.categories)} 个类别"
+                )
         except Exception as error:
             self.log_exception("打开类别配置失败", error)
 
