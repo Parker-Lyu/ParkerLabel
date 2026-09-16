@@ -236,8 +236,8 @@ class MainWindow(QWidget):
         undo_redo_layout.addWidget(self.redo_button)
         edit_layout.addLayout(undo_redo_layout)
         edit_layout.addWidget(self.add_button)
-        edit_layout.addWidget(self.commit_button)
         edit_layout.addWidget(self.discard_button)
+        edit_layout.addWidget(self.commit_button)
 
         view_group = QGroupBox("显示模式")
         view_layout = QVBoxLayout(view_group)
