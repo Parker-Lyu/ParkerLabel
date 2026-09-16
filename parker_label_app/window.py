@@ -104,6 +104,8 @@ class MainWindow(QWidget):
         self.current_index = None
         self.edit_mask = None
         self.edit_dirty = False
+        self.metadata_dirty = False
+        self.metadata_snapshot = None
         self.prompt_points = []
         self.prompt_labels = []
         self.previous_logits = None
@@ -288,6 +290,8 @@ class MainWindow(QWidget):
         self.current_index = None
         self.edit_mask = None
         self.edit_dirty = False
+        self.metadata_dirty = False
+        self.metadata_snapshot = None
         self.prompt_points = []
         self.prompt_labels = []
         self.previous_logits = None
@@ -332,7 +336,7 @@ class MainWindow(QWidget):
 
     def confirm_document_transition(self):
         """Ask how to handle unsaved work before replacing the document."""
-        if self.document is None or not (self.document.dirty or self.edit_dirty):
+        if self.document is None or not (self.document.dirty or self.has_pending_target_edit()):
             return True
         answer = QMessageBox.question(
             self,
@@ -510,13 +514,13 @@ class MainWindow(QWidget):
         if not self.categories:
             self.show_warning("无法增加目标", "类别配置中没有启用的类别")
             return
+        if self.current_index is not None and not self.resolve_pending_edit():
+            return
         if self.current_index is not None:
             current_mask = self.document.segments[self.current_index].mask
-            if (current_mask is None or not np.any(current_mask)) and not self.edit_dirty:
+            if current_mask is None or not np.any(current_mask):
                 self.show_warning("无法增加目标", "当前目标尚未标注，不能继续增加目标")
                 return
-        if not self.resolve_pending_edit():
-            return
         category = self.categories[0]
         color_id = self.generate_color_id()
         self.document.add_segment(category, color_id)
@@ -550,8 +554,8 @@ class MainWindow(QWidget):
         self.refresh_canvas()
 
     def resolve_pending_edit(self):
-        """Ask whether to commit or discard a pending mask edit."""
-        if not self.edit_dirty:
+        """Ask whether to commit or discard pending target changes."""
+        if not self.has_pending_target_edit():
             return True
         answer = QMessageBox.question(
             self,
@@ -566,6 +570,38 @@ class MainWindow(QWidget):
             return self.commit_current_segment()
         self.discard_edit()
         return True
+
+    def has_pending_target_edit(self):
+        """Return whether the current target has uncommitted changes."""
+        return self.edit_dirty or self.metadata_dirty
+
+    def begin_metadata_edit(self, index):
+        """Capture current target metadata before its first pending change."""
+        if (
+            self.metadata_snapshot is not None
+            or self.document is None
+            or index != self.current_index
+        ):
+            return
+        segment = self.document.segments[index]
+        self.metadata_snapshot = (
+            segment.category_id,
+            segment.category_name,
+            segment.color_id,
+            self.document.dirty,
+        )
+
+    def update_metadata_dirty(self, index):
+        """Update pending metadata state after a category or color change."""
+        if self.metadata_snapshot is None or self.document is None or index != self.current_index:
+            return
+        segment = self.document.segments[index]
+        original = self.metadata_snapshot[:3]
+        current = (segment.category_id, segment.category_name, segment.color_id)
+        self.metadata_dirty = current != original
+        if not self.metadata_dirty:
+            self.document.dirty = self.metadata_snapshot[3]
+            self.metadata_snapshot = None
 
     def set_segment_visibility(self, index, visible):
         """Update segment visibility without changing saved mask data."""
@@ -591,7 +627,9 @@ class MainWindow(QWidget):
         segment = self.document.segments[index]
         if segment.category_id == category.id and segment.category_name == category.name:
             return
+        self.begin_metadata_edit(index)
         self.document.change_segment_category(index, category)
+        self.update_metadata_dirty(index)
         self.resize_segment_table_columns()
         self.refresh_canvas()
 
@@ -599,7 +637,9 @@ class MainWindow(QWidget):
         """Assign a new random display color to the current segment."""
         if self.document is None or index != self.current_index:
             return
+        self.begin_metadata_edit(index)
         self.document.change_segment_color(index, self.generate_color_id())
+        self.update_metadata_dirty(index)
         self.refresh_table()
         self.refresh_canvas()
 
@@ -628,7 +668,7 @@ class MainWindow(QWidget):
     def change_mode(self, button):
         """Switch the active canvas interaction mode."""
         next_mode = button.property("value")
-        if next_mode != self.mode and self.edit_dirty and not self.resolve_pending_edit():
+        if next_mode != self.mode and self.has_pending_target_edit() and not self.resolve_pending_edit():
             self.set_checked_button(self.mode_group, self.mode)
             return
         self.mode = next_mode
@@ -676,37 +716,52 @@ class MainWindow(QWidget):
         return True
 
     def clear_edit_state(self):
-        """Clear pending masks and smart prompt history."""
+        """Clear pending mask, metadata, and smart prompt state."""
         self.edit_mask = None
         self.edit_dirty = False
+        self.metadata_dirty = False
+        self.metadata_snapshot = None
         self.prompt_points = []
         self.prompt_labels = []
         self.previous_logits = None
 
     def discard_edit(self):
         """Discard the pending edit for the selected segment."""
+        if (
+            self.metadata_snapshot is not None
+            and self.document is not None
+            and self.current_index is not None
+            and self.current_index < len(self.document.segments)
+        ):
+            category_id, category_name, color_id, document_dirty = self.metadata_snapshot
+            segment = self.document.segments[self.current_index]
+            segment.category_id = category_id
+            segment.category_name = category_name
+            segment.color_id = color_id
+            self.document.dirty = document_dirty
         self.clear_edit_state()
         self.refresh_table()
         self.refresh_canvas()
 
     def commit_current_segment(self):
-        """Commit the pending mask for the selected segment."""
+        """Commit pending mask and metadata changes for the selected segment."""
         if self.document is None:
             self.show_warning("无法提交目标", "请先打开图片")
             return False
         if self.current_index is None:
             self.show_warning("无法提交目标", "请先选择一个目标")
             return False
-        if self.edit_mask is None:
+        if self.edit_mask is None and not self.metadata_dirty:
             self.show_warning("无法提交目标", "当前目标没有待提交的编辑")
             return False
-        if not np.any(self.edit_mask):
+        if self.edit_mask is not None and not np.any(self.edit_mask):
             self.show_warning("无法提交目标", "当前目标没有 mask，无法提交")
             return False
-        self.document.commit_mask(
-            self.current_index,
-            self.edit_mask,
-        )
+        if self.edit_mask is not None:
+            self.document.commit_mask(
+                self.current_index,
+                self.edit_mask,
+            )
         self.clear_edit_state()
         self.refresh_table()
         self.refresh_canvas()
@@ -736,7 +791,7 @@ class MainWindow(QWidget):
         if self.document is None:
             self.show_warning("无法存盘", "没有可存盘的图片")
             return False
-        if self.edit_dirty and not self.commit_current_segment():
+        if self.has_pending_target_edit() and not self.resolve_pending_edit():
             return False
         empty = [index + 1 for index, segment in enumerate(self.document.segments) if segment.mask is None or not np.any(segment.mask)]
         if empty:
