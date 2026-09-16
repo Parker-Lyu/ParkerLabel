@@ -131,6 +131,8 @@ class MainWindow(QWidget):
         )
         self.categories = []
         self.categories_by_name = {}
+        self.all_categories_by_name = {}
+        self.all_categories_by_id = {}
         self.document = None
         self.current_index = None
         self.edit_mask = None
@@ -169,10 +171,32 @@ class MainWindow(QWidget):
             categories = self.category_manager.load(config_id)
         self.active_category_config_id = config_id
         self.category_config_name = self.category_manager.configuration(config_id).name
+        self.all_categories_by_name = {category.name: category for category in categories}
+        self.all_categories_by_id = {category.id: category for category in categories}
         self.categories = [category for category in categories if category.enabled]
         self.categories_by_name = {category.name: category for category in self.categories}
         if hasattr(self, "category_config_label"):
             self.category_config_label.setText(f"当前类别：{self.category_config_name}")
+
+    def sync_document_categories(self):
+        """Synchronize saved segment metadata with the active category configuration."""
+        if self.document is None:
+            return 0
+        updated = 0
+        for segment in self.document.segments:
+            category = self.all_categories_by_name.get(segment.category_name)
+            if category is None:
+                category = self.all_categories_by_id.get(segment.category_id)
+            if category is None:
+                continue
+            if segment.category_id == category.id and segment.category_name == category.name:
+                continue
+            segment.category_id = category.id
+            segment.category_name = category.name
+            updated += 1
+        if updated:
+            self.document.dirty = True
+        return updated
 
     def build_ui(self):
         """Build the annotation workspace and connect user actions."""
@@ -556,22 +580,28 @@ class MainWindow(QWidget):
     def configure_categories(self):
         """Open the category manager and apply the selected configuration."""
         try:
+            if self.current_index is not None and not self.resolve_pending_edit():
+                return
             dialog = CategoryConfigDialog(
                 self.category_manager,
                 self.active_category_config_id,
                 self,
             )
-            accepted = dialog.exec_()
-            config_id = dialog.applied_config_id if accepted else None
+            dialog.exec_()
+            config_id = dialog.applied_config_id
             if dialog.active_config_id != self.active_category_config_id:
                 config_id = dialog.active_config_id
             if config_id is not None:
                 self.load_categories(config_id)
+                updated = self.sync_document_categories()
                 self.refresh_table()
-                self.log(
+                message = (
                     f"已应用类别配置“{self.category_config_name}”，"
                     f"共启用 {len(self.categories)} 个类别"
                 )
+                if updated:
+                    message += f"，同步 {updated} 个已有目标"
+                self.log(message)
         except Exception as error:
             self.log_exception("打开类别配置失败", error)
 

@@ -382,6 +382,8 @@ class CategoryConfigDialog(QDialog):
             else:
                 self.manager.save(self.config_id, categories)
             self.dirty = False
+            self.active_config_id = self.config_id
+            self.applied_config_id = self.config_id
             self.refresh_config_list(self.config_id)
             self.update_state()
             return True

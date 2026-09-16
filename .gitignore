@@ -33,6 +33,7 @@ example_img/*
 !example_img/sa_224099.jpg
 !example_img/sa_226614.jpg
 config/*.xlsx
+config/category-configs/
 
 # Generated annotation artifacts
 *.mask.png

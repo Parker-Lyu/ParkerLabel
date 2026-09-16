@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import tempfile
 import uuid
 from dataclasses import dataclass
@@ -148,12 +149,31 @@ class CategoryConfigManager:
         """Manage the built-in category set and named user configurations."""
         self.builtin_store = CategoryStore(builtin_path, readonly=True)
         if user_directory is None:
-            base = Path(QStandardPaths.writableLocation(QStandardPaths.AppConfigLocation))
-            user_directory = base / "category-configs"
+            user_directory = Path(builtin_path).parent / "category-configs"
+            legacy_base = Path(
+                QStandardPaths.writableLocation(QStandardPaths.AppConfigLocation)
+            )
+            legacy_directory = legacy_base / "category-configs"
+        else:
+            legacy_directory = None
         self.user_directory = Path(user_directory)
         self.config_directory = self.user_directory / "configs"
         self.index_path = self.user_directory / "index.json"
         self.warning = ""
+        self._migrate_legacy_directory(legacy_directory)
+
+    def _migrate_legacy_directory(self, legacy_directory):
+        """Copy legacy system-level configurations into the project config directory."""
+        if legacy_directory is None or self.index_path.exists():
+            return
+        legacy_directory = Path(legacy_directory)
+        if not (legacy_directory / "index.json").exists():
+            return
+        try:
+            shutil.copytree(legacy_directory, self.user_directory)
+            self.warning = f"用户类别配置已迁移至 {self.user_directory}"
+        except OSError as error:
+            self.warning = f"迁移用户类别配置失败：{error}"
 
     @staticmethod
     def _empty_index():
