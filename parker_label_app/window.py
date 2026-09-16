@@ -310,7 +310,7 @@ class MainWindow(QWidget):
         """Open an image and its existing annotation artifacts."""
         suffix = Path(path).suffix.lower()
         if suffix not in {".jpg", ".jpeg", ".png", ".bmp"}:
-            self.log_error("仅支持 jpg、jpeg、png 和 bmp 图片")
+            self.show_warning("无法打开图片", "仅支持 jpg、jpeg、png 和 bmp 图片")
             return
         if not self.confirm_document_transition():
             return
@@ -336,8 +336,8 @@ class MainWindow(QWidget):
             return True
         answer = QMessageBox.question(
             self,
-            "未保存的修改",
-            "当前标注有未保存的修改，是否保存？",
+            "标注尚未存盘",
+            "当前图片有标注修改尚未存盘，是否存盘？",
             QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
             QMessageBox.Yes,
         )
@@ -505,15 +505,15 @@ class MainWindow(QWidget):
     def add_segment(self):
         """Add an empty segment using the first enabled category."""
         if self.document is None:
-            self.log_error("请先打开图片")
+            self.show_warning("无法增加目标", "请先打开图片")
             return
         if not self.categories:
-            self.log_error("类别配置中没有启用的类别")
+            self.show_warning("无法增加目标", "类别配置中没有启用的类别")
             return
         if self.current_index is not None:
             current_mask = self.document.segments[self.current_index].mask
             if (current_mask is None or not np.any(current_mask)) and not self.edit_dirty:
-                self.log_error("当前目标尚未标注，不能继续增加目标")
+                self.show_warning("无法增加目标", "当前目标尚未标注，不能继续增加目标")
                 return
         if not self.resolve_pending_edit():
             return
@@ -555,8 +555,8 @@ class MainWindow(QWidget):
             return True
         answer = QMessageBox.question(
             self,
-            "当前目标未提交",
-            "是否提交当前目标的编辑？",
+            "编辑尚未提交",
+            "当前目标的编辑尚未提交，是否提交？",
             QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
             QMessageBox.Yes,
         )
@@ -665,7 +665,7 @@ class MainWindow(QWidget):
     def ensure_edit_mask(self):
         """Initialize the editable mask for the selected segment."""
         if self.document is None or self.current_index is None:
-            self.log_error("请先选择一个目标")
+            self.show_warning("无法编辑目标", "请先选择一个目标")
             return False
         if self.edit_mask is None:
             if self.mode == "smart":
@@ -691,10 +691,17 @@ class MainWindow(QWidget):
 
     def commit_current_segment(self):
         """Commit the pending mask for the selected segment."""
-        if self.document is None or self.current_index is None or self.edit_mask is None:
-            return True
+        if self.document is None:
+            self.show_warning("无法提交目标", "请先打开图片")
+            return False
+        if self.current_index is None:
+            self.show_warning("无法提交目标", "请先选择一个目标")
+            return False
+        if self.edit_mask is None:
+            self.show_warning("无法提交目标", "当前目标没有待提交的编辑")
+            return False
         if not np.any(self.edit_mask):
-            self.log_error("当前目标没有 mask，无法提交")
+            self.show_warning("无法提交目标", "当前目标没有 mask，无法提交")
             return False
         self.document.commit_mask(
             self.current_index,
@@ -727,13 +734,13 @@ class MainWindow(QWidget):
     def save_document(self):
         """Commit pending work and persist the active annotation document."""
         if self.document is None:
-            self.log_error("没有可保存的图片")
+            self.show_warning("无法存盘", "没有可存盘的图片")
             return False
         if self.edit_dirty and not self.commit_current_segment():
             return False
         empty = [index + 1 for index, segment in enumerate(self.document.segments) if segment.mask is None or not np.any(segment.mask)]
         if empty:
-            self.log_error(f"目标 {empty} 没有 mask，无法保存")
+            self.show_warning("无法存盘", f"目标 {empty} 没有 mask，无法存盘")
             return False
         try:
             self.repository.save(self.document)
@@ -804,7 +811,7 @@ class MainWindow(QWidget):
                 self.select_segment(index)
             return
         if self.current_index is None:
-            self.log_error("请先选择一个目标")
+            self.show_warning("无法编辑目标", "请先选择一个目标")
             return
         if self.mode == "smart" and event.button() in {Qt.LeftButton, Qt.RightButton}:
             self.run_smart_prediction(x, y, event.button() == Qt.LeftButton)
@@ -985,12 +992,17 @@ class MainWindow(QWidget):
         """Append an ordinary message to the application log."""
         self.log_area.append(f"<span style='color:#222'>{message}</span>")
 
+    def show_warning(self, title, message):
+        """Show a blocking interaction warning."""
+        QMessageBox.warning(self, title, message, QMessageBox.Ok)
+
     def log_error(self, message):
         """Append an error message to the application log."""
         self.log_area.append(f"<span style='color:#c62828'>{message}</span>")
 
     def log_exception(self, context, error):
         """Log an exception with its traceback for diagnosis."""
+        QMessageBox.critical(self, context, str(error), QMessageBox.Ok)
         self.log_error(f"{context}：{error}")
         self.log_error(traceback.format_exc().replace("\n", "<br>"))
 
