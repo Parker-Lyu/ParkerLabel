@@ -37,6 +37,37 @@ from .inference import SegmentationEngine
 from .quality import MaskQuality, inspect_mask_quality
 
 
+class QualityToggleButton(QPushButton):
+    def __init__(self, text, parent=None):
+        """Create a fixed-geometry quality toggle button."""
+        super().__init__(text, parent)
+        self.active = False
+
+    def set_active(self, active):
+        """Update the painted active state without changing button metrics."""
+        self.active = active
+        self.update()
+
+    def paintEvent(self, event):
+        """Paint the native inactive state or a green active state."""
+        if not self.active:
+            super().paintEvent(event)
+            return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        background = "#2e7d32"
+        if self.isDown():
+            background = "#1b5e20"
+        elif self.underMouse():
+            background = "#388e3c"
+        painter.setPen(QPen(QColor("#256628"), 1))
+        painter.setBrush(QColor(background))
+        painter.drawRoundedRect(self.rect().adjusted(1, 1, -1, -1), 6, 6)
+        painter.setPen(Qt.white)
+        painter.drawText(self.rect(), Qt.AlignCenter, self.text())
+        painter.end()
+
+
 class VisibilityHeader(QHeaderView):
     visibilityChanged = pyqtSignal(bool)
 
@@ -167,7 +198,7 @@ class MainWindow(QWidget):
         """Create file, category, and save actions."""
         layout = QGridLayout()
         open_button = QPushButton("打开图片")
-        self.quality_button = QPushButton("辅助质检 关")
+        self.quality_button = QualityToggleButton("辅助质检 关")
         self.quality_button.setToolTip("标记当前编辑 Mask 中的碎片和孔洞")
         category_button = QPushButton("类别配置")
         save_button = QPushButton("保存到磁盘")
@@ -753,14 +784,7 @@ class MainWindow(QWidget):
         self.quality_button.setText(
             "辅助质检 开" if self.quality_check_enabled else "辅助质检 关"
         )
-        self.quality_button.setStyleSheet(
-            "QPushButton { background-color: #2e7d32; color: white; "
-            "border: 1px solid #256628; border-radius: 6px; } "
-            "QPushButton:hover { background-color: #388e3c; } "
-            "QPushButton:pressed { background-color: #1b5e20; }"
-            if self.quality_check_enabled
-            else ""
-        )
+        self.quality_button.set_active(self.quality_check_enabled)
         self.update_mask_quality()
         self.refresh_canvas()
 
