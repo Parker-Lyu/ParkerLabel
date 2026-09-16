@@ -161,24 +161,20 @@ class MainWindow(QWidget):
         self.resize_segment_table_columns()
 
     def build_primary_controls(self):
-        """Create file, category, segment, and save actions."""
+        """Create file, category, and save actions."""
         layout = QGridLayout()
         open_button = QPushButton("打开图片")
         category_button = QPushButton("类别配置")
-        add_button = QPushButton("增加目标")
         save_button = QPushButton("保存到磁盘")
-        add_button.setShortcut("A")
         save_button.setShortcut("Ctrl+S")
         open_button.clicked.connect(self.choose_image)
         category_button.clicked.connect(self.configure_categories)
-        add_button.clicked.connect(self.add_segment)
         save_button.clicked.connect(self.save_document)
-        buttons = (open_button, add_button, category_button, save_button)
+        buttons = (open_button, category_button, save_button)
         button_width = max(button.sizeHint().width() for button in buttons)
         for button in buttons:
             button.setFixedWidth(button_width)
         layout.addWidget(open_button, 0, 0)
-        layout.addWidget(add_button, 0, 1)
         layout.addWidget(category_button, 1, 0)
         layout.addWidget(save_button, 1, 1)
         layout.setAlignment(Qt.AlignLeft)
@@ -192,10 +188,14 @@ class MainWindow(QWidget):
         edit_layout = QVBoxLayout(edit_group)
         self.undo_button = QPushButton("撤销")
         self.redo_button = QPushButton("重做")
+        self.add_button = QPushButton("增加目标")
         self.commit_button = QPushButton("提交当前目标")
+        self.add_button.setShortcut("A")
+        self.add_button.clicked.connect(self.add_segment)
         self.commit_button.clicked.connect(self.commit_current_segment)
         edit_layout.addWidget(self.undo_button)
         edit_layout.addWidget(self.redo_button)
+        edit_layout.addWidget(self.add_button)
         edit_layout.addWidget(self.commit_button)
 
         view_group = QGroupBox("显示模式")
