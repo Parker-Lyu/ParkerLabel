@@ -350,7 +350,9 @@ class MainWindow(QWidget):
         self.category_config_label = QLabel(
             self.t("category.current", name=self.category_config_display_name())
         )
-        layout.addWidget(self.category_config_label, 2, 0, 1, 4)
+        layout.addWidget(
+            self.category_config_label, 1, 3, Qt.AlignRight | Qt.AlignVCenter
+        )
         return layout
 
     def build_tool_controls(self):
@@ -566,6 +568,8 @@ class MainWindow(QWidget):
             self.save_button,
         ):
             button.setFixedSize(width, height)
+        self.primary_controls.invalidate()
+        self.primary_controls.activate()
         self.resize_segment_table_columns()
 
     def reset_document_view(self):
