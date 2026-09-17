@@ -11,7 +11,7 @@ python main.py
 
 ## Categories
 
-The application reads `config/categories.json`. The default configuration contains the 80 COCO detection categories. Use the **类别配置** button to add, delete, disable, or rename categories.
+The application reads `config/default-coco.json`. The default configuration contains the 80 COCO detection categories. Use the **类别配置** button to add, delete, disable, or rename categories.
 
 ## Annotation files
 
@@ -30,7 +30,7 @@ The per-image JSON uses COCO annotation fields but is not a complete COCO datase
 - `annotations` contains one record per instance.
 - `id` is the instance identifier within the image file.
 - `image_id` links the instance to the image record.
-- `category_id` references `config/categories.json`.
+- `category_id` references `config/default-coco.json`.
 - `category_name` keeps the readable category name.
 - `color_id` controls the display and preview color.
 - `bbox` stores `[x, y, width, height]` in source-image pixels.

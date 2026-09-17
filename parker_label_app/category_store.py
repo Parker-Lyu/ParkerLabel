@@ -140,7 +140,7 @@ class CategoryConfig:
 class CategoryConfigManager:
     BUILTIN_ID = "builtin-coco"
     BUILTIN_NAME = "COCO 默认"
-    BUILTIN_FILE = "../categories.json"
+    BUILTIN_FILE = "../default-coco.json"
     SETTINGS_NAME = "settings.json"
 
     def __init__(self, builtin_path, user_directory=None):

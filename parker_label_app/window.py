@@ -120,7 +120,7 @@ class MainWindow(QWidget):
         """Initialize application services, state, and interface."""
         super().__init__()
         root = Path(__file__).resolve().parent.parent
-        self.category_manager = CategoryConfigManager(root / "config" / "categories.json")
+        self.category_manager = CategoryConfigManager(root / "config" / "default-coco.json")
         self.active_category_config_id = None
         self.category_config_name = ""
         self.repository = AnnotationRepository(target_size=1024)
