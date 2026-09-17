@@ -156,6 +156,8 @@ class CategoryConfigDialog(QDialog):
                 labels.append(self.t("category.status.default"))
             if config.id == self.active_config_id:
                 labels.append(self.t("category.status.active"))
+            if self.is_draft and config.id == self.config_id:
+                labels.append(self.t("category.status.draft"))
             suffix = f"\n{' · '.join(labels)}" if labels else ""
             display_name = self.display_config_name(config.id, config.name)
             item = QListWidgetItem(f"{display_name}{suffix}")
@@ -330,15 +332,19 @@ class CategoryConfigDialog(QDialog):
         )
         if not name:
             return
-        self.config_id = self.manager.new_uuid()
+        config_id = self.manager.new_uuid()
+        try:
+            self.manager.create(name, config_id, categories)
+        except (CategoryConfigError, OSError) as error:
+            QMessageBox.critical(self, self.t("category.copy_failed"), str(error))
+            return
+        self.config_id = config_id
         self.config_name = name
         self.is_draft = True
-        self.draft_saved = False
+        self.draft_saved = True
         self.populate(categories)
-        self.dirty = True
-        self.config_list.blockSignals(True)
-        self.config_list.clearSelection()
-        self.config_list.blockSignals(False)
+        self.dirty = False
+        self.refresh_config_list(self.config_id)
         self.update_state()
 
     def add_empty_row(self):
