@@ -380,14 +380,14 @@ class MainWindow(QWidget):
         edit_layout.addWidget(self.commit_button)
 
         self.view_group_box = QGroupBox()
-        view_layout = QVBoxLayout(self.view_group_box)
+        view_layout = QHBoxLayout(self.view_group_box)
         self.view_group = QButtonGroup(self)
         views = ("image", "mask", "overlay")
         for value in views:
             button = QRadioButton()
             button.setProperty("value", value)
             self.view_group.addButton(button)
-            view_layout.addWidget(button)
+            view_layout.addWidget(button, 1, Qt.AlignCenter)
             if value == self.view_mode:
                 button.setChecked(True)
         self.view_group.buttonClicked.connect(self.change_view)
@@ -447,10 +447,9 @@ class MainWindow(QWidget):
         for group in (self.edit_group, self.view_group_box, self.interaction_group):
             group.setStyleSheet(group_style)
         lower_row = QHBoxLayout()
-        lower_row.addWidget(self.edit_group, 0, Qt.AlignLeft)
-        lower_row.addWidget(self.view_group_box, 0, Qt.AlignLeft)
-        lower_row.addStretch(1)
-        outer.addWidget(self.interaction_group, 0, Qt.AlignLeft)
+        lower_row.addWidget(self.edit_group)
+        lower_row.addWidget(self.interaction_group, 1)
+        outer.addWidget(self.view_group_box)
         outer.addLayout(lower_row)
         self.update_tool_control_text()
         self.update_tool_controls()
