@@ -36,6 +36,7 @@ from .canvas import AnnotationCanvas
 from .category_dialog import CategoryConfigDialog
 from .category_store import CategoryConfigManager
 from .image_utils import color_id_to_rgb, id_mask_to_rgb, qimage_from_rgb
+from .i18n import LANGUAGES, language_manager
 from .inference import SegmentationEngine
 from .quality import MaskQuality, inspect_mask_quality
 
@@ -68,11 +69,11 @@ class QualityToggleButton(QPushButton):
 class VisibilityHeader(QHeaderView):
     visibilityChanged = pyqtSignal(bool)
 
-    def __init__(self, display_column, parent=None):
+    def __init__(self, display_column, text, parent=None):
         """Create a header with a checkbox for global visibility."""
         super().__init__(Qt.Horizontal, parent)
         self.display_column = display_column
-        self.checkbox = QCheckBox("显示", self)
+        self.checkbox = QCheckBox(text, self)
         self.checkbox.setTristate(True)
         self.checkbox.stateChanged.connect(self.emit_visibility)
         self.sectionResized.connect(self.update_checkbox_geometry)
@@ -156,10 +157,12 @@ class MainWindow(QWidget):
         self.pan_origin = None
         self.painting = None
         self.morph_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        self.i18n = language_manager
         self.load_categories()
         self.build_ui()
+        self.i18n.languageChanged.connect(self.retranslate_ui)
         self.reset_document_view()
-        self.log("初始化完成，请打开图片")
+        self.log(self.t("log.ready"))
         if self.category_manager.warning:
             self.log(self.category_manager.warning)
 
@@ -176,7 +179,19 @@ class MainWindow(QWidget):
         self.categories = [category for category in categories if category.enabled]
         self.categories_by_name = {category.name: category for category in self.categories}
         if hasattr(self, "category_config_label"):
-            self.category_config_label.setText(f"当前类别：{self.category_config_name}")
+            self.category_config_label.setText(
+                self.t("category.current", name=self.category_config_display_name())
+            )
+
+    def t(self, key, **values):
+        """Return localized interface text."""
+        return self.i18n.text(key, **values)
+
+    def category_config_display_name(self):
+        """Return the localized display name of the active category configuration."""
+        if self.active_category_config_id == CategoryConfigManager.BUILTIN_ID:
+            return self.t("category.builtin_name")
+        return self.category_config_name
 
     def sync_document_categories(self):
         """Synchronize saved segment metadata with the active category configuration."""
@@ -204,7 +219,7 @@ class MainWindow(QWidget):
         screen = QApplication.primaryScreen().availableSize()
         self.resize(max(1100, screen.width() - 80), max(720, screen.height() - 80))
         self.canvas = AnnotationCanvas(self)
-        self.canvas.setText("请打开图片")
+        self.canvas.setText(self.t("canvas.open_image"))
         self.scroll_area = QScrollArea(self)
         self.scroll_area.setWidget(self.canvas)
         self.scroll_area.setWidgetResizable(False)
@@ -230,27 +245,46 @@ class MainWindow(QWidget):
     def build_primary_controls(self):
         """Create file, category, and save actions."""
         layout = QGridLayout()
-        open_button = QPushButton("打开图片")
-        self.quality_button = QualityToggleButton("辅助质检 关")
-        self.quality_button.setToolTip("标记当前编辑 Mask 中的碎片和孔洞")
-        category_button = QPushButton("类别配置")
-        save_button = QPushButton("保存到磁盘")
-        save_button.setShortcut("Ctrl+S")
-        open_button.clicked.connect(self.choose_image)
+        self.open_button = QPushButton()
+        self.quality_button = QualityToggleButton("")
+        self.category_button = QPushButton()
+        self.save_button = QPushButton()
+        self.save_button.setShortcut("Ctrl+S")
+        self.open_button.clicked.connect(self.choose_image)
         self.quality_button.clicked.connect(self.toggle_quality_check)
-        category_button.clicked.connect(self.configure_categories)
-        save_button.clicked.connect(self.save_document)
-        buttons = (open_button, self.quality_button, category_button, save_button)
+        self.category_button.clicked.connect(self.configure_categories)
+        self.save_button.clicked.connect(self.save_document)
+        buttons = (
+            self.open_button,
+            self.quality_button,
+            self.category_button,
+            self.save_button,
+        )
+        self.update_primary_control_text()
         button_width = max(button.sizeHint().width() for button in buttons)
         button_height = max(button.sizeHint().height() for button in buttons)
         for button in buttons:
             button.setFixedSize(button_width, button_height)
-        layout.addWidget(open_button, 0, 0)
+        layout.addWidget(self.open_button, 0, 0)
         layout.addWidget(self.quality_button, 0, 1)
-        layout.addWidget(category_button, 1, 0)
-        layout.addWidget(save_button, 1, 1)
-        self.category_config_label = QLabel(f"当前类别：{self.category_config_name}")
+        layout.addWidget(self.category_button, 1, 0)
+        layout.addWidget(self.save_button, 1, 1)
+        self.category_config_label = QLabel(
+            self.t("category.current", name=self.category_config_display_name())
+        )
         layout.addWidget(self.category_config_label, 2, 0, 1, 2)
+        self.language_label = QLabel(self.t("language.label"))
+        self.language_combo = QComboBox()
+        for code, label in LANGUAGES:
+            self.language_combo.addItem(label, code)
+        language_index = self.language_combo.findData(self.i18n.language)
+        self.language_combo.setCurrentIndex(language_index)
+        self.language_combo.currentIndexChanged.connect(self.change_language)
+        language_layout = QHBoxLayout()
+        language_layout.addWidget(self.language_label)
+        language_layout.addWidget(self.language_combo)
+        language_layout.addStretch(1)
+        layout.addLayout(language_layout, 3, 0, 1, 2)
         layout.setAlignment(Qt.AlignLeft)
         return layout
 
@@ -258,14 +292,14 @@ class MainWindow(QWidget):
         """Create drawing, viewing, morphology, and brush controls."""
         outer = QVBoxLayout()
 
-        edit_group = QGroupBox("目标编辑")
-        edit_layout = QVBoxLayout(edit_group)
+        self.edit_group = QGroupBox()
+        edit_layout = QVBoxLayout(self.edit_group)
         edit_layout.setSpacing(2)
-        self.undo_button = QPushButton("撤销")
-        self.redo_button = QPushButton("重做")
-        self.add_button = QPushButton("增加目标")
-        self.commit_button = QPushButton("提交当前目标")
-        self.discard_button = QPushButton("放弃未提交修改")
+        self.undo_button = QPushButton()
+        self.redo_button = QPushButton()
+        self.add_button = QPushButton()
+        self.commit_button = QPushButton()
+        self.discard_button = QPushButton()
         self.add_button.setShortcut("A")
         self.add_button.clicked.connect(self.add_segment)
         self.commit_button.clicked.connect(self.commit_current_segment)
@@ -278,12 +312,12 @@ class MainWindow(QWidget):
         edit_layout.addWidget(self.discard_button)
         edit_layout.addWidget(self.commit_button)
 
-        view_group = QGroupBox("显示模式")
-        view_layout = QVBoxLayout(view_group)
+        self.view_group_box = QGroupBox()
+        view_layout = QVBoxLayout(self.view_group_box)
         self.view_group = QButtonGroup(self)
-        views = (("原图", "image"), ("Mask", "mask"), ("叠加", "overlay"))
-        for label, value in views:
-            button = QRadioButton(label)
+        views = ("image", "mask", "overlay")
+        for value in views:
+            button = QRadioButton()
             button.setProperty("value", value)
             self.view_group.addButton(button)
             view_layout.addWidget(button)
@@ -291,13 +325,13 @@ class MainWindow(QWidget):
                 button.setChecked(True)
         self.view_group.buttonClicked.connect(self.change_view)
 
-        interaction_group = QGroupBox("交互模式")
-        interaction_layout = QVBoxLayout(interaction_group)
+        self.interaction_group = QGroupBox()
+        interaction_layout = QVBoxLayout(self.interaction_group)
         mode_layout = QHBoxLayout()
         self.mode_group = QButtonGroup(self)
-        modes = (("智能", "smart"), ("手动", "brush"), ("查询", "query"))
-        for label, value in modes:
-            button = QRadioButton(label)
+        modes = ("smart", "brush", "query")
+        for value in modes:
+            button = QRadioButton()
             button.setProperty("value", value)
             self.mode_group.addButton(button)
             mode_layout.addWidget(button)
@@ -307,20 +341,22 @@ class MainWindow(QWidget):
         mode_layout.addStretch(1)
 
         brush_layout = QHBoxLayout()
-        self.brush_label = QLabel("画笔尺寸：5")
+        self.brush_label = QLabel()
         self.brush_slider = QSlider(Qt.Horizontal)
         self.brush_slider.setRange(1, 50)
         self.brush_slider.setValue(5)
         self.brush_slider.valueChanged.connect(
-            lambda value: self.brush_label.setText(f"画笔尺寸：{value}")
+            lambda value: self.brush_label.setText(
+                self.t("manual.brush_size", value=value)
+            )
         )
         self.brush_slider.valueChanged.connect(lambda _value: self.canvas.update())
         brush_layout.addWidget(self.brush_label)
         brush_layout.addWidget(self.brush_slider, 1)
 
         morphology_layout = QHBoxLayout()
-        self.erode_button = QPushButton("腐蚀")
-        self.dilate_button = QPushButton("膨胀")
+        self.erode_button = QPushButton()
+        self.dilate_button = QPushButton()
         self.erode_button.clicked.connect(self.erode_edit_mask)
         self.dilate_button.clicked.connect(self.dilate_edit_mask)
         morphology_layout.addWidget(self.erode_button)
@@ -341,23 +377,24 @@ class MainWindow(QWidget):
             "margin-top: 8px; padding-top: 6px; } "
             "QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }"
         )
-        for group in (edit_group, view_group, interaction_group):
+        for group in (self.edit_group, self.view_group_box, self.interaction_group):
             group.setStyleSheet(group_style)
         lower_row = QHBoxLayout()
-        lower_row.addWidget(edit_group, 0, Qt.AlignLeft)
-        lower_row.addWidget(view_group, 0, Qt.AlignLeft)
+        lower_row.addWidget(self.edit_group, 0, Qt.AlignLeft)
+        lower_row.addWidget(self.view_group_box, 0, Qt.AlignLeft)
         lower_row.addStretch(1)
-        outer.addWidget(interaction_group, 0, Qt.AlignLeft)
+        outer.addWidget(self.interaction_group, 0, Qt.AlignLeft)
         outer.addLayout(lower_row)
+        self.update_tool_control_text()
         self.update_tool_controls()
         return outer
 
     def build_segment_table(self):
         """Create the segment table used to edit document-backed records."""
         table = QTableWidget(0, 6, self)
-        header = VisibilityHeader(self.COL_SHOW, table)
+        header = VisibilityHeader(self.COL_SHOW, self.t("table.show"), table)
         table.setHorizontalHeader(header)
-        table.setHorizontalHeaderLabels(["ID", "编辑", "", "类别", "颜色", "删除"])
+        self.update_table_headers(table)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setMinimumSectionSize(44)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
@@ -365,6 +402,112 @@ class MainWindow(QWidget):
         table.cellClicked.connect(self.handle_segment_cell_click)
         header.update_checkbox_geometry()
         return table
+
+    def update_primary_control_text(self):
+        """Refresh localized text for file and category controls."""
+        self.open_button.setText(self.t("main.open_image"))
+        self.quality_button.setText(
+            self.t("main.quality.on" if self.quality_check_enabled else "main.quality.off")
+        )
+        self.quality_button.setToolTip(self.t("tooltip.quality"))
+        self.category_button.setText(self.t("main.category_config"))
+        self.save_button.setText(self.t("main.save_disk"))
+
+    def update_tool_control_text(self):
+        """Refresh localized text for editing and viewing controls."""
+        self.edit_group.setTitle(self.t("main.group.edit"))
+        self.view_group_box.setTitle(self.t("main.group.view"))
+        self.interaction_group.setTitle(self.t("main.group.interaction"))
+        self.undo_button.setText(self.t("main.undo"))
+        self.redo_button.setText(self.t("main.redo"))
+        self.add_button.setText(self.t("main.add_target"))
+        self.commit_button.setText(self.t("main.commit_target"))
+        self.discard_button.setText(self.t("main.discard_changes"))
+        for button in self.view_group.buttons():
+            button.setText(self.t(f"main.view.{button.property('value')}"))
+        for button in self.mode_group.buttons():
+            button.setText(self.t(f"main.mode.{button.property('value')}"))
+        self.brush_label.setText(
+            self.t("manual.brush_size", value=self.brush_slider.value())
+        )
+        self.erode_button.setText(self.t("manual.erode"))
+        self.erode_button.setToolTip(self.t("tooltip.erode"))
+        self.dilate_button.setText(self.t("manual.dilate"))
+        self.dilate_button.setToolTip(self.t("tooltip.dilate"))
+
+    def update_table_headers(self, table=None):
+        """Refresh localized segment table headings."""
+        table = table or self.table
+        table.setHorizontalHeaderLabels(
+            [
+                "ID",
+                self.t("table.edit"),
+                "",
+                self.t("table.category"),
+                self.t("table.color"),
+                self.t("table.delete"),
+            ]
+        )
+        table.horizontalHeader().checkbox.setText(self.t("table.show"))
+
+    def change_language(self, index):
+        """Apply the selected interface language."""
+        language = self.language_combo.itemData(index)
+        if language:
+            self.i18n.set_language(language)
+
+    def retranslate_ui(self, _language=None):
+        """Refresh visible interface text after a language change."""
+        language_index = self.language_combo.findData(self.i18n.language)
+        if self.language_combo.currentIndex() != language_index:
+            self.language_combo.blockSignals(True)
+            self.language_combo.setCurrentIndex(language_index)
+            self.language_combo.blockSignals(False)
+        self.update_primary_control_text()
+        self.update_tool_control_text()
+        self.update_table_headers()
+        self.language_label.setText(self.t("language.label"))
+        self.category_config_label.setText(
+            self.t("category.current", name=self.category_config_display_name())
+        )
+        if self.document is None:
+            self.canvas.setText(self.t("canvas.open_image"))
+            if self.log_area.document().blockCount() == 1:
+                self.log_area.setPlainText(self.t("log.ready"))
+        self.refresh_table()
+        for button in (
+            self.open_button,
+            self.quality_button,
+            self.category_button,
+            self.save_button,
+        ):
+            button.setFixedSize(button.sizeHint())
+        width = max(
+            button.sizeHint().width()
+            for button in (
+                self.open_button,
+                self.quality_button,
+                self.category_button,
+                self.save_button,
+            )
+        )
+        height = max(
+            button.sizeHint().height()
+            for button in (
+                self.open_button,
+                self.quality_button,
+                self.category_button,
+                self.save_button,
+            )
+        )
+        for button in (
+            self.open_button,
+            self.quality_button,
+            self.category_button,
+            self.save_button,
+        ):
+            button.setFixedSize(width, height)
+        self.resize_segment_table_columns()
 
     def reset_document_view(self):
         """Reset table and canvas state when no document is active."""
@@ -378,16 +521,16 @@ class MainWindow(QWidget):
         self.previous_logits = None
         self.mask_quality = MaskQuality()
         self.table.setRowCount(0)
-        self.canvas.setText("请打开图片")
+        self.canvas.setText(self.t("canvas.open_image"))
         self.canvas.setFixedSize(640, 480)
 
     def choose_image(self):
         """Open a file picker and load the selected image."""
         path, _ = QFileDialog.getOpenFileName(
             self,
-            "打开图片",
+            self.t("main.open_image"),
             "",
-            "Images (*.jpg *.jpeg *.png *.bmp)",
+            self.t("dialog.image_filter"),
         )
         if path:
             self.open_image(path)
@@ -396,7 +539,10 @@ class MainWindow(QWidget):
         """Open an image and its existing annotation artifacts."""
         suffix = Path(path).suffix.lower()
         if suffix not in {".jpg", ".jpeg", ".png", ".bmp"}:
-            self.show_warning("无法打开图片", "仅支持 jpg、jpeg、png 和 bmp 图片")
+            self.show_warning(
+                self.t("dialog.open_image_failed"),
+                self.t("dialog.unsupported_image"),
+            )
             return
         if not self.confirm_document_transition():
             return
@@ -408,13 +554,13 @@ class MainWindow(QWidget):
             self.calculate_base_canvas_size()
             self.refresh_table()
             self.refresh_canvas()
-            self.log(f"已打开图片：{self.document.image_path.name}")
+            self.log(self.t("log.image_opened", name=self.document.image_path.name))
             if self.document.embedding is None:
                 self.ensure_embedding()
             else:
-                self.log("已读取现有图片特征")
+                self.log(self.t("log.embedding_loaded"))
         except Exception as error:
-            self.log_exception("打开图片失败", error)
+            self.log_exception(self.t("error.open_image"), error)
 
     def confirm_document_transition(self):
         """Ask how to handle unsaved work before replacing the document."""
@@ -422,8 +568,8 @@ class MainWindow(QWidget):
             return True
         answer = QMessageBox.question(
             self,
-            "标注尚未存盘",
-            "当前图片有标注修改尚未存盘，是否存盘？",
+            self.t("dialog.unsaved_document"),
+            self.t("dialog.unsaved_document_confirm"),
             QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
             QMessageBox.Yes,
         )
@@ -484,7 +630,7 @@ class MainWindow(QWidget):
             color.setEnabled(index == self.current_index)
             color.clicked.connect(lambda checked=False, row=index: self.assign_random_color(row))
             self.table.setCellWidget(index, self.COL_COLOR, color)
-            delete = QPushButton("删除")
+            delete = QPushButton(self.t("common.delete"))
             delete.clicked.connect(lambda checked=False, row=index: self.delete_segment(row))
             self.table.setCellWidget(index, self.COL_DELETE, delete)
         if self.current_index is not None and self.current_index < self.table.rowCount():
@@ -495,13 +641,18 @@ class MainWindow(QWidget):
     def resize_segment_table_columns(self):
         """Size table columns and the control panel from their contents."""
         self.table.resizeColumnsToContents()
+        visibility_width = self.table.horizontalHeader().checkbox.sizeHint().width() + 8
+        self.table.setColumnWidth(
+            self.COL_SHOW,
+            max(self.table.columnWidth(self.COL_SHOW), visibility_width),
+        )
         category_probe = QComboBox()
         selected_categories = (
             [segment.category_name for segment in self.document.segments]
             if self.document is not None
             else []
         )
-        category_probe.addItems(selected_categories or ["类别"])
+        category_probe.addItems(selected_categories or [self.t("table.category")])
         self.table.setColumnWidth(self.COL_CATEGORY, category_probe.sizeHint().width())
         self.table.horizontalHeader().update_checkbox_geometry()
         if not hasattr(self, "control_panel"):
@@ -573,7 +724,7 @@ class MainWindow(QWidget):
         for index, name in enumerate(names):
             category = self.categories_by_name.get(name)
             if category is not None:
-                description = category.description or "无描述"
+                description = category.description or self.t("category.no_description")
                 combo.setItemData(index, f"{category.supercategory}\n{description}", Qt.ToolTipRole)
         return combo
 
@@ -590,35 +741,38 @@ class MainWindow(QWidget):
             dialog.configurationApplied.connect(self.apply_category_config)
             dialog.exec_()
         except Exception as error:
-            self.log_exception("打开类别配置失败", error)
+            self.log_exception(self.t("error.category_config_open"), error)
 
     def apply_category_config(self, config_id):
         """Apply one configuration immediately and synchronize open annotations."""
         self.load_categories(config_id)
         updated = self.sync_document_categories()
         self.refresh_table()
-        message = (
-            f"已应用类别配置“{self.category_config_name}”，"
-            f"共启用 {len(self.categories)} 个类别"
+        message = self.t(
+            "log.category_applied",
+            name=self.category_config_display_name(),
+            count=len(self.categories),
         )
         if updated:
-            message += f"，同步 {updated} 个已有目标"
+            message += self.t("log.category_synced", count=updated)
         self.log(message)
 
     def add_segment(self):
         """Add an empty segment using the first enabled category."""
         if self.document is None:
-            self.show_warning("无法增加目标", "请先打开图片")
+            self.show_warning(self.t("error.add_target"), self.t("error.no_document"))
             return
         if not self.categories:
-            self.show_warning("无法增加目标", "类别配置中没有启用的类别")
+            self.show_warning(self.t("error.add_target"), self.t("error.no_categories"))
             return
         if self.current_index is not None and not self.resolve_pending_edit():
             return
         if self.current_index is not None:
             current_mask = self.document.segments[self.current_index].mask
             if current_mask is None or not np.any(current_mask):
-                self.show_warning("无法增加目标", "当前目标尚未标注，不能继续增加目标")
+                self.show_warning(
+                    self.t("error.add_target"), self.t("error.target_empty")
+                )
                 return
         category = self.categories[0]
         color_id = self.generate_color_id()
@@ -660,8 +814,8 @@ class MainWindow(QWidget):
             return True
         answer = QMessageBox.question(
             self,
-            "编辑尚未提交",
-            "当前目标的编辑尚未提交，是否提交？",
+            self.t("dialog.pending_edit"),
+            self.t("dialog.pending_edit_confirm"),
             QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
             QMessageBox.Yes,
         )
@@ -750,8 +904,8 @@ class MainWindow(QWidget):
             return
         answer = QMessageBox.question(
             self,
-            "删除确认",
-            "确认删除该目标及其全部 mask？",
+            self.t("dialog.delete_target"),
+            self.t("dialog.delete_target_confirm"),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
@@ -810,7 +964,7 @@ class MainWindow(QWidget):
     def ensure_edit_mask(self):
         """Initialize the editable mask for the selected segment."""
         if self.document is None or self.current_index is None:
-            self.show_warning("无法编辑目标", "请先选择一个目标")
+            self.show_warning(self.t("error.edit_target"), self.t("error.no_target"))
             return False
         if self.edit_mask is None:
             if self.mode == "smart":
@@ -835,7 +989,7 @@ class MainWindow(QWidget):
         """Toggle visual quality hints for the active mask."""
         self.quality_check_enabled = not self.quality_check_enabled
         self.quality_button.setText(
-            "辅助质检 开" if self.quality_check_enabled else "辅助质检 关"
+            self.t("main.quality.on" if self.quality_check_enabled else "main.quality.off")
         )
         self.quality_button.set_active(self.quality_check_enabled)
         self.update_mask_quality()
@@ -889,16 +1043,16 @@ class MainWindow(QWidget):
     def commit_current_segment(self):
         """Commit pending mask and metadata changes for the selected segment."""
         if self.document is None:
-            self.show_warning("无法提交目标", "请先打开图片")
+            self.show_warning(self.t("error.commit_target"), self.t("error.no_document"))
             return False
         if self.current_index is None:
-            self.show_warning("无法提交目标", "请先选择一个目标")
+            self.show_warning(self.t("error.commit_target"), self.t("error.no_target"))
             return False
         if self.edit_mask is None and not self.metadata_dirty:
-            self.show_warning("无法提交目标", "当前目标没有待提交的编辑")
+            self.show_warning(self.t("error.commit_target"), self.t("error.no_edit"))
             return False
         if self.edit_mask is not None and not np.any(self.edit_mask):
-            self.show_warning("无法提交目标", "当前目标没有 mask，无法提交")
+            self.show_warning(self.t("error.commit_target"), self.t("error.no_mask"))
             return False
         if self.edit_mask is not None:
             self.document.commit_mask(
@@ -909,7 +1063,7 @@ class MainWindow(QWidget):
         self.update_mask_quality()
         self.refresh_table()
         self.refresh_canvas()
-        self.log("当前目标已提交")
+        self.log(self.t("log.target_committed"))
         return True
 
     def dilate_edit_mask(self):
@@ -935,20 +1089,23 @@ class MainWindow(QWidget):
     def save_document(self):
         """Commit pending work and persist the active annotation document."""
         if self.document is None:
-            self.show_warning("无法存盘", "没有可存盘的图片")
+            self.show_warning(self.t("error.save"), self.t("error.no_saved_image"))
             return False
         if self.has_pending_target_edit() and not self.resolve_pending_edit():
             return False
         empty = [index + 1 for index, segment in enumerate(self.document.segments) if segment.mask is None or not np.any(segment.mask)]
         if empty:
-            self.show_warning("无法存盘", f"目标 {empty} 没有 mask，无法存盘")
+            self.show_warning(
+                self.t("error.save"),
+                self.t("error.target_without_mask", target=empty),
+            )
             return False
         try:
             self.repository.save(self.document)
-            self.log("标注已保存到磁盘")
+            self.log(self.t("log.annotation_saved"))
             return True
         except Exception as error:
-            self.log_exception("保存标注失败", error)
+            self.log_exception(self.t("error.save_annotation"), error)
             return False
 
     def ensure_embedding(self):
@@ -960,10 +1117,10 @@ class MainWindow(QWidget):
             embedding, elapsed_ms = self.engine.encode(self.document.image_rgb)
             self.document.embedding = embedding
             self.repository.save_embedding(self.document)
-            self.log(f"图片特征生成完成：{elapsed_ms:.2f} ms")
+            self.log(self.t("log.embedding_complete", elapsed=elapsed_ms))
             return True
         except Exception as error:
-            self.log_exception("生成图片特征失败", error)
+            self.log_exception(self.t("error.embedding"), error)
             return False
         finally:
             QApplication.restoreOverrideCursor()
@@ -988,9 +1145,9 @@ class MainWindow(QWidget):
             self.update_mask_quality()
             self.refresh_table()
             self.refresh_canvas()
-            self.log(f"智能分割完成：{elapsed_ms:.2f} ms")
+            self.log(self.t("log.segment_complete", elapsed=elapsed_ms))
         except Exception as error:
-            self.log_exception("智能分割失败", error)
+            self.log_exception(self.t("error.segment"), error)
 
     def canvas_mouse_press(self, event):
         """Handle query, smart point, brush, and canvas pan actions."""
@@ -1008,12 +1165,12 @@ class MainWindow(QWidget):
         if self.mode == "query":
             index = self.document.segment_index_for_pixel(x, y)
             if index is None:
-                self.log("点击位置没有目标")
+                self.log(self.t("log.no_target_at_point"))
             else:
                 self.select_segment(index)
             return
         if self.current_index is None:
-            self.show_warning("无法编辑目标", "请先选择一个目标")
+            self.show_warning(self.t("error.edit_target"), self.t("error.no_target"))
             return
         if self.mode == "smart" and event.button() in {Qt.LeftButton, Qt.RightButton}:
             self.run_smart_prediction(x, y, event.button() == Qt.LeftButton)
@@ -1157,11 +1314,12 @@ class MainWindow(QWidget):
     def draw_quality_summary(self, pixmap):
         """Draw live quality counts in the image's upper-right corner."""
         if self.current_quality_mask() is None:
-            text = "未选择目标"
+            text = self.t("quality.no_target")
         else:
-            text = (
-                f"Mask 区域：{self.mask_quality.mask_region_count}  "
-                f"孔洞：{self.mask_quality.hole_count}"
+            text = self.t(
+                "quality.summary",
+                regions=self.mask_quality.mask_region_count,
+                holes=self.mask_quality.hole_count,
             )
         painter = QPainter(pixmap)
         painter.setFont(QFont("Arial", 11, QFont.Bold))

@@ -17,11 +17,11 @@ from PyQt5.QtWidgets import (
 )
 
 from .category_store import CategoryConfigError, CategoryConfigManager, CategoryStore
+from .i18n import language_manager
 from .models import Category
 
 
 class CategoryConfigDialog(QDialog):
-    COLUMNS = ("启用", "ID", "名称", "上级类别", "描述")
     configurationApplied = pyqtSignal(str)
 
     def __init__(self, manager, active_config_id, parent=None):
@@ -34,18 +34,36 @@ class CategoryConfigDialog(QDialog):
         self.config_name = ""
         self.dirty = False
         self.loading = False
-        self.setWindowTitle("类别配置")
+        self.i18n = language_manager
+        self.columns = (
+            self.t("category.column.enabled"),
+            "ID",
+            self.t("category.column.name"),
+            self.t("category.column.parent"),
+            self.t("category.column.description"),
+        )
+        self.setWindowTitle(self.t("category.title"))
         self.resize(1180, 720)
         self.build_ui()
         self.refresh_config_list(active_config_id)
         self.load_config(active_config_id)
 
+    def t(self, key, **values):
+        """Return localized interface text."""
+        return self.i18n.text(key, **values)
+
+    def display_config_name(self, config_id, name):
+        """Return a localized built-in name without changing stored configuration data."""
+        if config_id == CategoryConfigManager.BUILTIN_ID:
+            return self.t("category.builtin_name")
+        return name
+
     def build_ui(self):
         """Build configuration actions, list, category table, and dialog actions."""
-        new_button = QPushButton("新建空白")
-        copy_button = QPushButton("复制所选")
-        self.rename_button = QPushButton("重命名")
-        self.delete_config_button = QPushButton("删除配置")
+        new_button = QPushButton(self.t("category.new"))
+        copy_button = QPushButton(self.t("category.copy"))
+        self.rename_button = QPushButton(self.t("category.rename"))
+        self.delete_config_button = QPushButton(self.t("category.delete_config"))
         new_button.clicked.connect(self.new_config)
         copy_button.clicked.connect(self.copy_config)
         self.rename_button.clicked.connect(self.rename_config)
@@ -61,7 +79,7 @@ class CategoryConfigDialog(QDialog):
         toolbar.addStretch(1)
 
         self.config_list = QListWidget()
-        self.config_list.setFixedWidth(230)
+        self.config_list.setFixedWidth(310)
         self.config_list.currentItemChanged.connect(self.change_config)
 
         self.config_title = QLabel()
@@ -73,20 +91,20 @@ class CategoryConfigDialog(QDialog):
         heading.addWidget(self.config_hint)
         heading.addStretch(1)
 
-        self.table = QTableWidget(0, len(self.COLUMNS), self)
-        self.table.setHorizontalHeaderLabels(self.COLUMNS)
+        self.table = QTableWidget(0, len(self.columns), self)
+        self.table.setHorizontalHeaderLabels(self.columns)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.table.verticalHeader().setVisible(False)
-        self.table.setColumnWidth(0, 58)
+        self.table.setColumnWidth(0, 82)
         self.table.setColumnWidth(1, 70)
         self.table.setColumnWidth(2, 170)
         self.table.setColumnWidth(3, 160)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.itemChanged.connect(self.mark_dirty)
 
-        add_button = QPushButton("新增条目")
-        delete_button = QPushButton("删除条目")
+        add_button = QPushButton(self.t("category.add_entry"))
+        delete_button = QPushButton(self.t("category.delete_entry"))
         add_button.clicked.connect(self.add_empty_row)
         delete_button.clicked.connect(self.delete_selected_rows)
         row_actions = QHBoxLayout()
@@ -107,9 +125,9 @@ class CategoryConfigDialog(QDialog):
 
         buttons = QHBoxLayout()
         buttons.addStretch(1)
-        self.save_button = QPushButton("保存")
-        self.apply_button = QPushButton("应用")
-        close_button = QPushButton("关闭")
+        self.save_button = QPushButton(self.t("common.save"))
+        self.apply_button = QPushButton(self.t("category.apply"))
+        close_button = QPushButton(self.t("common.close"))
         buttons.addWidget(self.save_button)
         buttons.addWidget(self.apply_button)
         buttons.addWidget(close_button)
@@ -131,13 +149,14 @@ class CategoryConfigDialog(QDialog):
         for config in self.manager.configurations():
             labels = []
             if config.builtin:
-                labels.append("内置")
+                labels.append(self.t("category.status.builtin"))
             if config.id == default_id:
-                labels.append("启动默认")
+                labels.append(self.t("category.status.default"))
             if config.id == self.active_config_id:
-                labels.append("当前使用")
+                labels.append(self.t("category.status.active"))
             suffix = f"\n{' · '.join(labels)}" if labels else ""
-            item = QListWidgetItem(f"{config.name}{suffix}")
+            display_name = self.display_config_name(config.id, config.name)
+            item = QListWidgetItem(f"{display_name}{suffix}")
             item.setData(Qt.UserRole, config.id)
             self.config_list.addItem(item)
             if config.id == selected_id:
@@ -179,7 +198,7 @@ class CategoryConfigDialog(QDialog):
         try:
             self.load_config(config_id)
         except (CategoryConfigError, OSError) as error:
-            QMessageBox.critical(self, "类别配置错误", str(error))
+            QMessageBox.critical(self, self.t("category.error"), str(error))
             if previous is not None:
                 self.select_config_in_list(previous.data(Qt.UserRole))
 
@@ -214,11 +233,13 @@ class CategoryConfigDialog(QDialog):
     def update_state(self):
         """Refresh labels and actions for the selected configuration state."""
         builtin = self.config_id == CategoryConfigManager.BUILTIN_ID
-        self.config_title.setText(self.config_name)
-        self.config_hint.setText(
-            "内置配置不可覆盖，保存时将创建副本" if builtin else "用户配置"
+        self.config_title.setText(
+            self.display_config_name(self.config_id, self.config_name)
         )
-        self.save_button.setText("保存")
+        self.config_hint.setText(
+            self.t("category.hint.builtin") if builtin else self.t("category.hint.user")
+        )
+        self.save_button.setText(self.t("common.save"))
         saved_user = self.config_id not in (None, CategoryConfigManager.BUILTIN_ID)
         self.rename_button.setEnabled(saved_user)
         self.delete_config_button.setEnabled(saved_user)
@@ -242,21 +263,25 @@ class CategoryConfigDialog(QDialog):
                     enabled=enabled_widget.isChecked(),
                 )
             except (AttributeError, ValueError) as error:
-                raise CategoryConfigError(f"第 {row + 1} 行包含无效值") from error
+                raise CategoryConfigError(
+                    self.t("category.invalid_row", row=row + 1)
+                ) from error
             categories.append(category)
         CategoryStore.validate(categories)
         return categories
 
     def ask_name(self, title, initial=""):
         """Ask for a configuration name and normalize whitespace."""
-        name, accepted = QInputDialog.getText(self, title, "配置名称：", text=initial)
+        name, accepted = QInputDialog.getText(
+            self, title, self.t("category.name_prompt"), text=initial
+        )
         return name.strip() if accepted else None
 
     def new_config(self):
         """Start an empty named configuration draft."""
         if not self.resolve_unsaved_changes():
             return
-        name = self.ask_name("新建类别配置")
+        name = self.ask_name(self.t("category.new_title"))
         if not name:
             return
         self.config_id = None
@@ -273,9 +298,15 @@ class CategoryConfigDialog(QDialog):
         try:
             categories = self.categories()
         except CategoryConfigError as error:
-            QMessageBox.critical(self, "类别配置错误", str(error))
+            QMessageBox.critical(self, self.t("category.error"), str(error))
             return
-        name = self.ask_name("复制类别配置", f"{self.config_name} 副本")
+        name = self.ask_name(
+            self.t("category.copy_title"),
+            self.t(
+                "category.copy_suffix",
+                name=self.display_config_name(self.config_id, self.config_name),
+            ),
+        )
         if not name:
             return
         self.config_id = None
@@ -291,7 +322,7 @@ class CategoryConfigDialog(QDialog):
         """Rename the selected user configuration."""
         if self.config_id in (None, CategoryConfigManager.BUILTIN_ID):
             return
-        name = self.ask_name("重命名类别配置", self.config_name)
+        name = self.ask_name(self.t("category.rename_title"), self.config_name)
         if not name or name == self.config_name:
             return
         try:
@@ -305,7 +336,7 @@ class CategoryConfigDialog(QDialog):
             self.refresh_config_list(self.config_id)
             self.update_state()
         except (CategoryConfigError, OSError) as error:
-            QMessageBox.critical(self, "重命名失败", str(error))
+            QMessageBox.critical(self, self.t("category.rename_failed"), str(error))
 
     def delete_config(self):
         """Delete the selected user configuration after confirmation."""
@@ -313,8 +344,8 @@ class CategoryConfigDialog(QDialog):
             return
         answer = QMessageBox.question(
             self,
-            "删除类别配置",
-            f"确认删除“{self.config_name}”？",
+            self.t("category.delete_title"),
+            self.t("category.delete_confirm", name=self.config_name),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
@@ -330,7 +361,7 @@ class CategoryConfigDialog(QDialog):
             self.refresh_config_list(CategoryConfigManager.BUILTIN_ID)
             self.load_config(CategoryConfigManager.BUILTIN_ID)
         except (CategoryConfigError, OSError) as error:
-            QMessageBox.critical(self, "删除配置失败", str(error))
+            QMessageBox.critical(self, self.t("category.delete_failed"), str(error))
 
     def add_empty_row(self):
         """Add a new editable category row with a unique identifier."""
@@ -353,8 +384,8 @@ class CategoryConfigDialog(QDialog):
             return
         answer = QMessageBox.question(
             self,
-            "删除类别条目",
-            f"确认删除选中的 {len(rows)} 个类别条目？",
+            self.t("category.delete_entries_title"),
+            self.t("category.delete_entries_confirm", count=len(rows)),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
@@ -370,7 +401,7 @@ class CategoryConfigDialog(QDialog):
             if self.config_id is None:
                 self.config_id = self.manager.create(self.config_name, categories)
             elif self.config_id == CategoryConfigManager.BUILTIN_ID:
-                name = self.ask_name("另存类别配置")
+                name = self.ask_name(self.t("category.save_as"))
                 if not name:
                     return False
                 self.config_id = self.manager.create(name, categories)
@@ -382,7 +413,7 @@ class CategoryConfigDialog(QDialog):
             self.update_state()
             return True
         except (CategoryConfigError, OSError) as error:
-            QMessageBox.critical(self, "保存类别配置失败", str(error))
+            QMessageBox.critical(self, self.t("category.save_failed"), str(error))
             return False
 
     def resolve_unsaved_changes(self):
@@ -391,8 +422,8 @@ class CategoryConfigDialog(QDialog):
             return True
         answer = QMessageBox.warning(
             self,
-            "未保存的类别配置",
-            "当前类别配置已修改，是否保存？",
+            self.t("category.unsaved_title"),
+            self.t("category.unsaved_confirm"),
             QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
             QMessageBox.Save,
         )
@@ -415,7 +446,7 @@ class CategoryConfigDialog(QDialog):
             self.refresh_config_list(self.config_id)
             self.configurationApplied.emit(self.config_id)
         except (CategoryConfigError, OSError) as error:
-            QMessageBox.critical(self, "应用类别配置失败", str(error))
+            QMessageBox.critical(self, self.t("category.apply_failed"), str(error))
 
     def reject(self):
         """Close only after resolving pending edits."""
