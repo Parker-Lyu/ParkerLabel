@@ -4,7 +4,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PyQt5.QtCore import QPoint, Qt, pyqtSignal
+from PyQt5.QtCore import QPoint, QRect, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QFont, QPainter, QPalette, QPen, QPixmap
 from PyQt5.QtWidgets import (
     QApplication,
@@ -53,17 +53,47 @@ class QualityToggleButton(QPushButton):
         self.update()
 
     def paintEvent(self, event):
-        """Paint the native button with a green active label."""
+        """Paint only the enabled-state word in green."""
         if not self.active:
             super().paintEvent(event)
             return
+
         option = QStyleOptionButton()
         self.initStyleOption(option)
-        palette = QPalette(option.palette)
-        palette.setColor(QPalette.ButtonText, QColor("#15803d"))
-        option.palette = palette
+        text = option.text
+        prefix, separator, state_text = text.rpartition(" ")
+        if not separator:
+            super().paintEvent(event)
+            return
+
+        prefix += separator
+        option.text = ""
         painter = QStylePainter(self)
         painter.drawControl(QStyle.CE_PushButton, option)
+
+        content_rect = self.style().subElementRect(
+            QStyle.SE_PushButtonContents, option, self
+        )
+        if option.state & QStyle.State_Sunken:
+            content_rect.translate(
+                self.style().pixelMetric(QStyle.PM_ButtonShiftHorizontal, option, self),
+                self.style().pixelMetric(QStyle.PM_ButtonShiftVertical, option, self),
+            )
+
+        prefix_width = option.fontMetrics.horizontalAdvance(prefix)
+        state_width = option.fontMetrics.horizontalAdvance(state_text)
+        left = content_rect.center().x() - (prefix_width + state_width) // 2
+        prefix_rect = QRect(left, content_rect.y(), prefix_width, content_rect.height())
+        state_rect = QRect(
+            left + prefix_width,
+            content_rect.y(),
+            state_width,
+            content_rect.height(),
+        )
+        painter.setPen(option.palette.color(QPalette.ButtonText))
+        painter.drawText(prefix_rect, Qt.AlignCenter, prefix)
+        painter.setPen(QColor("#15803d"))
+        painter.drawText(state_rect, Qt.AlignCenter, state_text)
 
 
 class VisibilityHeader(QHeaderView):
