@@ -110,7 +110,7 @@ class CategoryConfigDialog(QDialog):
 
         buttons = QDialogButtonBox()
         self.save_button = buttons.addButton("保存", QDialogButtonBox.ActionRole)
-        self.apply_button = buttons.addButton("应用到当前会话", QDialogButtonBox.AcceptRole)
+        self.apply_button = buttons.addButton("保存并应用", QDialogButtonBox.AcceptRole)
         close_button = buttons.addButton("关闭", QDialogButtonBox.RejectRole)
         self.save_button.clicked.connect(self.save_current)
         self.apply_button.clicked.connect(self.apply_current)
@@ -217,7 +217,7 @@ class CategoryConfigDialog(QDialog):
         self.config_hint.setText(
             "内置配置不可覆盖，保存时将创建副本" if builtin else "用户配置"
         )
-        self.save_button.setText("另存为…" if builtin or self.config_id is None else "保存")
+        self.save_button.setText("保存")
         saved_user = self.config_id not in (None, CategoryConfigManager.BUILTIN_ID)
         self.rename_button.setEnabled(saved_user)
         self.delete_config_button.setEnabled(saved_user)
@@ -295,8 +295,12 @@ class CategoryConfigDialog(QDialog):
         if not name or name == self.config_name:
             return
         try:
-            self.manager.rename(self.config_id, name)
+            previous_id = self.config_id
+            self.config_id = self.manager.rename(previous_id, name)
             self.config_name = name
+            if self.active_config_id == previous_id:
+                self.active_config_id = self.config_id
+                self.applied_config_id = self.config_id
             self.refresh_config_list(self.config_id)
             self.update_state()
         except (CategoryConfigError, OSError) as error:
@@ -382,8 +386,6 @@ class CategoryConfigDialog(QDialog):
             else:
                 self.manager.save(self.config_id, categories)
             self.dirty = False
-            self.active_config_id = self.config_id
-            self.applied_config_id = self.config_id
             self.refresh_config_list(self.config_id)
             self.update_state()
             return True
@@ -414,6 +416,7 @@ class CategoryConfigDialog(QDialog):
             return
         if self.config_id is None:
             return
+        self.active_config_id = self.config_id
         self.applied_config_id = self.config_id
         self.accept()
 

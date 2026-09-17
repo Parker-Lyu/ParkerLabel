@@ -1,6 +1,5 @@
 import sys
 
-from PyQt5.QtCore import QCoreApplication
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
 from parker_label_app import MainWindow
@@ -8,8 +7,6 @@ from parker_label_app import MainWindow
 
 def main():
     """Start the desktop annotation application."""
-    QCoreApplication.setOrganizationName("ParkerLabel")
-    QCoreApplication.setApplicationName("ParkerLabel")
     app = QApplication(sys.argv)
     try:
         window = MainWindow()
