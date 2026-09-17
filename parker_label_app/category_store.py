@@ -140,6 +140,7 @@ class CategoryConfig:
 class CategoryConfigManager:
     BUILTIN_ID = "builtin-coco"
     BUILTIN_NAME = "COCO 默认"
+    BUILTIN_FILE = "../categories.json"
     SETTINGS_NAME = "settings.json"
 
     def __init__(self, builtin_path, user_directory=None):
@@ -174,22 +175,27 @@ class CategoryConfigManager:
 
     def _read_settings(self):
         if not self.settings_path.exists():
-            return self.BUILTIN_NAME
+            return self.BUILTIN_FILE
         try:
             with self.settings_path.open("r", encoding="utf-8") as handle:
                 payload = json.load(handle)
-            if set(payload) != {"default_config"}:
+            if set(payload) != {"default_config_file"}:
                 raise ValueError("设置字段无效")
-            default_name = payload["default_config"]
-            if not isinstance(default_name, str) or not default_name:
-                raise ValueError("default_config 必须是字符串")
-            return default_name
+            filename = payload["default_config_file"]
+            if not isinstance(filename, str) or not filename:
+                raise ValueError("default_config_file 必须是字符串")
+            return filename
         except (OSError, json.JSONDecodeError, ValueError) as error:
             self.warning = f"类别配置设置无效，已回退到内置 COCO：{error}"
-            return self.BUILTIN_NAME
+            return self.BUILTIN_FILE
 
-    def _write_settings(self, default_name):
-        _write_json(self.settings_path, {"default_config": default_name})
+    def _write_settings(self, config_id):
+        filename = (
+            self.BUILTIN_FILE
+            if config_id == self.BUILTIN_ID
+            else f"{config_id}.json"
+        )
+        _write_json(self.settings_path, {"default_config_file": filename})
 
     def configurations(self):
         """Return the built-in configuration followed by named JSON files."""
@@ -223,11 +229,14 @@ class CategoryConfigManager:
 
     def default_config_id(self):
         """Return the saved startup default when it still exists."""
-        default_name = self._read_settings()
-        if default_name == self.BUILTIN_NAME:
+        filename = self._read_settings()
+        if filename == self.BUILTIN_FILE:
             return self.BUILTIN_ID
-        if self._config_path(default_name).is_file():
-            return default_name
+        path = Path(filename)
+        if path.name == filename and path.suffix == ".json":
+            config_id = path.stem
+            if self._config_path(config_id).is_file():
+                return config_id
         self.warning = "启动默认类别配置不存在，已回退到内置 COCO"
         return self.BUILTIN_ID
 
@@ -269,7 +278,7 @@ class CategoryConfigManager:
         old_path = self._config_path(config_id)
         new_path = self._config_path(name)
         old_path.rename(new_path)
-        if self._read_settings() == config_id:
+        if self._read_settings() == f"{config_id}.json":
             try:
                 self._write_settings(name)
             except Exception:
@@ -279,16 +288,16 @@ class CategoryConfigManager:
 
     def set_default(self, config_id):
         """Set the configuration loaded at application startup."""
-        config = self.configuration(config_id)
-        self._write_settings(config.name)
+        self.configuration(config_id)
+        self._write_settings(config_id)
 
     def delete(self, config_id):
         """Delete one user configuration and repair the startup default."""
         if config_id == self.BUILTIN_ID:
             raise CategoryConfigError("内置类别配置不可删除")
         self.configuration(config_id)
-        if self._read_settings() == config_id:
-            self._write_settings(self.BUILTIN_NAME)
+        if self._read_settings() == f"{config_id}.json":
+            self._write_settings(self.BUILTIN_ID)
         try:
             self._config_path(config_id).unlink()
         except FileNotFoundError:

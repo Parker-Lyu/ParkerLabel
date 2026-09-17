@@ -3,7 +3,6 @@ from PyQt5.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
     QDialog,
-    QDialogButtonBox,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -108,10 +107,14 @@ class CategoryConfigDialog(QDialog):
         content.addWidget(self.config_list)
         content.addWidget(editor, 1)
 
-        buttons = QDialogButtonBox()
-        self.save_button = buttons.addButton("保存", QDialogButtonBox.ActionRole)
-        self.apply_button = buttons.addButton("保存并应用", QDialogButtonBox.AcceptRole)
-        close_button = buttons.addButton("关闭", QDialogButtonBox.RejectRole)
+        buttons = QHBoxLayout()
+        buttons.addStretch(1)
+        self.save_button = QPushButton("保存")
+        self.apply_button = QPushButton("保存并应用")
+        close_button = QPushButton("关闭")
+        buttons.addWidget(self.save_button)
+        buttons.addWidget(self.apply_button)
+        buttons.addWidget(close_button)
         self.save_button.clicked.connect(self.save_current)
         self.apply_button.clicked.connect(self.apply_current)
         close_button.clicked.connect(self.reject)
@@ -119,7 +122,7 @@ class CategoryConfigDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.addLayout(toolbar)
         layout.addLayout(content, 1)
-        layout.addWidget(buttons)
+        layout.addLayout(buttons)
 
     def refresh_config_list(self, selected_id=None):
         """Reload configuration names and status markers."""
