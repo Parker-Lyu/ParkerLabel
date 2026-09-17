@@ -24,14 +24,17 @@ from .models import Category
 class CategoryConfigDialog(QDialog):
     configurationApplied = pyqtSignal(str)
 
-    def __init__(self, manager, active_config_id, parent=None):
+    def __init__(self, manager, active_config_id, apply_validator=None, parent=None):
         """Create a manager for built-in and named user category configurations."""
         super().__init__(parent)
         self.manager = manager
         self.active_config_id = active_config_id
+        self.apply_validator = apply_validator
         self.applied_config_id = None
         self.config_id = None
         self.config_name = ""
+        self.is_draft = False
+        self.draft_saved = False
         self.dirty = False
         self.loading = False
         self.i18n = language_manager
@@ -61,20 +64,11 @@ class CategoryConfigDialog(QDialog):
     def build_ui(self):
         """Build configuration actions, list, category table, and dialog actions."""
         new_button = QPushButton(self.t("category.new"))
-        copy_button = QPushButton(self.t("category.copy"))
-        self.rename_button = QPushButton(self.t("category.rename"))
-        self.delete_config_button = QPushButton(self.t("category.delete_config"))
+        self.copy_button = QPushButton(self.t("category.copy"))
         new_button.clicked.connect(self.new_config)
-        copy_button.clicked.connect(self.copy_config)
-        self.rename_button.clicked.connect(self.rename_config)
-        self.delete_config_button.clicked.connect(self.delete_config)
+        self.copy_button.clicked.connect(self.copy_config)
         toolbar = QHBoxLayout()
-        for button in (
-            new_button,
-            copy_button,
-            self.rename_button,
-            self.delete_config_button,
-        ):
+        for button in (new_button, self.copy_button):
             toolbar.addWidget(button)
         toolbar.addStretch(1)
 
@@ -85,11 +79,18 @@ class CategoryConfigDialog(QDialog):
         self.config_title = QLabel()
         self.config_hint = QLabel()
         self.config_hint.setStyleSheet("color: palette(mid)")
+        self.uuid_label = QLabel()
+        self.uuid_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         heading = QHBoxLayout()
         heading.addWidget(self.config_title)
         heading.addSpacing(12)
         heading.addWidget(self.config_hint)
         heading.addStretch(1)
+
+        identity = QHBoxLayout()
+        identity.addWidget(QLabel("UUID:"))
+        identity.addWidget(self.uuid_label)
+        identity.addStretch(1)
 
         self.table = QTableWidget(0, len(self.columns), self)
         self.table.setHorizontalHeaderLabels(self.columns)
@@ -103,19 +104,20 @@ class CategoryConfigDialog(QDialog):
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.itemChanged.connect(self.mark_dirty)
 
-        add_button = QPushButton(self.t("category.add_entry"))
-        delete_button = QPushButton(self.t("category.delete_entry"))
-        add_button.clicked.connect(self.add_empty_row)
-        delete_button.clicked.connect(self.delete_selected_rows)
+        self.add_entry_button = QPushButton(self.t("category.add_entry"))
+        self.delete_entry_button = QPushButton(self.t("category.delete_entry"))
+        self.add_entry_button.clicked.connect(self.add_empty_row)
+        self.delete_entry_button.clicked.connect(self.delete_selected_rows)
         row_actions = QHBoxLayout()
-        row_actions.addWidget(add_button)
-        row_actions.addWidget(delete_button)
+        row_actions.addWidget(self.add_entry_button)
+        row_actions.addWidget(self.delete_entry_button)
         row_actions.addStretch(1)
 
         editor = QWidget()
         editor_layout = QVBoxLayout(editor)
         editor_layout.setContentsMargins(0, 0, 0, 0)
         editor_layout.addLayout(heading)
+        editor_layout.addLayout(identity)
         editor_layout.addLayout(row_actions)
         editor_layout.addWidget(self.table)
 
@@ -181,6 +183,8 @@ class CategoryConfigDialog(QDialog):
         categories = self.manager.load(config_id)
         self.config_id = config.id
         self.config_name = config.name
+        self.is_draft = False
+        self.draft_saved = False
         self.populate(categories)
         self.dirty = False
         self.update_state()
@@ -195,6 +199,8 @@ class CategoryConfigDialog(QDialog):
         if not self.resolve_unsaved_changes():
             self.select_config_in_list(self.config_id)
             return
+        if self.is_draft and self.draft_saved:
+            self.manager.freeze(self.config_id)
         try:
             self.load_config(config_id)
         except (CategoryConfigError, OSError) as error:
@@ -232,17 +238,26 @@ class CategoryConfigDialog(QDialog):
 
     def update_state(self):
         """Refresh labels and actions for the selected configuration state."""
-        builtin = self.config_id == CategoryConfigManager.BUILTIN_ID
         self.config_title.setText(
             self.display_config_name(self.config_id, self.config_name)
         )
-        self.config_hint.setText(
-            self.t("category.hint.builtin") if builtin else self.t("category.hint.user")
-        )
+        hint_key = "category.hint.draft" if self.is_draft else "category.hint.readonly"
+        self.config_hint.setText(self.t(hint_key))
+        self.uuid_label.setText(self.config_id or "")
         self.save_button.setText(self.t("common.save"))
-        saved_user = self.config_id not in (None, CategoryConfigManager.BUILTIN_ID)
-        self.rename_button.setEnabled(saved_user)
-        self.delete_config_button.setEnabled(saved_user)
+        self.save_button.setEnabled(self.is_draft)
+        self.copy_button.setEnabled(not self.is_draft)
+        self.add_entry_button.setEnabled(self.is_draft)
+        self.delete_entry_button.setEnabled(self.is_draft)
+        self.table.setEditTriggers(
+            QAbstractItemView.AllEditTriggers
+            if self.is_draft
+            else QAbstractItemView.NoEditTriggers
+        )
+        for row in range(self.table.rowCount()):
+            enabled = self.table.cellWidget(row, 0)
+            if enabled is not None:
+                enabled.setEnabled(self.is_draft)
 
     def _text(self, row, column):
         """Return trimmed text from an editor cell."""
@@ -284,8 +299,12 @@ class CategoryConfigDialog(QDialog):
         name = self.ask_name(self.t("category.new_title"))
         if not name:
             return
-        self.config_id = None
+        if self.is_draft and self.draft_saved:
+            self.manager.freeze(self.config_id)
+        self.config_id = self.manager.new_uuid()
         self.config_name = name
+        self.is_draft = True
+        self.draft_saved = False
         self.populate([])
         self.dirty = True
         self.config_list.blockSignals(True)
@@ -295,6 +314,8 @@ class CategoryConfigDialog(QDialog):
 
     def copy_config(self):
         """Copy the visible editor contents into a new named draft."""
+        if self.is_draft:
+            return
         try:
             categories = self.categories()
         except CategoryConfigError as error:
@@ -309,59 +330,16 @@ class CategoryConfigDialog(QDialog):
         )
         if not name:
             return
-        self.config_id = None
+        self.config_id = self.manager.new_uuid()
         self.config_name = name
+        self.is_draft = True
+        self.draft_saved = False
         self.populate(categories)
         self.dirty = True
         self.config_list.blockSignals(True)
         self.config_list.clearSelection()
         self.config_list.blockSignals(False)
         self.update_state()
-
-    def rename_config(self):
-        """Rename the selected user configuration."""
-        if self.config_id in (None, CategoryConfigManager.BUILTIN_ID):
-            return
-        name = self.ask_name(self.t("category.rename_title"), self.config_name)
-        if not name or name == self.config_name:
-            return
-        try:
-            previous_id = self.config_id
-            self.config_id = self.manager.rename(previous_id, name)
-            self.config_name = name
-            if self.active_config_id == previous_id:
-                self.active_config_id = self.config_id
-                self.applied_config_id = self.config_id
-                self.configurationApplied.emit(self.config_id)
-            self.refresh_config_list(self.config_id)
-            self.update_state()
-        except (CategoryConfigError, OSError) as error:
-            QMessageBox.critical(self, self.t("category.rename_failed"), str(error))
-
-    def delete_config(self):
-        """Delete the selected user configuration after confirmation."""
-        if self.config_id in (None, CategoryConfigManager.BUILTIN_ID):
-            return
-        answer = QMessageBox.question(
-            self,
-            self.t("category.delete_title"),
-            self.t("category.delete_confirm", name=self.config_name),
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
-        )
-        if answer != QMessageBox.Yes:
-            return
-        try:
-            deleted_id = self.config_id
-            self.manager.delete(deleted_id)
-            if self.active_config_id == deleted_id:
-                self.active_config_id = CategoryConfigManager.BUILTIN_ID
-                self.applied_config_id = self.active_config_id
-                self.configurationApplied.emit(self.active_config_id)
-            self.refresh_config_list(CategoryConfigManager.BUILTIN_ID)
-            self.load_config(CategoryConfigManager.BUILTIN_ID)
-        except (CategoryConfigError, OSError) as error:
-            QMessageBox.critical(self, self.t("category.delete_failed"), str(error))
 
     def add_empty_row(self):
         """Add a new editable category row with a unique identifier."""
@@ -395,22 +373,21 @@ class CategoryConfigDialog(QDialog):
             self.mark_dirty()
 
     def save_current(self):
-        """Save a user configuration or create a copy of the built-in set."""
+        """Create or update the draft owned by this editor session."""
+        if not self.is_draft:
+            return False
         try:
             categories = self.categories()
-            if self.config_id is None:
-                self.config_id = self.manager.create(self.config_name, categories)
-            elif self.config_id == CategoryConfigManager.BUILTIN_ID:
-                name = self.ask_name(self.t("category.save_as"))
-                if not name:
-                    return False
-                self.config_id = self.manager.create(name, categories)
-                self.config_name = name
+            if self.draft_saved:
+                self.manager.save_draft(self.config_id, categories)
             else:
-                self.manager.save(self.config_id, categories)
+                self.manager.create(self.config_name, self.config_id, categories)
+                self.draft_saved = True
             self.dirty = False
             self.refresh_config_list(self.config_id)
             self.update_state()
+            if self.active_config_id == self.config_id:
+                self.configurationApplied.emit(self.config_id)
             return True
         except (CategoryConfigError, OSError) as error:
             QMessageBox.critical(self, self.t("category.save_failed"), str(error))
@@ -440,6 +417,8 @@ class CategoryConfigDialog(QDialog):
         if self.config_id is None:
             return
         try:
+            if self.apply_validator is not None and not self.apply_validator(self.config_id):
+                return
             self.manager.set_default(self.config_id)
             self.active_config_id = self.config_id
             self.applied_config_id = self.config_id
@@ -451,4 +430,6 @@ class CategoryConfigDialog(QDialog):
     def reject(self):
         """Close only after resolving pending edits."""
         if self.resolve_unsaved_changes():
+            if self.is_draft and self.draft_saved:
+                self.manager.freeze(self.config_id)
             super().reject()

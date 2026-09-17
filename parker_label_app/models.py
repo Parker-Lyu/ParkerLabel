@@ -67,6 +67,10 @@ class AnnotationDocument:
     source_size: tuple[int, int]
     segments: list[Segment] = field(default_factory=list)
     embedding: np.ndarray | None = None
+    category_config_uuid: str | None = None
+    category_config_sha256: str | None = None
+    annotation_loaded: bool = False
+    read_only_reason: str = ""
     dirty: bool = False
 
     def add_segment(self, category: Category, color_id: int):

@@ -72,11 +72,16 @@ class AnnotationRepository:
         image_rgb, source_size = load_rgb_image(image_path, self.target_size)
         embedding_path, annotation_path = artifact_paths(image_path)
         segments = []
+        category_config_uuid = None
+        category_config_sha256 = None
+        annotation_loaded = annotation_path.exists()
         if annotation_path.exists():
             with annotation_path.open("r", encoding="utf-8") as handle:
                 payload = json.load(handle)
-            if payload.get("format") != "parker-label-instance-v1":
+            if payload.get("format") != "parker-label-instance-v2":
                 raise ValueError(f"Unsupported annotation format: {annotation_path}")
+            category_config_uuid = payload.get("category_config_uuid")
+            category_config_sha256 = payload.get("category_config_sha256")
             raw_segments = payload.get("annotations", [])
             segments = [Segment.from_dict(value) for value in raw_segments]
             for segment, value in zip(segments, raw_segments):
@@ -102,11 +107,16 @@ class AnnotationRepository:
             source_size=source_size,
             segments=segments,
             embedding=embedding,
+            category_config_uuid=category_config_uuid,
+            category_config_sha256=category_config_sha256,
+            annotation_loaded=annotation_loaded,
         )
         return document
 
     def save(self, document: AnnotationDocument):
         """Save per-instance JSON annotations and a color mask preview."""
+        if not document.category_config_uuid or not document.category_config_sha256:
+            raise ValueError("Annotation document is not bound to a category configuration")
         _, annotation_path = artifact_paths(document.image_path)
         source_height, source_width = document.source_size
         preview_mask = cv2.resize(
@@ -140,7 +150,9 @@ class AnnotationRepository:
             )
             annotations.append(annotation)
         payload = {
-            "format": "parker-label-instance-v1",
+            "format": "parker-label-instance-v2",
+            "category_config_uuid": document.category_config_uuid,
+            "category_config_sha256": document.category_config_sha256,
             "image": {
                 "id": 1,
                 "file_name": document.image_path.name,
@@ -153,6 +165,7 @@ class AnnotationRepository:
             json.dump(payload, handle, ensure_ascii=False, indent=2)
             handle.write("\n")
         document.dirty = False
+        document.annotation_loaded = True
 
     def save_embedding(self, document: AnnotationDocument):
         """Save an image embedding beside its source image."""

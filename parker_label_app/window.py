@@ -34,7 +34,7 @@ from PyQt5.QtWidgets import (
 from .annotation_io import AnnotationRepository
 from .canvas import AnnotationCanvas
 from .category_dialog import CategoryConfigDialog
-from .category_store import CategoryConfigManager
+from .category_store import CategoryConfigError, CategoryConfigManager
 from .image_utils import color_id_to_rgb, id_mask_to_rgb, qimage_from_rgb
 from .i18n import language_manager
 from .inference import SegmentationEngine
@@ -197,6 +197,7 @@ class MainWindow(QWidget):
         root = Path(__file__).resolve().parent.parent
         self.category_manager = CategoryConfigManager(root / "config" / "default-coco.json")
         self.active_category_config_id = None
+        self.active_category_config_sha256 = ""
         self.category_config_name = ""
         self.repository = AnnotationRepository(target_size=1024)
         self.engine = SegmentationEngine(
@@ -243,10 +244,12 @@ class MainWindow(QWidget):
     def load_categories(self, config_id=None):
         """Load enabled category records from the selected or startup configuration."""
         if config_id is None:
-            config_id, categories = self.category_manager.load_default()
+            config_id, data = self.category_manager.load_default()
         else:
-            categories = self.category_manager.load(config_id)
+            data = self.category_manager.load_data(config_id)
+        categories = list(data.categories)
         self.active_category_config_id = config_id
+        self.active_category_config_sha256 = data.content_hash
         self.category_config_name = self.category_manager.configuration(config_id).name
         self.all_categories_by_name = {category.name: category for category in categories}
         self.all_categories_by_id = {category.id: category for category in categories}
@@ -267,25 +270,42 @@ class MainWindow(QWidget):
             return self.t("category.builtin_name")
         return self.category_config_name
 
-    def sync_document_categories(self):
-        """Synchronize saved segment metadata with the active category configuration."""
+    def document_is_editable(self):
+        """Return whether the open document matches the active immutable configuration."""
+        return self.document is not None and not self.document.read_only_reason
+
+    def update_document_access(self):
+        """Bind new documents or enforce an existing annotation configuration."""
         if self.document is None:
-            return 0
-        updated = 0
-        for segment in self.document.segments:
-            category = self.all_categories_by_name.get(segment.category_name)
-            if category is None:
-                category = self.all_categories_by_id.get(segment.category_id)
-            if category is None:
-                continue
-            if segment.category_id == category.id and segment.category_name == category.name:
-                continue
-            segment.category_id = category.id
-            segment.category_name = category.name
-            updated += 1
-        if updated:
-            self.document.dirty = True
-        return updated
+            return
+        if not self.document.annotation_loaded:
+            self.document.category_config_uuid = self.active_category_config_id
+            self.document.category_config_sha256 = self.active_category_config_sha256
+            self.document.read_only_reason = ""
+        elif self.document.category_config_uuid != self.active_category_config_id:
+            self.document.read_only_reason = self.t("readonly.config_mismatch")
+        elif self.document.category_config_sha256 != self.active_category_config_sha256:
+            self.document.read_only_reason = self.t("readonly.hash_mismatch")
+        else:
+            self.document.read_only_reason = ""
+        if self.document.read_only_reason:
+            self.mode = "query"
+            self.set_checked_button(self.mode_group, self.mode)
+            self.clear_edit_state()
+        self.update_editing_state()
+
+    def update_editing_state(self):
+        """Enable mutation controls only for editable documents."""
+        editable = self.document_is_editable()
+        self.save_button.setEnabled(editable)
+        self.add_button.setEnabled(editable)
+        self.commit_button.setEnabled(editable)
+        self.discard_button.setEnabled(editable)
+        self.undo_button.setEnabled(editable)
+        self.redo_button.setEnabled(editable)
+        for button in self.mode_group.buttons():
+            button.setEnabled(editable or button.property("value") == "query")
+        self.update_tool_controls()
 
     def build_ui(self):
         """Build the annotation workspace and connect user actions."""
@@ -587,6 +607,7 @@ class MainWindow(QWidget):
         self.table.setRowCount(0)
         self.canvas.setText(self.t("canvas.open_image"))
         self.canvas.setFixedSize(640, 480)
+        self.update_editing_state()
 
     def choose_image(self):
         """Open a file picker and load the selected image."""
@@ -612,19 +633,58 @@ class MainWindow(QWidget):
             return
         try:
             self.document = self.repository.open(Path(path))
+            self.resolve_open_document_configuration()
             self.current_index = None
             self.clear_edit_state()
             self.zoom_factor = 1.0
             self.calculate_base_canvas_size()
             self.refresh_table()
             self.refresh_canvas()
+            self.update_editing_state()
             self.log(self.t("log.image_opened", name=self.document.image_path.name))
-            if self.document.embedding is None:
+            if self.document.read_only_reason:
+                self.show_warning(
+                    self.t("readonly.title"),
+                    self.document.read_only_reason,
+                )
+                self.log(self.document.read_only_reason)
+            elif self.document.embedding is None:
                 self.ensure_embedding()
             else:
                 self.log(self.t("log.embedding_loaded"))
         except Exception as error:
             self.log_exception(self.t("error.open_image"), error)
+
+    def resolve_open_document_configuration(self):
+        """Resolve the exact configuration required by a loaded annotation."""
+        if not self.document.annotation_loaded:
+            self.update_document_access()
+            return
+        config_id = self.document.category_config_uuid
+        try:
+            self.category_manager.configuration(config_id)
+        except CategoryConfigError:
+            self.document.read_only_reason = self.t(
+                "readonly.config_missing", uuid=config_id
+            )
+            return
+        if config_id != self.active_category_config_id:
+            config = self.category_manager.configuration(config_id)
+            config_name = (
+                self.t("category.builtin_name")
+                if config.builtin
+                else config.name
+            )
+            answer = QMessageBox.question(
+                self,
+                self.t("dialog.switch_category_title"),
+                self.t("dialog.switch_category_confirm", name=config_name),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes,
+            )
+            if answer == QMessageBox.Yes:
+                self.load_categories(config_id)
+        self.update_document_access()
 
     def confirm_document_transition(self):
         """Ask how to handle unsaved work before replacing the document."""
@@ -686,15 +746,20 @@ class MainWindow(QWidget):
             visible.toggled.connect(lambda checked, row=index: self.set_segment_visibility(row, checked))
             self.table.setCellWidget(index, self.COL_SHOW, self.create_centered_control(visible))
             category = self.create_category_combo(segment.category_name)
-            category.setEnabled(index == self.current_index)
+            category.setEnabled(
+                self.document_is_editable() and index == self.current_index
+            )
             category.currentTextChanged.connect(lambda name, row=index: self.set_segment_category(row, name))
             self.table.setCellWidget(index, self.COL_CATEGORY, category)
             color = QPushButton(self.color_button_text(segment.color_id))
             color.setStyleSheet(self.color_button_style(segment.color_id))
-            color.setEnabled(index == self.current_index)
+            color.setEnabled(
+                self.document_is_editable() and index == self.current_index
+            )
             color.clicked.connect(lambda checked=False, row=index: self.assign_random_color(row))
             self.table.setCellWidget(index, self.COL_COLOR, color)
             delete = QPushButton(self.t("common.delete"))
+            delete.setEnabled(self.document_is_editable())
             delete.clicked.connect(lambda checked=False, row=index: self.delete_segment(row))
             self.table.setCellWidget(index, self.COL_DELETE, delete)
         if self.current_index is not None and self.current_index < self.table.rowCount():
@@ -800,31 +865,62 @@ class MainWindow(QWidget):
             dialog = CategoryConfigDialog(
                 self.category_manager,
                 self.active_category_config_id,
-                self,
+                apply_validator=self.confirm_category_application,
+                parent=self,
             )
             dialog.configurationApplied.connect(self.apply_category_config)
             dialog.exec_()
         except Exception as error:
             self.log_exception(self.t("error.category_config_open"), error)
 
+    def confirm_category_application(self, config_id):
+        """Confirm that a bound annotation may become read-only."""
+        if (
+            self.document is None
+            or (not self.document.annotation_loaded and not self.document.segments)
+            or self.document.category_config_uuid == config_id
+        ):
+            return True
+        if self.document.dirty:
+            answer = QMessageBox.question(
+                self,
+                self.t("dialog.save_before_category_title"),
+                self.t("dialog.save_before_category_confirm"),
+                QMessageBox.Yes | QMessageBox.Cancel,
+                QMessageBox.Yes,
+            )
+            if answer != QMessageBox.Yes or not self.save_document():
+                return False
+        answer = QMessageBox.warning(
+            self,
+            self.t("dialog.change_category_title"),
+            self.t("dialog.change_category_readonly"),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        return answer == QMessageBox.Yes
+
     def apply_category_config(self, config_id):
-        """Apply one configuration immediately and synchronize open annotations."""
+        """Apply one configuration and update document access state."""
         self.load_categories(config_id)
-        updated = self.sync_document_categories()
+        self.update_document_access()
         self.refresh_table()
+        self.refresh_canvas()
         message = self.t(
             "log.category_applied",
             name=self.category_config_display_name(),
             count=len(self.categories),
         )
-        if updated:
-            message += self.t("log.category_synced", count=updated)
         self.log(message)
+        if self.document is not None and self.document.read_only_reason:
+            self.show_warning(self.t("readonly.title"), self.document.read_only_reason)
 
     def add_segment(self):
         """Add an empty segment using the first enabled category."""
         if self.document is None:
             self.show_warning(self.t("error.add_target"), self.t("error.no_document"))
+            return
+        if not self.ensure_document_editable(self.t("error.add_target")):
             return
         if not self.categories:
             self.show_warning(self.t("error.add_target"), self.t("error.no_categories"))
@@ -940,6 +1036,8 @@ class MainWindow(QWidget):
         """Assign a selected configured category to a segment."""
         if self.document is None or index >= len(self.document.segments):
             return
+        if not self.document_is_editable():
+            return
         category = self.categories_by_name.get(name)
         if category is None:
             return
@@ -954,7 +1052,11 @@ class MainWindow(QWidget):
 
     def assign_random_color(self, index):
         """Assign a new random display color to the current segment."""
-        if self.document is None or index != self.current_index:
+        if (
+            self.document is None
+            or index != self.current_index
+            or not self.document_is_editable()
+        ):
             return
         self.begin_metadata_edit(index)
         self.document.change_segment_color(index, self.generate_color_id())
@@ -965,6 +1067,8 @@ class MainWindow(QWidget):
     def delete_segment(self, index):
         """Delete a segment after user confirmation."""
         if self.document is None or index >= len(self.document.segments):
+            return
+        if not self.ensure_document_editable(self.t("dialog.delete_target")):
             return
         answer = QMessageBox.question(
             self,
@@ -988,6 +1092,9 @@ class MainWindow(QWidget):
     def change_mode(self, button):
         """Switch the active canvas interaction mode."""
         next_mode = button.property("value")
+        if next_mode != "query" and not self.document_is_editable():
+            self.set_checked_button(self.mode_group, "query")
+            return
         if next_mode != self.mode and self.has_pending_target_edit() and not self.resolve_pending_edit():
             self.set_checked_button(self.mode_group, self.mode)
             return
@@ -1011,7 +1118,7 @@ class MainWindow(QWidget):
 
     def update_tool_controls(self):
         """Enable editing controls that apply to the current mode."""
-        manual = self.mode == "brush"
+        manual = self.mode == "brush" and self.document_is_editable()
         if hasattr(self, "manual_controls"):
             for control in self.manual_controls:
                 control.setEnabled(manual)
@@ -1027,6 +1134,8 @@ class MainWindow(QWidget):
 
     def ensure_edit_mask(self):
         """Initialize the editable mask for the selected segment."""
+        if not self.ensure_document_editable(self.t("error.edit_target")):
+            return False
         if self.document is None or self.current_index is None:
             self.show_warning(self.t("error.edit_target"), self.t("error.no_target"))
             return False
@@ -1037,6 +1146,39 @@ class MainWindow(QWidget):
                 segment_mask = self.document.segments[self.current_index].mask
                 self.edit_mask = segment_mask.copy() if segment_mask is not None else np.zeros(self.document.image_rgb.shape[:2], dtype=np.uint8)
         return True
+
+    def ensure_document_editable(self, title):
+        """Show the read-only reason before rejecting a mutation."""
+        if self.document_is_editable():
+            return True
+        if self.document is not None and self.document.read_only_reason:
+            self.show_warning(title, self.document.read_only_reason)
+        return False
+
+    def validate_active_configuration(self):
+        """Verify the active configuration still matches the bound document."""
+        try:
+            data = self.category_manager.load_data(self.active_category_config_id)
+        except CategoryConfigError as error:
+            self.document.read_only_reason = self.t(
+                "readonly.config_invalid", error=error
+            )
+        else:
+            if (
+                data.content_hash != self.active_category_config_sha256
+                or self.document.category_config_uuid != self.active_category_config_id
+                or self.document.category_config_sha256 != data.content_hash
+            ):
+                self.document.read_only_reason = self.t("readonly.hash_mismatch")
+        if not self.document.read_only_reason:
+            return True
+        self.mode = "query"
+        self.set_checked_button(self.mode_group, self.mode)
+        self.update_editing_state()
+        self.refresh_table()
+        self.refresh_canvas()
+        self.show_warning(self.t("readonly.title"), self.document.read_only_reason)
+        return False
 
     def clear_edit_state(self):
         """Clear pending mask, metadata, and smart prompt state."""
@@ -1109,6 +1251,8 @@ class MainWindow(QWidget):
         if self.document is None:
             self.show_warning(self.t("error.commit_target"), self.t("error.no_document"))
             return False
+        if not self.ensure_document_editable(self.t("error.commit_target")):
+            return False
         if self.current_index is None:
             self.show_warning(self.t("error.commit_target"), self.t("error.no_target"))
             return False
@@ -1154,6 +1298,10 @@ class MainWindow(QWidget):
         """Commit pending work and persist the active annotation document."""
         if self.document is None:
             self.show_warning(self.t("error.save"), self.t("error.no_saved_image"))
+            return False
+        if not self.ensure_document_editable(self.t("error.save")):
+            return False
+        if not self.validate_active_configuration():
             return False
         if self.has_pending_target_edit() and not self.resolve_pending_edit():
             return False

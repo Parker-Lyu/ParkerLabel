@@ -1,8 +1,11 @@
+import hashlib
 import json
 import os
 import tempfile
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
+from uuid import UUID, uuid4
 
 from .models import Category
 
@@ -11,9 +14,11 @@ class CategoryConfigError(ValueError):
     pass
 
 
-def _write_json(path, payload):
+def _write_json(path, payload, overwrite=True):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    if not overwrite and path.exists():
+        raise CategoryConfigError(f"配置名称重复：{path.stem}")
     descriptor, temporary_path = tempfile.mkstemp(
         prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
     )
@@ -21,7 +26,14 @@ def _write_json(path, payload):
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
             json.dump(payload, handle, ensure_ascii=False, indent=2)
             handle.write("\n")
-        os.replace(temporary_path, path)
+        if overwrite:
+            os.replace(temporary_path, path)
+        else:
+            try:
+                os.link(temporary_path, path)
+            except FileExistsError as error:
+                raise CategoryConfigError(f"配置名称重复：{path.stem}") from error
+            os.unlink(temporary_path)
     except Exception:
         try:
             os.unlink(temporary_path)
@@ -30,22 +42,64 @@ def _write_json(path, payload):
         raise
 
 
+def _canonical_uuid(value):
+    if not isinstance(value, str):
+        raise CategoryConfigError("类别配置 uuid 必须是字符串")
+    try:
+        parsed = UUID(value)
+    except (ValueError, AttributeError) as error:
+        raise CategoryConfigError(f"类别配置 uuid 无效：{value}") from error
+    canonical = str(parsed)
+    if value != canonical:
+        raise CategoryConfigError(f"类别配置 uuid 必须使用标准格式：{canonical}")
+    return canonical
+
+
+def _content_hash(payload):
+    encoded = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+@dataclass(frozen=True)
+class CategoryConfigData:
+    uuid: str
+    categories: tuple[Category, ...]
+    content_hash: str
+
+
 class CategoryStore:
     FIELDS = {"id", "name", "supercategory", "description", "enabled"}
+    TOP_LEVEL_FIELDS = {"schema_version", "uuid", "preset", "categories"}
+    SCHEMA_VERSION = 2
 
     def __init__(self, path: Path, readonly=False):
         """Initialize a category store backed by one local JSON file."""
         self.path = Path(path)
         self.readonly = readonly
 
-    def load(self):
-        """Load and validate categories from local JSON."""
+    def load_data(self):
+        """Load and validate a complete category configuration."""
         try:
             with self.path.open("r", encoding="utf-8") as handle:
                 payload = json.load(handle)
         except (OSError, json.JSONDecodeError) as error:
             raise CategoryConfigError(f"无法读取类别配置：{error}") from error
-        raw_categories = payload.get("categories") if isinstance(payload, dict) else payload
+        if not isinstance(payload, dict):
+            raise CategoryConfigError("类别配置必须是 JSON 对象")
+        extra = sorted(set(payload) - self.TOP_LEVEL_FIELDS)
+        if extra:
+            raise CategoryConfigError(f"类别配置包含未知字段：{', '.join(extra)}")
+        if payload.get("schema_version") != self.SCHEMA_VERSION:
+            raise CategoryConfigError(
+                f"不支持的类别配置版本：{payload.get('schema_version')}"
+            )
+        config_uuid = _canonical_uuid(payload.get("uuid"))
+        raw_categories = payload.get("categories")
         if not isinstance(raw_categories, list):
             raise CategoryConfigError("类别配置必须包含 categories 数组")
         categories = []
@@ -61,8 +115,9 @@ class CategoryStore:
                     details.append(f"缺少字段：{', '.join(missing)}")
                 if extra:
                     details.append(f"未知字段：{', '.join(extra)}")
-                detail = "；".join(details)
-                raise CategoryConfigError(f"第 {row} 条类别字段无效（{detail}）")
+                raise CategoryConfigError(
+                    f"第 {row} 条类别字段无效（{'；'.join(details)}）"
+                )
             if isinstance(value["id"], bool) or not isinstance(value["id"], int):
                 raise CategoryConfigError(f"第 {row} 条类别 ID 必须是整数")
             if not isinstance(value["enabled"], bool):
@@ -74,20 +129,31 @@ class CategoryStore:
                 raise CategoryConfigError(f"第 {row} 条类别文本字段必须是字符串")
             categories.append(Category.from_dict(value))
         self.validate(categories)
-        return categories
+        return CategoryConfigData(
+            config_uuid,
+            tuple(categories),
+            _content_hash(payload),
+        )
 
-    def save(self, categories):
-        """Validate and atomically save categories to local JSON."""
+    def load(self):
+        """Load validated categories from local JSON."""
+        return list(self.load_data().categories)
+
+    def save(self, config_uuid, categories, overwrite=False):
+        """Validate and atomically save a category configuration."""
         if self.readonly:
-            raise CategoryConfigError("内置类别配置不可覆盖")
+            raise CategoryConfigError("已有类别配置不可修改")
+        config_uuid = _canonical_uuid(config_uuid)
         categories = list(categories)
         self.validate(categories)
         _write_json(
             self.path,
             {
-                "schema_version": 1,
+                "schema_version": self.SCHEMA_VERSION,
+                "uuid": config_uuid,
                 "categories": [category.to_dict() for category in categories],
             },
+            overwrite=overwrite,
         )
 
     @staticmethod
@@ -121,42 +187,41 @@ class CategoryStore:
             ids.add(category.id)
             names.add(normalized_name)
 
-    def enabled(self):
-        """Return enabled categories in stored order."""
-        return [category for category in self.load() if category.enabled]
-
-    def by_name(self):
-        """Return enabled categories keyed by exact name."""
-        return {category.name: category for category in self.enabled()}
-
 
 @dataclass(frozen=True)
 class CategoryConfig:
     id: str
     name: str
+    content_hash: str
     builtin: bool = False
 
 
 class CategoryConfigManager:
-    BUILTIN_ID = "builtin-coco"
+    BUILTIN_ID = "c2da0de2-f465-4109-98f1-08a5bd881803"
     BUILTIN_NAME = "COCO 默认"
-    BUILTIN_FILE = "../default-coco.json"
     SETTINGS_NAME = "settings.json"
 
     def __init__(self, builtin_path, user_directory=None):
-        """Manage the built-in category set and named user configurations."""
+        """Manage the built-in category set and immutable user configurations."""
         self.builtin_store = CategoryStore(builtin_path, readonly=True)
         if user_directory is None:
             user_directory = Path(builtin_path).parent / "category-configs"
         self.user_directory = Path(user_directory)
         self.settings_path = self.user_directory / self.SETTINGS_NAME
         self.warning = ""
+        self._drafts = {}
+        if self.builtin_store.load_data().uuid != self.BUILTIN_ID:
+            raise CategoryConfigError("内置 COCO 配置 uuid 与程序不一致")
+
+    def new_uuid(self):
+        """Return a new configuration identifier."""
+        return str(uuid4())
 
     def _config_path(self, name):
         return self.user_directory / f"{name}.json"
 
     def _validate_filename(self, name):
-        name = name.strip()
+        name = unicodedata.normalize("NFC", name.strip())
         if not name:
             raise CategoryConfigError("配置名称不能为空")
         if name.casefold() == self.BUILTIN_NAME.casefold():
@@ -175,130 +240,128 @@ class CategoryConfigManager:
 
     def _read_settings(self):
         if not self.settings_path.exists():
-            return self.BUILTIN_FILE
+            return self.BUILTIN_ID
         try:
             with self.settings_path.open("r", encoding="utf-8") as handle:
                 payload = json.load(handle)
-            if set(payload) != {"default_config_file"}:
+            if set(payload) != {"default_config_uuid"}:
                 raise ValueError("设置字段无效")
-            filename = payload["default_config_file"]
-            if not isinstance(filename, str) or not filename:
-                raise ValueError("default_config_file 必须是字符串")
-            return filename
-        except (OSError, json.JSONDecodeError, ValueError) as error:
+            return _canonical_uuid(payload["default_config_uuid"])
+        except (OSError, json.JSONDecodeError, ValueError, CategoryConfigError) as error:
             self.warning = f"类别配置设置无效，已回退到内置 COCO：{error}"
-            return self.BUILTIN_FILE
+            return self.BUILTIN_ID
 
     def _write_settings(self, config_id):
-        filename = (
-            self.BUILTIN_FILE
-            if config_id == self.BUILTIN_ID
-            else f"{config_id}.json"
-        )
-        _write_json(self.settings_path, {"default_config_file": filename})
+        _write_json(self.settings_path, {"default_config_uuid": config_id})
 
     def configurations(self):
-        """Return the built-in configuration followed by named JSON files."""
-        result = [CategoryConfig(self.BUILTIN_ID, self.BUILTIN_NAME, True)]
-        if not self.user_directory.exists():
-            return result
-        paths = sorted(
-            (
-                path
-                for path in self.user_directory.glob("*.json")
-                if path.name not in {self.SETTINGS_NAME, "index.json"}
-            ),
-            key=lambda path: path.stem.casefold(),
-        )
-        result.extend(CategoryConfig(path.stem, path.stem) for path in paths)
+        """Return validated configurations and reject duplicate UUID values."""
+        builtin_data = self.builtin_store.load_data()
+        result = [
+            CategoryConfig(
+                builtin_data.uuid,
+                self.BUILTIN_NAME,
+                builtin_data.content_hash,
+                True,
+            )
+        ]
+        if self.user_directory.exists():
+            paths = sorted(
+                (
+                    path
+                    for path in self.user_directory.glob("*.json")
+                    if path.name not in {self.SETTINGS_NAME, "index.json"}
+                ),
+                key=lambda path: path.stem.casefold(),
+            )
+            for path in paths:
+                data = CategoryStore(path, readonly=True).load_data()
+                result.append(CategoryConfig(data.uuid, path.stem, data.content_hash))
+        duplicates = {
+            config.id
+            for config in result
+            if sum(item.id == config.id for item in result) > 1
+        }
+        if duplicates:
+            raise CategoryConfigError(
+                f"类别配置 uuid 重复：{', '.join(sorted(duplicates))}"
+            )
         return result
 
     def configuration(self, config_id):
-        """Return one configuration descriptor."""
+        """Return one configuration descriptor by UUID."""
         for config in self.configurations():
             if config.id == config_id:
                 return config
-        raise CategoryConfigError("类别配置不存在")
+        raise CategoryConfigError(f"找不到类别配置：{config_id}")
+
+    def load_data(self, config_id):
+        """Load one built-in or user category configuration by UUID."""
+        config = self.configuration(config_id)
+        store = self.builtin_store if config.builtin else CategoryStore(
+            self._config_path(config.name), readonly=True
+        )
+        return store.load_data()
 
     def load(self, config_id):
-        """Load one built-in or user category configuration."""
-        if config_id == self.BUILTIN_ID:
-            return self.builtin_store.load()
-        self.configuration(config_id)
-        return CategoryStore(self._config_path(config_id)).load()
+        """Load categories from one configuration by UUID."""
+        return list(self.load_data(config_id).categories)
 
     def default_config_id(self):
         """Return the saved startup default when it still exists."""
-        filename = self._read_settings()
-        if filename == self.BUILTIN_FILE:
+        config_id = self._read_settings()
+        try:
+            self.configuration(config_id)
+            return config_id
+        except CategoryConfigError:
+            self.warning = "启动默认类别配置不存在，已回退到内置 COCO"
             return self.BUILTIN_ID
-        path = Path(filename)
-        if path.name == filename and path.suffix == ".json":
-            config_id = path.stem
-            if self._config_path(config_id).is_file():
-                return config_id
-        self.warning = "启动默认类别配置不存在，已回退到内置 COCO"
-        return self.BUILTIN_ID
 
     def load_default(self):
         """Load the startup default and safely fall back to the built-in set."""
         config_id = self.default_config_id()
         try:
-            return config_id, self.load(config_id)
+            return config_id, self.load_data(config_id)
         except CategoryConfigError as error:
             self.warning = f"启动默认类别配置无效，已回退到内置 COCO：{error}"
-            return self.BUILTIN_ID, self.load(self.BUILTIN_ID)
+            return self.BUILTIN_ID, self.load_data(self.BUILTIN_ID)
 
-    def _validate_name(self, name, excluding_id=None):
+    def _validate_name(self, name):
         name = self._validate_filename(name)
         for config in self.configurations():
-            if config.id != excluding_id and config.name.casefold() == name.casefold():
+            if unicodedata.normalize("NFC", config.name).casefold() == name.casefold():
                 raise CategoryConfigError(f"配置名称重复：{name}")
         return name
 
-    def create(self, name, categories):
-        """Create and return a user configuration named by its JSON file."""
+    def create(self, name, config_uuid, categories):
+        """Create a new editable draft without overwriting existing files."""
         name = self._validate_name(name)
-        CategoryStore(self._config_path(name)).save(categories)
-        return name
+        config_uuid = _canonical_uuid(config_uuid)
+        try:
+            self.configuration(config_uuid)
+        except CategoryConfigError:
+            pass
+        else:
+            raise CategoryConfigError(f"类别配置 uuid 重复：{config_uuid}")
+        CategoryStore(self._config_path(name)).save(config_uuid, categories)
+        self._drafts[config_uuid] = name
+        return config_uuid
 
-    def save(self, config_id, categories):
-        """Overwrite one user configuration."""
-        if config_id == self.BUILTIN_ID:
-            raise CategoryConfigError("内置类别配置不可覆盖，请另存为用户配置")
-        self.configuration(config_id)
-        CategoryStore(self._config_path(config_id)).save(categories)
+    def save_draft(self, config_id, categories):
+        """Save a configuration created by the current editor session."""
+        name = self._drafts.get(config_id)
+        if name is None:
+            raise CategoryConfigError("已有类别配置不可修改，请复制后编辑")
+        data = CategoryStore(self._config_path(name), readonly=True).load_data()
+        if data.uuid != config_id:
+            raise CategoryConfigError("草稿配置 uuid 与文件不一致")
+        CategoryStore(self._config_path(name)).save(config_id, categories, overwrite=True)
 
-    def rename(self, config_id, name):
-        """Rename one user configuration and its JSON file."""
-        if config_id == self.BUILTIN_ID:
-            raise CategoryConfigError("内置类别配置不可重命名")
-        self.configuration(config_id)
-        name = self._validate_name(name, excluding_id=config_id)
-        old_path = self._config_path(config_id)
-        new_path = self._config_path(name)
-        old_path.rename(new_path)
-        if self._read_settings() == f"{config_id}.json":
-            try:
-                self._write_settings(name)
-            except Exception:
-                new_path.rename(old_path)
-                raise
-        return name
+    def freeze(self, config_id):
+        """Make a saved draft immutable."""
+        self._drafts.pop(config_id, None)
 
     def set_default(self, config_id):
         """Set the configuration loaded at application startup."""
         self.configuration(config_id)
         self._write_settings(config_id)
-
-    def delete(self, config_id):
-        """Delete one user configuration and repair the startup default."""
-        if config_id == self.BUILTIN_ID:
-            raise CategoryConfigError("内置类别配置不可删除")
-        self.configuration(config_id)
-        if self._read_settings() == f"{config_id}.json":
-            self._write_settings(self.BUILTIN_ID)
-        try:
-            self._config_path(config_id).unlink()
-        except FileNotFoundError:
-            pass

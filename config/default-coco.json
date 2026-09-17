@@ -1,5 +1,6 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "uuid": "c2da0de2-f465-4109-98f1-08a5bd881803",
   "preset": "coco-detection-2017",
   "categories": [
     {"id": 1, "name": "person", "supercategory": "person", "description": "", "enabled": true},
