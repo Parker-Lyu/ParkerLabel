@@ -350,6 +350,7 @@ class MainWindow(QWidget):
         self.category_config_label = QLabel(
             self.t("category.current", name=self.category_config_display_name())
         )
+        self.category_config_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(
             self.category_config_label, 1, 3, Qt.AlignRight | Qt.AlignVCenter
         )
