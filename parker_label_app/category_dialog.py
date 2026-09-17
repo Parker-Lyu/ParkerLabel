@@ -367,9 +367,10 @@ class CategoryConfigDialog(QDialog):
         """Save a user configuration or create a copy of the built-in set."""
         try:
             categories = self.categories()
-            if self.config_id in (None, CategoryConfigManager.BUILTIN_ID):
-                initial = self.config_name if self.config_id is None else ""
-                name = self.ask_name("另存类别配置", initial)
+            if self.config_id is None:
+                self.config_id = self.manager.create(self.config_name, categories)
+            elif self.config_id == CategoryConfigManager.BUILTIN_ID:
+                name = self.ask_name("另存类别配置")
                 if not name:
                     return False
                 self.config_id = self.manager.create(name, categories)
