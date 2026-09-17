@@ -447,9 +447,10 @@ class MainWindow(QWidget):
         for group in (self.edit_group, self.view_group_box, self.interaction_group):
             group.setStyleSheet(group_style)
         lower_row = QHBoxLayout()
-        lower_row.addWidget(self.edit_group)
-        lower_row.addWidget(self.interaction_group, 1)
-        outer.addWidget(self.view_group_box)
+        lower_row.addWidget(self.edit_group, 0, Qt.AlignTop)
+        lower_row.addWidget(self.interaction_group, 0, Qt.AlignTop)
+        lower_row.addStretch(1)
+        outer.addWidget(self.view_group_box, 0, Qt.AlignLeft)
         outer.addLayout(lower_row)
         self.update_tool_control_text()
         self.update_tool_controls()
