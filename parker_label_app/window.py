@@ -36,7 +36,7 @@ from .canvas import AnnotationCanvas
 from .category_dialog import CategoryConfigDialog
 from .category_store import CategoryConfigManager
 from .image_utils import color_id_to_rgb, id_mask_to_rgb, qimage_from_rgb
-from .i18n import LANGUAGES, language_manager
+from .i18n import language_manager
 from .inference import SegmentationEngine
 from .quality import MaskQuality, inspect_mask_quality
 
@@ -94,6 +94,50 @@ class QualityToggleButton(QPushButton):
         painter.drawText(prefix_rect, Qt.AlignCenter, prefix)
         painter.setPen(QColor("#15803d"))
         painter.drawText(state_rect, Qt.AlignCenter, state_text)
+
+
+class LanguageToggleLabel(QLabel):
+    clicked = pyqtSignal()
+
+    def __init__(self, language, parent=None):
+        """Create a compact bilingual language toggle."""
+        super().__init__("中｜英", parent)
+        self.language = language
+        self.setCursor(Qt.PointingHandCursor)
+        self.setAlignment(Qt.AlignCenter)
+        self.setContentsMargins(4, 0, 4, 0)
+
+    def set_language(self, language):
+        """Update the highlighted language without changing geometry."""
+        self.language = language
+        self.update()
+
+    def mouseReleaseEvent(self, event):
+        """Emit a click when the primary button is released over the label."""
+        if event.button() == Qt.LeftButton and self.rect().contains(event.pos()):
+            self.clicked.emit()
+        super().mouseReleaseEvent(event)
+
+    def paintEvent(self, event):
+        """Paint the current language character in green."""
+        painter = QPainter(self)
+        painter.setFont(self.font())
+        parts = ("中", "｜", "英")
+        widths = [painter.fontMetrics().horizontalAdvance(part) for part in parts]
+        left = self.contentsRect().center().x() - sum(widths) // 2
+        normal_color = self.palette().color(QPalette.WindowText)
+        active_index = 0 if self.language == "zh_CN" else 2
+
+        for index, (part, width) in enumerate(zip(parts, widths)):
+            painter.setPen(QColor("#15803d") if index == active_index else normal_color)
+            part_rect = QRect(
+                left,
+                self.contentsRect().y(),
+                width,
+                self.contentsRect().height(),
+            )
+            painter.drawText(part_rect, Qt.AlignCenter, part)
+            left += width
 
 
 class VisibilityHeader(QHeaderView):
@@ -299,23 +343,14 @@ class MainWindow(QWidget):
         layout.addWidget(self.quality_button, 0, 1)
         layout.addWidget(self.category_button, 1, 0)
         layout.addWidget(self.save_button, 1, 1)
+        layout.setColumnStretch(2, 1)
+        self.language_toggle = LanguageToggleLabel(self.i18n.language)
+        self.language_toggle.clicked.connect(self.toggle_language)
+        layout.addWidget(self.language_toggle, 0, 3, Qt.AlignRight | Qt.AlignVCenter)
         self.category_config_label = QLabel(
             self.t("category.current", name=self.category_config_display_name())
         )
-        layout.addWidget(self.category_config_label, 2, 0, 1, 2)
-        self.language_label = QLabel(self.t("language.label"))
-        self.language_combo = QComboBox()
-        for code, label in LANGUAGES:
-            self.language_combo.addItem(label, code)
-        language_index = self.language_combo.findData(self.i18n.language)
-        self.language_combo.setCurrentIndex(language_index)
-        self.language_combo.currentIndexChanged.connect(self.change_language)
-        language_layout = QHBoxLayout()
-        language_layout.addWidget(self.language_label)
-        language_layout.addWidget(self.language_combo)
-        language_layout.addStretch(1)
-        layout.addLayout(language_layout, 3, 0, 1, 2)
-        layout.setAlignment(Qt.AlignLeft)
+        layout.addWidget(self.category_config_label, 2, 0, 1, 4)
         return layout
 
     def build_tool_controls(self):
@@ -480,23 +515,17 @@ class MainWindow(QWidget):
         )
         table.horizontalHeader().checkbox.setText(self.t("table.show"))
 
-    def change_language(self, index):
-        """Apply the selected interface language."""
-        language = self.language_combo.itemData(index)
-        if language:
-            self.i18n.set_language(language)
+    def toggle_language(self):
+        """Switch between the supported interface languages."""
+        language = "en_US" if self.i18n.language == "zh_CN" else "zh_CN"
+        self.i18n.set_language(language)
 
     def retranslate_ui(self, _language=None):
         """Refresh visible interface text after a language change."""
-        language_index = self.language_combo.findData(self.i18n.language)
-        if self.language_combo.currentIndex() != language_index:
-            self.language_combo.blockSignals(True)
-            self.language_combo.setCurrentIndex(language_index)
-            self.language_combo.blockSignals(False)
+        self.language_toggle.set_language(self.i18n.language)
         self.update_primary_control_text()
         self.update_tool_control_text()
         self.update_table_headers()
-        self.language_label.setText(self.t("language.label"))
         self.category_config_label.setText(
             self.t("category.current", name=self.category_config_display_name())
         )

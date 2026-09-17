@@ -1,12 +1,6 @@
 from PyQt5.QtCore import QObject, QSettings, pyqtSignal
 
 
-LANGUAGES = (
-    ("zh_CN", "中文"),
-    ("en_US", "English"),
-)
-
-
 _TEXT = {
     "zh_CN": {
         "app.start_failed": "启动失败",
@@ -16,7 +10,6 @@ _TEXT = {
         "common.close": "关闭",
         "common.delete": "删除",
         "common.save": "保存",
-        "language.label": "界面语言：",
         "log.ready": "初始化完成，请打开图片",
         "dialog.image_filter": "图片 (*.jpg *.jpeg *.png *.bmp)",
         "dialog.open_image_failed": "无法打开图片",
@@ -130,7 +123,6 @@ _TEXT = {
         "common.close": "Close",
         "common.delete": "Delete",
         "common.save": "Save",
-        "language.label": "Language:",
         "log.ready": "Ready. Open an image to begin.",
         "dialog.image_filter": "Images (*.jpg *.jpeg *.png *.bmp)",
         "dialog.open_image_failed": "Cannot Open Image",
