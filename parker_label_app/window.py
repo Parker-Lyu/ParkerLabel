@@ -101,7 +101,7 @@ class LanguageToggleLabel(QLabel):
 
     def __init__(self, language, parent=None):
         """Create a compact bilingual language toggle."""
-        super().__init__("中｜英", parent)
+        super().__init__("中｜EN", parent)
         self.language = language
         self.setCursor(Qt.PointingHandCursor)
         self.setAlignment(Qt.AlignCenter)
@@ -122,7 +122,7 @@ class LanguageToggleLabel(QLabel):
         """Paint the current language character in green."""
         painter = QPainter(self)
         painter.setFont(self.font())
-        parts = ("中", "｜", "英")
+        parts = ("中", "｜", "EN")
         widths = [painter.fontMetrics().horizontalAdvance(part) for part in parts]
         left = self.contentsRect().center().x() - sum(widths) // 2
         normal_color = self.palette().color(QPalette.WindowText)
