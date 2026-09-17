@@ -587,23 +587,23 @@ class MainWindow(QWidget):
                 self.active_category_config_id,
                 self,
             )
+            dialog.configurationApplied.connect(self.apply_category_config)
             dialog.exec_()
-            config_id = dialog.applied_config_id
-            if dialog.active_config_id != self.active_category_config_id:
-                config_id = dialog.active_config_id
-            if config_id is not None:
-                self.load_categories(config_id)
-                updated = self.sync_document_categories()
-                self.refresh_table()
-                message = (
-                    f"已应用类别配置“{self.category_config_name}”，"
-                    f"共启用 {len(self.categories)} 个类别"
-                )
-                if updated:
-                    message += f"，同步 {updated} 个已有目标"
-                self.log(message)
         except Exception as error:
             self.log_exception("打开类别配置失败", error)
+
+    def apply_category_config(self, config_id):
+        """Apply one configuration immediately and synchronize open annotations."""
+        self.load_categories(config_id)
+        updated = self.sync_document_categories()
+        self.refresh_table()
+        message = (
+            f"已应用类别配置“{self.category_config_name}”，"
+            f"共启用 {len(self.categories)} 个类别"
+        )
+        if updated:
+            message += f"，同步 {updated} 个已有目标"
+        self.log(message)
 
     def add_segment(self):
         """Add an empty segment using the first enabled category."""

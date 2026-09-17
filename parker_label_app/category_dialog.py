@@ -1,4 +1,4 @@
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -22,6 +22,7 @@ from .models import Category
 
 class CategoryConfigDialog(QDialog):
     COLUMNS = ("启用", "ID", "名称", "上级类别", "描述")
+    configurationApplied = pyqtSignal(str)
 
     def __init__(self, manager, active_config_id, parent=None):
         """Create a manager for built-in and named user category configurations."""
@@ -44,19 +45,16 @@ class CategoryConfigDialog(QDialog):
         new_button = QPushButton("新建空白")
         copy_button = QPushButton("复制所选")
         self.rename_button = QPushButton("重命名")
-        self.default_button = QPushButton("设为启动默认")
         self.delete_config_button = QPushButton("删除配置")
         new_button.clicked.connect(self.new_config)
         copy_button.clicked.connect(self.copy_config)
         self.rename_button.clicked.connect(self.rename_config)
-        self.default_button.clicked.connect(self.set_default_config)
         self.delete_config_button.clicked.connect(self.delete_config)
         toolbar = QHBoxLayout()
         for button in (
             new_button,
             copy_button,
             self.rename_button,
-            self.default_button,
             self.delete_config_button,
         ):
             toolbar.addWidget(button)
@@ -110,7 +108,7 @@ class CategoryConfigDialog(QDialog):
         buttons = QHBoxLayout()
         buttons.addStretch(1)
         self.save_button = QPushButton("保存")
-        self.apply_button = QPushButton("保存并应用")
+        self.apply_button = QPushButton("应用")
         close_button = QPushButton("关闭")
         buttons.addWidget(self.save_button)
         buttons.addWidget(self.apply_button)
@@ -224,7 +222,6 @@ class CategoryConfigDialog(QDialog):
         saved_user = self.config_id not in (None, CategoryConfigManager.BUILTIN_ID)
         self.rename_button.setEnabled(saved_user)
         self.delete_config_button.setEnabled(saved_user)
-        self.default_button.setEnabled(self.config_id is not None)
 
     def _text(self, row, column):
         """Return trimmed text from an editor cell."""
@@ -304,22 +301,11 @@ class CategoryConfigDialog(QDialog):
             if self.active_config_id == previous_id:
                 self.active_config_id = self.config_id
                 self.applied_config_id = self.config_id
+                self.configurationApplied.emit(self.config_id)
             self.refresh_config_list(self.config_id)
             self.update_state()
         except (CategoryConfigError, OSError) as error:
             QMessageBox.critical(self, "重命名失败", str(error))
-
-    def set_default_config(self):
-        """Set the selected saved configuration as the startup default."""
-        if self.config_id is None:
-            return
-        if self.dirty and not self.save_current():
-            return
-        try:
-            self.manager.set_default(self.config_id)
-            self.refresh_config_list(self.config_id)
-        except (CategoryConfigError, OSError) as error:
-            QMessageBox.critical(self, "设置默认配置失败", str(error))
 
     def delete_config(self):
         """Delete the selected user configuration after confirmation."""
@@ -339,6 +325,8 @@ class CategoryConfigDialog(QDialog):
             self.manager.delete(deleted_id)
             if self.active_config_id == deleted_id:
                 self.active_config_id = CategoryConfigManager.BUILTIN_ID
+                self.applied_config_id = self.active_config_id
+                self.configurationApplied.emit(self.active_config_id)
             self.refresh_config_list(CategoryConfigManager.BUILTIN_ID)
             self.load_config(CategoryConfigManager.BUILTIN_ID)
         except (CategoryConfigError, OSError) as error:
@@ -414,14 +402,19 @@ class CategoryConfigDialog(QDialog):
         return False
 
     def apply_current(self):
-        """Save pending edits and apply the selected configuration to the session."""
+        """Save pending edits, apply the configuration, and keep it for startup."""
         if self.dirty and not self.save_current():
             return
         if self.config_id is None:
             return
-        self.active_config_id = self.config_id
-        self.applied_config_id = self.config_id
-        self.accept()
+        try:
+            self.manager.set_default(self.config_id)
+            self.active_config_id = self.config_id
+            self.applied_config_id = self.config_id
+            self.refresh_config_list(self.config_id)
+            self.configurationApplied.emit(self.config_id)
+        except (CategoryConfigError, OSError) as error:
+            QMessageBox.critical(self, "应用类别配置失败", str(error))
 
     def reject(self):
         """Close only after resolving pending edits."""
