@@ -231,6 +231,7 @@ class MainWindow(QWidget):
         self.history_limit = 30
         self._brush_snapshot = None
         self._brush_position = None
+        self._brush_preview_base = None
         self.quality_check_enabled = False
         self.mask_quality = MaskQuality()
         self.mode = "query"
@@ -1349,6 +1350,8 @@ class MainWindow(QWidget):
         self.undo_stack.clear()
         self.redo_stack.clear()
         self._brush_snapshot = None
+        self._brush_position = None
+        self._brush_preview_base = None
         self.mask_quality = MaskQuality()
         self.update_history_controls()
 
@@ -1591,6 +1594,12 @@ class MainWindow(QWidget):
                 return
             self._brush_snapshot = snapshot
             self._brush_position = None
+            self._brush_preview_base = self.document.visible_mask()
+            segment = self.document.segments[self.current_index]
+            if segment.visible:
+                self._brush_preview_base[
+                    self._brush_preview_base == segment.color_id
+                ] = 0
             self.painting = 1 if event.button() == Qt.LeftButton else 0
             self.paint_at(x, y)
 
@@ -1622,6 +1631,7 @@ class MainWindow(QWidget):
         self.painting = None
         self._brush_snapshot = None
         self._brush_position = None
+        self._brush_preview_base = None
         if snapshot is not None:
             current = self.capture_edit_snapshot()
             if (
@@ -1635,6 +1645,9 @@ class MainWindow(QWidget):
                 )
             ):
                 self.record_history(snapshot)
+                self.update_mask_quality()
+                self.refresh_table()
+                self.refresh_canvas()
             else:
                 self.restore_edit_snapshot(snapshot)
 
@@ -1654,8 +1667,6 @@ class MainWindow(QWidget):
             )
         self._brush_position = end
         self.edit_dirty = True
-        self.update_mask_quality()
-        self.refresh_table()
         self.refresh_canvas()
 
     def canvas_wheel(self, event):
@@ -1699,14 +1710,17 @@ class MainWindow(QWidget):
 
     def preview_mask(self):
         """Build the visible identifier mask including a pending edit."""
-        mask = self.document.visible_mask()
         if self.current_index is None or self.edit_mask is None:
-            return mask
+            return self.document.visible_mask()
         segment = self.document.segments[self.current_index]
-        if not segment.visible:
-            return mask
-        mask[mask == segment.color_id] = 0
-        mask[self.edit_mask.astype(bool)] = segment.color_id
+        if self.painting is not None and self._brush_preview_base is not None:
+            mask = self._brush_preview_base.copy()
+        else:
+            mask = self.document.visible_mask()
+            if segment.visible:
+                mask[mask == segment.color_id] = 0
+        if segment.visible:
+            mask[self.edit_mask.astype(bool)] = segment.color_id
         return mask
 
     def refresh_canvas(self):
@@ -1725,16 +1739,19 @@ class MainWindow(QWidget):
             self.canvas_size[0],
             self.canvas_size[1],
             Qt.IgnoreAspectRatio,
-            Qt.FastTransformation if self.view_mode == "mask" else Qt.SmoothTransformation,
+            Qt.FastTransformation
+            if self.view_mode == "mask" or self.painting is not None
+            else Qt.SmoothTransformation,
         )
-        if self.view_mode == "overlay":
-            self.draw_segment_labels(pixmap, identifier_mask)
-        if self.quality_check_enabled and self.mask_quality.boxes:
-            self.draw_quality_boxes(pixmap)
-        if self.view_mode == "overlay":
-            self.draw_prompt_points(pixmap)
-        if self.quality_check_enabled:
-            self.draw_quality_summary(pixmap)
+        if self.painting is None:
+            if self.view_mode == "overlay":
+                self.draw_segment_labels(pixmap, identifier_mask)
+            if self.quality_check_enabled and self.mask_quality.boxes:
+                self.draw_quality_boxes(pixmap)
+            if self.view_mode == "overlay":
+                self.draw_prompt_points(pixmap)
+            if self.quality_check_enabled:
+                self.draw_quality_summary(pixmap)
         self.canvas.setPixmap(pixmap)
 
     def draw_quality_boxes(self, pixmap):
