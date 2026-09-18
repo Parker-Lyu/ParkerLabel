@@ -1,6 +1,8 @@
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
+    QAbstractItemDelegate,
     QAbstractItemView,
+    QApplication,
     QCheckBox,
     QDialog,
     QHBoxLayout,
@@ -302,6 +304,14 @@ class CategoryConfigDialog(QDialog):
         CategoryStore.validate(categories)
         return categories
 
+    def commit_table_editor(self):
+        """Commit the active table editor before reading cell values."""
+        editor = QApplication.focusWidget()
+        if editor is None or not self.table.isAncestorOf(editor):
+            return
+        self.table.commitData(editor)
+        self.table.closeEditor(editor, QAbstractItemDelegate.SubmitModelCache)
+
     def ask_name(self, title, initial=""):
         """Ask for a configuration name and normalize whitespace."""
         name, accepted = QInputDialog.getText(
@@ -399,6 +409,7 @@ class CategoryConfigDialog(QDialog):
         """Create or update the draft owned by this editor session."""
         if not self.is_draft:
             return False
+        self.commit_table_editor()
         try:
             categories = self.categories()
             if self.draft_saved:
@@ -419,6 +430,7 @@ class CategoryConfigDialog(QDialog):
 
     def resolve_unsaved_changes(self):
         """Ask whether to save, discard, or keep editing modified contents."""
+        self.commit_table_editor()
         if not self.dirty:
             return True
         answer = QMessageBox.warning(
@@ -436,6 +448,7 @@ class CategoryConfigDialog(QDialog):
 
     def apply_current(self):
         """Save pending edits, apply the configuration, and keep it for startup."""
+        self.commit_table_editor()
         if self.dirty and not self.save_current():
             return
         if self.config_id is None:
