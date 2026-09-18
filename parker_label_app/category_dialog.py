@@ -360,7 +360,12 @@ class CategoryConfigDialog(QDialog):
             return
         config_id = self.manager.new_uuid()
         try:
-            self.manager.create(name, config_id, categories)
+            self.manager.create(
+                name,
+                config_id,
+                categories,
+                preset=self.config_id,
+            )
         except (CategoryConfigError, OSError) as error:
             QMessageBox.critical(self, self.t("category.copy_failed"), str(error))
             return

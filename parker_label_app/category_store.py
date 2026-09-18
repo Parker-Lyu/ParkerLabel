@@ -83,6 +83,7 @@ def _created_at(value):
 class CategoryConfigData:
     uuid: str
     created_at: str
+    preset: str | None
     categories: tuple[Category, ...]
     content_hash: str
 
@@ -130,8 +131,8 @@ class CategoryStore:
         config_uuid = _canonical_uuid(payload.get("uuid"))
         created_at = _created_at(payload.get("created_at"))
         preset = payload["preset"]
-        if preset is not None and (not isinstance(preset, str) or not preset):
-            raise CategoryConfigError("类别配置 preset 必须是非空字符串或 null")
+        if preset is not None and preset != "coco-detection-2017":
+            preset = _canonical_uuid(preset)
         raw_categories = payload.get("categories")
         if not isinstance(raw_categories, list):
             raise CategoryConfigError("类别配置必须包含 categories 数组")
@@ -175,6 +176,7 @@ class CategoryStore:
         return CategoryConfigData(
             config_uuid,
             created_at,
+            preset,
             tuple(categories),
             content_hash,
         )
@@ -183,22 +185,31 @@ class CategoryStore:
         """Load validated categories from local JSON."""
         return list(self.load_data().categories)
 
-    def save(self, config_uuid, created_at, categories, overwrite=False):
+    def save(self, config_uuid, created_at, categories, overwrite=False, preset=None):
         """Validate and atomically save a category configuration."""
         if self.readonly:
             raise CategoryConfigError("已有类别配置不可修改")
         config_uuid = _canonical_uuid(config_uuid)
         created_at = _created_at(created_at)
+        if preset is not None:
+            preset = _canonical_uuid(preset)
         categories = list(categories)
         self.validate(categories)
-        payload = {
+        content = {
             "schema_version": self.SCHEMA_VERSION,
             "uuid": config_uuid,
             "created_at": created_at,
-            "preset": None,
+            "preset": preset,
             "categories": [category.to_dict() for category in categories],
         }
-        payload["sha256"] = _content_hash(payload)
+        payload = {
+            "schema_version": content["schema_version"],
+            "uuid": content["uuid"],
+            "created_at": content["created_at"],
+            "sha256": _content_hash(content),
+            "preset": content["preset"],
+            "categories": content["categories"],
+        }
         _write_json(self.path, payload, overwrite=overwrite)
 
     @staticmethod
@@ -387,7 +398,7 @@ class CategoryConfigManager:
                 raise CategoryConfigError(f"配置名称重复：{name}")
         return name
 
-    def create(self, name, config_uuid, categories):
+    def create(self, name, config_uuid, categories, preset=None):
         """Create a new editable draft without overwriting existing files."""
         name = self._validate_name(name)
         config_uuid = _canonical_uuid(config_uuid)
@@ -399,7 +410,7 @@ class CategoryConfigManager:
             raise CategoryConfigError(f"类别配置 uuid 重复：{config_uuid}")
         created_at = datetime.now().astimezone().isoformat(timespec="seconds")
         CategoryStore(self._config_path(name)).save(
-            config_uuid, created_at, categories
+            config_uuid, created_at, categories, preset=preset
         )
         self._drafts[config_uuid] = name
         return config_uuid
@@ -416,6 +427,7 @@ class CategoryConfigManager:
             config_id,
             data.created_at,
             categories,
+            preset=data.preset,
             overwrite=True,
         )
 
