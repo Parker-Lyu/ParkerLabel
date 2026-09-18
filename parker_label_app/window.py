@@ -395,10 +395,20 @@ class MainWindow(QWidget):
         button_height = max(button.sizeHint().height() for button in buttons)
         for button in buttons:
             button.setFixedSize(button_width, button_height)
+
+        category_panel = QWidget(self)
+        category_layout = QVBoxLayout(category_panel)
+        category_layout.setContentsMargins(0, 0, 0, 0)
+        category_layout.setSpacing(2)
+        category_layout.addWidget(self.category_button)
+        self.category_config_label.setFixedWidth(button_width)
+        self.category_config_label.setWordWrap(True)
+        category_layout.addWidget(self.category_config_label)
+
         layout.addWidget(self.open_button, 0, 0)
         layout.addWidget(self.quality_button, 0, 1)
-        layout.addWidget(self.category_button, 1, 0)
-        layout.addWidget(self.save_button, 1, 1)
+        layout.addWidget(category_panel, 1, 0, Qt.AlignTop)
+        layout.addWidget(self.save_button, 1, 1, Qt.AlignTop)
         layout.setColumnStretch(2, 1)
 
         status_panel = QWidget(self)
@@ -406,7 +416,6 @@ class MainWindow(QWidget):
         status_layout.setContentsMargins(0, 0, 0, 0)
         status_layout.setSpacing(4)
         status_layout.addWidget(self.language_toggle, 0, Qt.AlignRight)
-        status_layout.addWidget(self.category_config_label, 0, Qt.AlignRight)
         status_layout.addWidget(self.tooltip_button, 0, Qt.AlignRight)
         layout.addWidget(status_panel, 0, 3, 2, 1, Qt.AlignRight | Qt.AlignVCenter)
         return layout
