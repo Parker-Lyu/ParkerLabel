@@ -83,7 +83,7 @@ def _created_at(value):
 class CategoryConfigData:
     uuid: str
     created_at: str
-    preset: str | None
+    parent_version_uuid: str | None
     categories: tuple[Category, ...]
     content_hash: str
 
@@ -95,10 +95,10 @@ class CategoryStore:
         "uuid",
         "created_at",
         "sha256",
-        "preset",
+        "parent_version_uuid",
         "categories",
     }
-    SCHEMA_VERSION = 5
+    SCHEMA_VERSION = 6
 
     def __init__(self, path: Path, readonly=False):
         """Initialize a category store backed by one local JSON file."""
@@ -130,9 +130,9 @@ class CategoryStore:
             )
         config_uuid = _canonical_uuid(payload.get("uuid"))
         created_at = _created_at(payload.get("created_at"))
-        preset = payload["preset"]
-        if preset is not None and preset != "coco-detection-2017":
-            preset = _canonical_uuid(preset)
+        parent_version_uuid = payload["parent_version_uuid"]
+        if parent_version_uuid is not None:
+            parent_version_uuid = _canonical_uuid(parent_version_uuid)
         raw_categories = payload.get("categories")
         if not isinstance(raw_categories, list):
             raise CategoryConfigError("类别配置必须包含 categories 数组")
@@ -176,7 +176,7 @@ class CategoryStore:
         return CategoryConfigData(
             config_uuid,
             created_at,
-            preset,
+            parent_version_uuid,
             tuple(categories),
             content_hash,
         )
@@ -185,21 +185,28 @@ class CategoryStore:
         """Load validated categories from local JSON."""
         return list(self.load_data().categories)
 
-    def save(self, config_uuid, created_at, categories, overwrite=False, preset=None):
+    def save(
+        self,
+        config_uuid,
+        created_at,
+        categories,
+        overwrite=False,
+        parent_version_uuid=None,
+    ):
         """Validate and atomically save a category configuration."""
         if self.readonly:
             raise CategoryConfigError("已有类别配置不可修改")
         config_uuid = _canonical_uuid(config_uuid)
         created_at = _created_at(created_at)
-        if preset is not None:
-            preset = _canonical_uuid(preset)
+        if parent_version_uuid is not None:
+            parent_version_uuid = _canonical_uuid(parent_version_uuid)
         categories = list(categories)
         self.validate(categories)
         content = {
             "schema_version": self.SCHEMA_VERSION,
             "uuid": config_uuid,
             "created_at": created_at,
-            "preset": preset,
+            "parent_version_uuid": parent_version_uuid,
             "categories": [category.to_dict() for category in categories],
         }
         payload = {
@@ -207,7 +214,7 @@ class CategoryStore:
             "uuid": content["uuid"],
             "created_at": content["created_at"],
             "sha256": _content_hash(content),
-            "preset": content["preset"],
+            "parent_version_uuid": content["parent_version_uuid"],
             "categories": content["categories"],
         }
         _write_json(self.path, payload, overwrite=overwrite)
@@ -405,7 +412,7 @@ class CategoryConfigManager:
                 raise CategoryConfigError(f"配置名称重复：{name}")
         return name
 
-    def create(self, name, config_uuid, categories, preset=None):
+    def create(self, name, config_uuid, categories, parent_version_uuid=None):
         """Create a new editable draft without overwriting existing files."""
         name = self._validate_name(name)
         config_uuid = _canonical_uuid(config_uuid)
@@ -417,7 +424,10 @@ class CategoryConfigManager:
             raise CategoryConfigError(f"类别配置 uuid 重复：{config_uuid}")
         created_at = datetime.now().astimezone().isoformat(timespec="seconds")
         CategoryStore(self._config_path(name)).save(
-            config_uuid, created_at, categories, preset=preset
+            config_uuid,
+            created_at,
+            categories,
+            parent_version_uuid=parent_version_uuid,
         )
         self._drafts[config_uuid] = name
         return config_uuid
@@ -434,7 +444,7 @@ class CategoryConfigManager:
             config_id,
             data.created_at,
             categories,
-            preset=data.preset,
+            parent_version_uuid=data.parent_version_uuid,
             overwrite=True,
         )
 

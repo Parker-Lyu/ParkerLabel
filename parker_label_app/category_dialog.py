@@ -36,7 +36,7 @@ class CategoryConfigDialog(QDialog):
         self.config_id = None
         self.config_name = ""
         self.created_at = ""
-        self.preset = None
+        self.parent_version_uuid = None
         self.is_draft = False
         self.draft_saved = False
         self.dirty = False
@@ -87,9 +87,9 @@ class CategoryConfigDialog(QDialog):
         self.uuid_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.created_at_label = QLabel()
         self.created_at_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self.preset_label = QLabel()
-        self.preset_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self.preset_title_label = QLabel(self.t("category.preset"))
+        self.parent_version_label = QLabel()
+        self.parent_version_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.parent_version_title_label = QLabel(self.t("category.parent_version"))
         heading = QHBoxLayout()
         heading.addWidget(self.config_title)
         heading.addSpacing(12)
@@ -101,16 +101,16 @@ class CategoryConfigDialog(QDialog):
         uuid_row.addWidget(QLabel("UUID:"))
         uuid_row.addWidget(self.uuid_label)
         uuid_row.addStretch(1)
-        preset_row = QHBoxLayout()
-        preset_row.addWidget(self.preset_title_label)
-        preset_row.addWidget(self.preset_label)
-        preset_row.addStretch(1)
+        parent_version_row = QHBoxLayout()
+        parent_version_row.addWidget(self.parent_version_title_label)
+        parent_version_row.addWidget(self.parent_version_label)
+        parent_version_row.addStretch(1)
         created_at_row = QHBoxLayout()
         created_at_row.addWidget(QLabel(self.t("category.created_at")))
         created_at_row.addWidget(self.created_at_label)
         created_at_row.addStretch(1)
         identity.addLayout(uuid_row)
-        identity.addLayout(preset_row)
+        identity.addLayout(parent_version_row)
         identity.addLayout(created_at_row)
 
         self.table = QTableWidget(0, len(self.columns), self)
@@ -208,7 +208,7 @@ class CategoryConfigDialog(QDialog):
         self.config_id = config.id
         self.config_name = config.name
         self.created_at = data.created_at
-        self.preset = data.preset
+        self.parent_version_uuid = data.parent_version_uuid
         self.is_draft = False
         self.draft_saved = False
         self.populate(categories)
@@ -273,7 +273,7 @@ class CategoryConfigDialog(QDialog):
         self.created_at_label.setText(
             self.created_at or self.t("category.not_created")
         )
-        self.preset_label.setText(self.preset_display())
+        self.parent_version_label.setText(self.parent_version_display())
         self.save_button.setText(self.t("common.save"))
         self.save_button.setEnabled(self.is_draft)
         self.copy_button.setEnabled(not self.is_draft)
@@ -294,20 +294,16 @@ class CategoryConfigDialog(QDialog):
         item = self.table.item(row, column)
         return item.text().strip() if item is not None else ""
 
-    def preset_display(self):
-        """Return the source configuration UUID and filename for display."""
-        preset_id = (
-            self.config_id
-            if self.config_id == CategoryConfigManager.BUILTIN_ID
-            else self.preset
-        )
-        if preset_id is None:
-            return self.t("category.preset_none")
+    def parent_version_display(self):
+        """Return the parent configuration UUID and filename for display."""
+        parent_id = self.parent_version_uuid
+        if parent_id is None:
+            return self.t("category.parent_version_none")
         try:
-            filename = self.manager.config_filename(preset_id)
+            filename = self.manager.config_filename(parent_id)
         except CategoryConfigError:
-            return self.t("category.preset_missing", uuid=preset_id)
-        return f"{preset_id} · {filename}"
+            return self.t("category.parent_version_missing", uuid=parent_id)
+        return f"{parent_id} · {filename}"
 
     def categories(self):
         """Build validated category objects from the editor rows."""
@@ -357,7 +353,7 @@ class CategoryConfigDialog(QDialog):
         self.config_id = self.manager.new_uuid()
         self.config_name = name
         self.created_at = ""
-        self.preset = None
+        self.parent_version_uuid = None
         self.is_draft = True
         self.draft_saved = False
         self.populate([])
@@ -391,7 +387,7 @@ class CategoryConfigDialog(QDialog):
                 name,
                 config_id,
                 categories,
-                preset=self.config_id,
+                parent_version_uuid=self.config_id,
             )
         except (CategoryConfigError, OSError) as error:
             QMessageBox.critical(self, self.t("category.copy_failed"), str(error))
@@ -400,7 +396,7 @@ class CategoryConfigDialog(QDialog):
         self.config_name = name
         data = self.manager.load_data(config_id)
         self.created_at = data.created_at
-        self.preset = data.preset
+        self.parent_version_uuid = data.parent_version_uuid
         self.is_draft = True
         self.draft_saved = True
         self.populate(categories)
@@ -452,7 +448,7 @@ class CategoryConfigDialog(QDialog):
                 self.manager.create(self.config_name, self.config_id, categories)
                 data = self.manager.load_data(self.config_id)
                 self.created_at = data.created_at
-                self.preset = data.preset
+                self.parent_version_uuid = data.parent_version_uuid
                 self.draft_saved = True
             self.dirty = False
             self.refresh_config_list(self.config_id)

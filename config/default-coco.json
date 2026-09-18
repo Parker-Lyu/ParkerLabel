@@ -1,9 +1,9 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "uuid": "c2da0de2-f465-4109-98f1-08a5bd881803",
   "created_at": "2026-09-18T09:52:35+08:00",
-  "sha256": "31e16a2704753c2bf672dbdd53b4da29cf66ae5f1ad5f0c4b73a6ec91dc433c7",
-  "preset": "coco-detection-2017",
+  "sha256": "3bd81de3e567b0d16dd7889a2ec0fcd02188d84185c3fda564e630d0558e5905",
+  "parent_version_uuid": null,
   "categories": [
     {"id": 1, "name": "person", "supercategory": "person", "description": "", "enabled": true},
     {"id": 2, "name": "bicycle", "supercategory": "vehicle", "description": "", "enabled": true},
