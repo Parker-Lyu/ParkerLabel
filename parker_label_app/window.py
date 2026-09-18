@@ -1785,13 +1785,20 @@ class MainWindow(QWidget):
             display = color_mask
         else:
             display = cv2.addWeighted(self.document.image_rgb, 0.5, color_mask, 0.5, 0)
+        image_height, image_width = self.document.image_rgb.shape[:2]
+        native_or_larger = (
+            self.canvas_size[0] >= image_width and self.canvas_size[1] >= image_height
+        )
+        transformation_mode = (
+            Qt.FastTransformation
+            if self.view_mode == "mask" or native_or_larger
+            else Qt.SmoothTransformation
+        )
         pixmap = QPixmap.fromImage(qimage_from_rgb(display)).scaled(
             self.canvas_size[0],
             self.canvas_size[1],
             Qt.IgnoreAspectRatio,
-            Qt.FastTransformation
-            if self.view_mode == "mask" or self.painting is not None
-            else Qt.SmoothTransformation,
+            transformation_mode,
         )
         if self.painting is None:
             if self.view_mode == "overlay":
