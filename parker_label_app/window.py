@@ -35,6 +35,12 @@ from .annotation_io import AnnotationRepository
 from .canvas import AnnotationCanvas
 from .category_dialog import CategoryConfigDialog
 from .category_store import CategoryConfigError, CategoryConfigManager
+from .editing import (
+    EditSnapshot,
+    apply_manual_constraints,
+    arrays_equal,
+    build_effective_mask_input,
+)
 from .image_utils import color_id_to_rgb, id_mask_to_rgb, qimage_from_rgb
 from .i18n import language_manager
 from .inference import SegmentationEngine
@@ -218,6 +224,11 @@ class MainWindow(QWidget):
         self.prompt_points = []
         self.prompt_labels = []
         self.previous_logits = None
+        self.manual_constraints = None
+        self.undo_stack = []
+        self.redo_stack = []
+        self.history_limit = 30
+        self._brush_snapshot = None
         self.quality_check_enabled = False
         self.mask_quality = MaskQuality()
         self.mode = "query"
@@ -301,10 +312,7 @@ class MainWindow(QWidget):
         self.add_button.setEnabled(editable)
         self.commit_button.setEnabled(editable)
         self.discard_button.setEnabled(editable)
-        self.undo_button.setEnabled(editable)
-        self.redo_button.setEnabled(editable)
-        for button in self.mode_group.buttons():
-            button.setEnabled(editable or button.property("value") == "query")
+        self.update_history_controls()
         self.update_tool_controls()
 
     def build_ui(self):
@@ -389,6 +397,8 @@ class MainWindow(QWidget):
         self.commit_button = QPushButton()
         self.discard_button = QPushButton()
         self.add_button.setShortcut("A")
+        self.undo_button.clicked.connect(self.undo_edit)
+        self.redo_button.clicked.connect(self.redo_edit)
         self.add_button.clicked.connect(self.add_segment)
         self.commit_button.clicked.connect(self.commit_current_segment)
         self.discard_button.clicked.connect(self.discard_edit)
@@ -596,14 +606,9 @@ class MainWindow(QWidget):
     def reset_document_view(self):
         """Reset table and canvas state when no document is active."""
         self.current_index = None
-        self.edit_mask = None
-        self.edit_dirty = False
-        self.metadata_dirty = False
-        self.metadata_snapshot = None
-        self.prompt_points = []
-        self.prompt_labels = []
-        self.previous_logits = None
-        self.mask_quality = MaskQuality()
+        self.mode = "query"
+        self.set_checked_button(self.mode_group, self.mode)
+        self.clear_edit_state()
         self.table.setRowCount(0)
         self.canvas.setText(self.t("canvas.open_image"))
         self.canvas.setFixedSize(640, 480)
@@ -964,8 +969,12 @@ class MainWindow(QWidget):
             return
         self.current_index = index
         self.clear_edit_state()
+        if self.mode == "smart" and not self.smart_edit_allowed():
+            self.mode = "query"
+            self.set_checked_button(self.mode_group, self.mode)
         self.update_mask_quality()
         self.refresh_table()
+        self.update_tool_controls()
         self.refresh_canvas()
 
     def resolve_pending_edit(self):
@@ -1034,7 +1043,11 @@ class MainWindow(QWidget):
 
     def set_segment_category(self, index, name):
         """Assign a selected configured category to a segment."""
-        if self.document is None or index >= len(self.document.segments):
+        if (
+            self.document is None
+            or index >= len(self.document.segments)
+            or index != self.current_index
+        ):
             return
         if not self.document_is_editable():
             return
@@ -1044,9 +1057,11 @@ class MainWindow(QWidget):
         segment = self.document.segments[index]
         if segment.category_id == category.id and segment.category_name == category.name:
             return
+        snapshot = self.capture_edit_snapshot()
         self.begin_metadata_edit(index)
         self.document.change_segment_category(index, category)
         self.update_metadata_dirty(index)
+        self.record_history(snapshot)
         self.resize_segment_table_columns()
         self.refresh_canvas()
 
@@ -1058,9 +1073,11 @@ class MainWindow(QWidget):
             or not self.document_is_editable()
         ):
             return
+        snapshot = self.capture_edit_snapshot()
         self.begin_metadata_edit(index)
         self.document.change_segment_color(index, self.generate_color_id())
         self.update_metadata_dirty(index)
+        self.record_history(snapshot)
         self.refresh_table()
         self.refresh_canvas()
 
@@ -1082,6 +1099,8 @@ class MainWindow(QWidget):
         self.document.remove_segment(index)
         if self.current_index == index:
             self.current_index = None
+            self.mode = "query"
+            self.set_checked_button(self.mode_group, self.mode)
             self.clear_edit_state()
         elif self.current_index is not None and self.current_index > index:
             self.current_index -= 1
@@ -1092,15 +1111,15 @@ class MainWindow(QWidget):
     def change_mode(self, button):
         """Switch the active canvas interaction mode."""
         next_mode = button.property("value")
-        if next_mode != "query" and not self.document_is_editable():
-            self.set_checked_button(self.mode_group, "query")
+        if next_mode == "smart" and not self.smart_edit_allowed():
+            self.set_checked_button(self.mode_group, self.mode)
             return
-        if next_mode != self.mode and self.has_pending_target_edit() and not self.resolve_pending_edit():
+        if next_mode == "brush" and (
+            not self.document_is_editable() or self.current_index is None
+        ):
             self.set_checked_button(self.mode_group, self.mode)
             return
         self.mode = next_mode
-        self.clear_edit_state()
-        self.update_mask_quality()
         self.update_tool_controls()
         self.refresh_canvas()
 
@@ -1116,9 +1135,138 @@ class MainWindow(QWidget):
                 button.setChecked(True)
                 return
 
+    def smart_edit_allowed(self):
+        """Return whether the selected target is new and still uncommitted."""
+        if (
+            not self.document_is_editable()
+            or self.current_index is None
+            or not 0 <= self.current_index < len(self.document.segments)
+        ):
+            return False
+        mask = self.document.segments[self.current_index].mask
+        return mask is None or not np.any(mask)
+
+    def capture_edit_snapshot(self):
+        """Capture the current target-local pending edit state."""
+        if (
+            self.document is None
+            or self.current_index is None
+            or not 0 <= self.current_index < len(self.document.segments)
+        ):
+            return None
+        segment = self.document.segments[self.current_index]
+        return EditSnapshot(
+            edit_mask=None if self.edit_mask is None else self.edit_mask.copy(),
+            previous_logits=(
+                None if self.previous_logits is None else self.previous_logits.copy()
+            ),
+            manual_constraints=(
+                None
+                if self.manual_constraints is None
+                else self.manual_constraints.copy()
+            ),
+            prompt_points=list(self.prompt_points),
+            prompt_labels=list(self.prompt_labels),
+            edit_dirty=self.edit_dirty,
+            metadata_dirty=self.metadata_dirty,
+            metadata_snapshot=self.metadata_snapshot,
+            document_dirty=self.document.dirty,
+            category_id=segment.category_id,
+            category_name=segment.category_name,
+            color_id=segment.color_id,
+        )
+
+    def restore_edit_snapshot(self, snapshot):
+        """Restore one target-local pending edit snapshot."""
+        if (
+            snapshot is None
+            or self.document is None
+            or self.current_index is None
+            or not 0 <= self.current_index < len(self.document.segments)
+        ):
+            return
+        segment = self.document.segments[self.current_index]
+        self.edit_mask = (
+            None if snapshot.edit_mask is None else snapshot.edit_mask.copy()
+        )
+        self.previous_logits = (
+            None
+            if snapshot.previous_logits is None
+            else snapshot.previous_logits.copy()
+        )
+        self.manual_constraints = (
+            None
+            if snapshot.manual_constraints is None
+            else snapshot.manual_constraints.copy()
+        )
+        self.prompt_points = list(snapshot.prompt_points)
+        self.prompt_labels = list(snapshot.prompt_labels)
+        self.edit_dirty = snapshot.edit_dirty
+        self.metadata_dirty = snapshot.metadata_dirty
+        self.metadata_snapshot = snapshot.metadata_snapshot
+        segment.category_id = snapshot.category_id
+        segment.category_name = snapshot.category_name
+        segment.color_id = snapshot.color_id
+        self.document.dirty = snapshot.document_dirty
+        self.update_mask_quality()
+        self.refresh_table()
+        self.update_tool_controls()
+        self.update_history_controls()
+        self.refresh_canvas()
+
+    def record_history(self, snapshot):
+        """Record the state preceding one completed target edit."""
+        if snapshot is None:
+            return
+        self.undo_stack.append(snapshot)
+        if len(self.undo_stack) > self.history_limit:
+            del self.undo_stack[0]
+        self.redo_stack.clear()
+        self.update_history_controls()
+
+    def update_history_controls(self):
+        """Enable undo and redo only when the current edit session has history."""
+        if not hasattr(self, "undo_button"):
+            return
+        editable = self.document_is_editable() and self.current_index is not None
+        self.undo_button.setEnabled(editable and bool(self.undo_stack))
+        self.redo_button.setEnabled(editable and bool(self.redo_stack))
+
+    def undo_edit(self):
+        """Undo one operation in the current uncommitted target edit session."""
+        if not self.undo_stack:
+            return
+        current = self.capture_edit_snapshot()
+        snapshot = self.undo_stack.pop()
+        if current is not None:
+            self.redo_stack.append(current)
+        self.restore_edit_snapshot(snapshot)
+
+    def redo_edit(self):
+        """Redo one operation in the current uncommitted target edit session."""
+        if not self.redo_stack:
+            return
+        current = self.capture_edit_snapshot()
+        snapshot = self.redo_stack.pop()
+        if current is not None:
+            self.undo_stack.append(current)
+        self.restore_edit_snapshot(snapshot)
+
     def update_tool_controls(self):
         """Enable editing controls that apply to the current mode."""
-        manual = self.mode == "brush" and self.document_is_editable()
+        editable = self.document_is_editable()
+        selected = self.current_index is not None
+        if hasattr(self, "mode_group"):
+            for button in self.mode_group.buttons():
+                value = button.property("value")
+                if value == "query":
+                    enabled = True
+                elif value == "smart":
+                    enabled = self.smart_edit_allowed()
+                else:
+                    enabled = editable and selected
+                button.setEnabled(enabled)
+        manual = self.mode == "brush" and editable and selected
         if hasattr(self, "manual_controls"):
             for control in self.manual_controls:
                 control.setEnabled(manual)
@@ -1140,11 +1288,17 @@ class MainWindow(QWidget):
             self.show_warning(self.t("error.edit_target"), self.t("error.no_target"))
             return False
         if self.edit_mask is None:
-            if self.mode == "smart":
-                self.edit_mask = np.zeros(self.document.image_rgb.shape[:2], dtype=np.uint8)
-            else:
-                segment_mask = self.document.segments[self.current_index].mask
-                self.edit_mask = segment_mask.copy() if segment_mask is not None else np.zeros(self.document.image_rgb.shape[:2], dtype=np.uint8)
+            segment_mask = self.document.segments[self.current_index].mask
+            self.edit_mask = (
+                segment_mask.copy()
+                if segment_mask is not None
+                else np.zeros(self.document.image_rgb.shape[:2], dtype=np.uint8)
+            )
+        if self.manual_constraints is None and self.smart_edit_allowed():
+            self.manual_constraints = np.zeros(
+                self.document.image_rgb.shape[:2],
+                dtype=np.int8,
+            )
         return True
 
     def ensure_document_editable(self, title):
@@ -1189,7 +1343,12 @@ class MainWindow(QWidget):
         self.prompt_points = []
         self.prompt_labels = []
         self.previous_logits = None
+        self.manual_constraints = None
+        self.undo_stack.clear()
+        self.redo_stack.clear()
+        self._brush_snapshot = None
         self.mask_quality = MaskQuality()
+        self.update_history_controls()
 
     def toggle_quality_check(self, _checked=False):
         """Toggle visual quality hints for the active mask."""
@@ -1259,7 +1418,9 @@ class MainWindow(QWidget):
         if self.edit_mask is None and not self.metadata_dirty:
             self.show_warning(self.t("error.commit_target"), self.t("error.no_edit"))
             return False
-        if self.edit_mask is not None and not np.any(self.edit_mask):
+        segment = self.document.segments[self.current_index]
+        pending_mask = self.edit_mask if self.edit_mask is not None else segment.mask
+        if pending_mask is None or not np.any(pending_mask):
             self.show_warning(self.t("error.commit_target"), self.t("error.no_mask"))
             return False
         if self.edit_mask is not None:
@@ -1268,28 +1429,52 @@ class MainWindow(QWidget):
                 self.edit_mask,
             )
         self.clear_edit_state()
+        if self.mode == "smart":
+            self.mode = "query"
+            self.set_checked_button(self.mode_group, self.mode)
         self.update_mask_quality()
         self.refresh_table()
+        self.update_tool_controls()
         self.refresh_canvas()
         self.log(self.t("log.target_committed"))
         return True
 
     def dilate_edit_mask(self):
         """Dilate the pending binary mask by one iteration."""
+        snapshot = self.capture_edit_snapshot()
         if not self.ensure_edit_mask():
             return
-        self.edit_mask = cv2.dilate(self.edit_mask, self.morph_kernel, iterations=1)
+        before = self.edit_mask.copy()
+        after = cv2.dilate(before, self.morph_kernel, iterations=1)
+        changed = before != after
+        if not np.any(changed):
+            self.restore_edit_snapshot(snapshot)
+            return
+        self.edit_mask = after
+        if self.manual_constraints is not None:
+            self.manual_constraints[changed] = 1
         self.edit_dirty = True
+        self.record_history(snapshot)
         self.update_mask_quality()
         self.refresh_table()
         self.refresh_canvas()
 
     def erode_edit_mask(self):
         """Erode the pending binary mask by one iteration."""
+        snapshot = self.capture_edit_snapshot()
         if not self.ensure_edit_mask():
             return
-        self.edit_mask = cv2.erode(self.edit_mask, self.morph_kernel, iterations=1)
+        before = self.edit_mask.copy()
+        after = cv2.erode(before, self.morph_kernel, iterations=1)
+        changed = before != after
+        if not np.any(changed):
+            self.restore_edit_snapshot(snapshot)
+            return
+        self.edit_mask = after
+        if self.manual_constraints is not None:
+            self.manual_constraints[changed] = -1
         self.edit_dirty = True
+        self.record_history(snapshot)
         self.update_mask_quality()
         self.refresh_table()
         self.refresh_canvas()
@@ -1339,26 +1524,37 @@ class MainWindow(QWidget):
 
     def run_smart_prediction(self, x, y, positive):
         """Update the pending mask with a smart positive or negative point."""
+        if not self.smart_edit_allowed():
+            return
+        snapshot = self.capture_edit_snapshot()
         if not self.ensure_edit_mask() or not self.ensure_embedding():
+            self.restore_edit_snapshot(snapshot)
             return
         self.prompt_points.append((x, y))
         self.prompt_labels.append(1 if positive else 0)
         try:
+            mask_input = build_effective_mask_input(
+                self.previous_logits,
+                self.manual_constraints,
+                model_input_size=self.engine.target_size,
+            )
             mask, logits, elapsed_ms = self.engine.predict(
                 self.document.embedding,
                 self.document.image_rgb.shape[:2],
                 self.prompt_points,
                 self.prompt_labels,
-                self.previous_logits,
+                mask_input,
             )
-            self.edit_mask = mask
+            self.edit_mask = apply_manual_constraints(mask, self.manual_constraints)
             self.previous_logits = logits
             self.edit_dirty = True
+            self.record_history(snapshot)
             self.update_mask_quality()
             self.refresh_table()
             self.refresh_canvas()
             self.log(self.t("log.segment_complete", elapsed=elapsed_ms))
         except Exception as error:
+            self.restore_edit_snapshot(snapshot)
             self.log_exception(self.t("error.segment"), error)
 
     def canvas_mouse_press(self, event):
@@ -1388,8 +1584,10 @@ class MainWindow(QWidget):
             self.run_smart_prediction(x, y, event.button() == Qt.LeftButton)
             return
         if self.mode == "brush" and event.button() in {Qt.LeftButton, Qt.RightButton}:
+            snapshot = self.capture_edit_snapshot()
             if not self.ensure_edit_mask():
                 return
+            self._brush_snapshot = snapshot
             self.painting = 1 if event.button() == Qt.LeftButton else 0
             self.paint_at(x, y)
 
@@ -1415,12 +1613,37 @@ class MainWindow(QWidget):
             self.panning = False
             self.pan_origin = None
             self.update_tool_controls()
+        snapshot = self._brush_snapshot
         self.painting = None
+        self._brush_snapshot = None
+        if snapshot is not None:
+            current = self.capture_edit_snapshot()
+            if (
+                current is not None
+                and (
+                    not arrays_equal(snapshot.edit_mask, current.edit_mask)
+                    or not arrays_equal(
+                        snapshot.manual_constraints,
+                        current.manual_constraints,
+                    )
+                )
+            ):
+                self.record_history(snapshot)
+            else:
+                self.restore_edit_snapshot(snapshot)
 
     def paint_at(self, x, y):
         """Paint or erase a circular area in the pending mask."""
         radius = self.brush_slider.value()
         cv2.circle(self.edit_mask, (x, y), radius, self.painting, -1)
+        if self.manual_constraints is not None:
+            cv2.circle(
+                self.manual_constraints,
+                (x, y),
+                radius,
+                1 if self.painting else -1,
+                -1,
+            )
         self.edit_dirty = True
         self.update_mask_quality()
         self.refresh_table()
