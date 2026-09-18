@@ -5,7 +5,7 @@ _TEXT = {
     "zh_CN": {
         "app.start_failed": "启动失败",
         "canvas.open_image": "请打开图片",
-        "category.current": "当前类别：\n{name}",
+        "category.current": "当前类别配置：\n{name}",
         "category.builtin_name": "COCO 默认",
         "common.close": "关闭",
         "common.delete": "删除",
@@ -144,7 +144,7 @@ _TEXT = {
     "en_US": {
         "app.start_failed": "Startup Failed",
         "canvas.open_image": "Open an image to begin",
-        "category.current": "Categories:\n{name}",
+        "category.current": "Category configuration:\n{name}",
         "category.builtin_name": "COCO Default",
         "common.close": "Close",
         "common.delete": "Delete",
