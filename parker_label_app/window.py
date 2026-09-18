@@ -198,6 +198,7 @@ class MainWindow(QWidget):
     COL_COLOR = 4
     COL_DELETE = 5
     QUALITY_SETTING_KEY = "interface/quality_check_enabled"
+    TOOLTIPS_SETTING_KEY = "interface/tooltips_enabled"
 
     def __init__(self):
         """Initialize application services, state, and interface."""
@@ -236,6 +237,9 @@ class MainWindow(QWidget):
         self._brush_preview_base = None
         self.quality_check_enabled = self.settings.value(
             self.QUALITY_SETTING_KEY, True, type=bool
+        )
+        self.tooltips_enabled = self.settings.value(
+            self.TOOLTIPS_SETTING_KEY, True, type=bool
         )
         self.mask_quality = MaskQuality()
         self.mode = "query"
@@ -362,18 +366,24 @@ class MainWindow(QWidget):
         self.resize_segment_table_columns()
 
     def build_primary_controls(self):
-        """Create file, category, and save actions."""
+        """Create primary actions and compact interface status controls."""
         layout = QGridLayout()
         self.open_button = QPushButton()
         self.quality_button = QualityToggleButton("")
         self.quality_button.set_active(self.quality_check_enabled)
         self.category_button = QPushButton()
         self.save_button = QPushButton()
+        self.tooltip_button = QPushButton()
         self.save_button.setShortcut("Ctrl+S")
         self.open_button.clicked.connect(self.choose_image)
         self.quality_button.clicked.connect(self.toggle_quality_check)
         self.category_button.clicked.connect(self.configure_categories)
         self.save_button.clicked.connect(self.save_document)
+        self.tooltip_button.clicked.connect(self.toggle_tooltips)
+        self.language_toggle = LanguageToggleLabel(self.i18n.language)
+        self.language_toggle.clicked.connect(self.toggle_language)
+        self.category_config_label = QLabel()
+        self.category_config_label.setAlignment(Qt.AlignCenter)
         buttons = (
             self.open_button,
             self.quality_button,
@@ -390,16 +400,15 @@ class MainWindow(QWidget):
         layout.addWidget(self.category_button, 1, 0)
         layout.addWidget(self.save_button, 1, 1)
         layout.setColumnStretch(2, 1)
-        self.language_toggle = LanguageToggleLabel(self.i18n.language)
-        self.language_toggle.clicked.connect(self.toggle_language)
-        layout.addWidget(self.language_toggle, 0, 3, Qt.AlignRight | Qt.AlignVCenter)
-        self.category_config_label = QLabel(
-            self.t("category.current", name=self.category_config_display_name())
-        )
-        self.category_config_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(
-            self.category_config_label, 1, 3, Qt.AlignRight | Qt.AlignVCenter
-        )
+
+        status_panel = QWidget(self)
+        status_layout = QVBoxLayout(status_panel)
+        status_layout.setContentsMargins(0, 0, 0, 0)
+        status_layout.setSpacing(4)
+        status_layout.addWidget(self.language_toggle, 0, Qt.AlignRight)
+        status_layout.addWidget(self.category_config_label, 0, Qt.AlignRight)
+        status_layout.addWidget(self.tooltip_button, 0, Qt.AlignRight)
+        layout.addWidget(status_panel, 0, 3, 2, 1, Qt.AlignRight | Qt.AlignVCenter)
         return layout
 
     def build_tool_controls(self):
@@ -503,6 +512,7 @@ class MainWindow(QWidget):
         outer.addLayout(lower_row)
         self.update_tool_control_text()
         self.update_tool_controls()
+        self.update_tooltips()
         return outer
 
     def build_segment_table(self):
@@ -520,14 +530,19 @@ class MainWindow(QWidget):
         return table
 
     def update_primary_control_text(self):
-        """Refresh localized text for file and category controls."""
+        """Refresh localized text for primary and status controls."""
         self.open_button.setText(self.t("main.open_image"))
         self.quality_button.setText(
             self.t("main.quality.on" if self.quality_check_enabled else "main.quality.off")
         )
-        self.quality_button.setToolTip(self.t("tooltip.quality"))
         self.category_button.setText(self.t("main.category_config"))
         self.save_button.setText(self.t("main.save_disk"))
+        self.category_config_label.setText(
+            self.t("category.current", name=self.category_config_display_name())
+        )
+        self.tooltip_button.setText(
+            self.t("main.tooltips.on" if self.tooltips_enabled else "main.tooltips.off")
+        )
 
     def update_tool_control_text(self):
         """Refresh localized text for editing and viewing controls."""
@@ -547,9 +562,7 @@ class MainWindow(QWidget):
             self.t("manual.brush_size", value=self.brush_slider.value())
         )
         self.erode_button.setText(self.t("manual.erode"))
-        self.erode_button.setToolTip(self.t("tooltip.erode"))
         self.dilate_button.setText(self.t("manual.dilate"))
-        self.dilate_button.setToolTip(self.t("tooltip.dilate"))
 
     def update_table_headers(self, table=None):
         """Refresh localized segment table headings."""
@@ -571,15 +584,38 @@ class MainWindow(QWidget):
         language = "en_US" if self.i18n.language == "zh_CN" else "zh_CN"
         self.i18n.set_language(language)
 
+    def toggle_tooltips(self, _checked=False):
+        """Toggle contextual interface hints."""
+        self.tooltips_enabled = not self.tooltips_enabled
+        self.settings.setValue(self.TOOLTIPS_SETTING_KEY, self.tooltips_enabled)
+        self.settings.sync()
+        self.tooltip_button.setText(
+            self.t("main.tooltips.on" if self.tooltips_enabled else "main.tooltips.off")
+        )
+        self.update_tooltips()
+
+    def update_tooltips(self):
+        """Refresh localized hints for controls that need extra clarification."""
+        tooltip_map = (
+            (self.quality_button, "tooltip.quality"),
+            (self.commit_button, "tooltip.commit_target"),
+            (self.discard_button, "tooltip.discard_changes"),
+            (self.erode_button, "tooltip.erode"),
+            (self.dilate_button, "tooltip.dilate"),
+        )
+        for control, key in tooltip_map:
+            control.setToolTip(self.t(key) if self.tooltips_enabled else "")
+        for button in self.mode_group.buttons():
+            key = f"tooltip.mode.{button.property('value')}"
+            button.setToolTip(self.t(key) if self.tooltips_enabled else "")
+
     def retranslate_ui(self, _language=None):
         """Refresh visible interface text after a language change."""
         self.language_toggle.set_language(self.i18n.language)
         self.update_primary_control_text()
         self.update_tool_control_text()
         self.update_table_headers()
-        self.category_config_label.setText(
-            self.t("category.current", name=self.category_config_display_name())
-        )
+        self.update_tooltips()
         if self.document is None:
             self.canvas.setText(self.t("canvas.open_image"))
             if self.log_area.document().blockCount() == 1:
