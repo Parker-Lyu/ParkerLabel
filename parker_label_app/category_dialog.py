@@ -33,6 +33,7 @@ class CategoryConfigDialog(QDialog):
         self.applied_config_id = None
         self.config_id = None
         self.config_name = ""
+        self.created_at = ""
         self.is_draft = False
         self.draft_saved = False
         self.dirty = False
@@ -81,16 +82,25 @@ class CategoryConfigDialog(QDialog):
         self.config_hint.setStyleSheet("color: palette(mid)")
         self.uuid_label = QLabel()
         self.uuid_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.created_at_label = QLabel()
+        self.created_at_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         heading = QHBoxLayout()
         heading.addWidget(self.config_title)
         heading.addSpacing(12)
         heading.addWidget(self.config_hint)
         heading.addStretch(1)
 
-        identity = QHBoxLayout()
-        identity.addWidget(QLabel("UUID:"))
-        identity.addWidget(self.uuid_label)
-        identity.addStretch(1)
+        identity = QVBoxLayout()
+        uuid_row = QHBoxLayout()
+        uuid_row.addWidget(QLabel("UUID:"))
+        uuid_row.addWidget(self.uuid_label)
+        uuid_row.addStretch(1)
+        created_at_row = QHBoxLayout()
+        created_at_row.addWidget(QLabel(self.t("category.created_at")))
+        created_at_row.addWidget(self.created_at_label)
+        created_at_row.addStretch(1)
+        identity.addLayout(uuid_row)
+        identity.addLayout(created_at_row)
 
         self.table = QTableWidget(0, len(self.columns), self)
         self.table.setHorizontalHeaderLabels(self.columns)
@@ -182,9 +192,11 @@ class CategoryConfigDialog(QDialog):
     def load_config(self, config_id):
         """Load one saved configuration into the editor."""
         config = self.manager.configuration(config_id)
-        categories = self.manager.load(config_id)
+        data = self.manager.load_data(config_id)
+        categories = list(data.categories)
         self.config_id = config.id
         self.config_name = config.name
+        self.created_at = data.created_at
         self.is_draft = False
         self.draft_saved = False
         self.populate(categories)
@@ -246,6 +258,9 @@ class CategoryConfigDialog(QDialog):
         hint_key = "category.hint.draft" if self.is_draft else "category.hint.readonly"
         self.config_hint.setText(self.t(hint_key))
         self.uuid_label.setText(self.config_id or "")
+        self.created_at_label.setText(
+            self.created_at or self.t("category.not_created")
+        )
         self.save_button.setText(self.t("common.save"))
         self.save_button.setEnabled(self.is_draft)
         self.copy_button.setEnabled(not self.is_draft)
@@ -305,6 +320,7 @@ class CategoryConfigDialog(QDialog):
             self.manager.freeze(self.config_id)
         self.config_id = self.manager.new_uuid()
         self.config_name = name
+        self.created_at = ""
         self.is_draft = True
         self.draft_saved = False
         self.populate([])
@@ -340,6 +356,7 @@ class CategoryConfigDialog(QDialog):
             return
         self.config_id = config_id
         self.config_name = name
+        self.created_at = self.manager.load_data(config_id).created_at
         self.is_draft = True
         self.draft_saved = True
         self.populate(categories)
@@ -388,6 +405,7 @@ class CategoryConfigDialog(QDialog):
                 self.manager.save_draft(self.config_id, categories)
             else:
                 self.manager.create(self.config_name, self.config_id, categories)
+                self.created_at = self.manager.load_data(self.config_id).created_at
                 self.draft_saved = True
             self.dirty = False
             self.refresh_config_list(self.config_id)

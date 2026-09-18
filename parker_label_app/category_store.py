@@ -4,6 +4,7 @@ import os
 import tempfile
 import unicodedata
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -65,17 +66,36 @@ def _content_hash(payload):
     return hashlib.sha256(encoded).hexdigest()
 
 
+def _created_at(value):
+    if not isinstance(value, str):
+        raise CategoryConfigError("类别配置 created_at 必须是字符串")
+    try:
+        timestamp = datetime.fromisoformat(value)
+    except ValueError as error:
+        raise CategoryConfigError(f"类别配置 created_at 无效：{value}") from error
+    if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+        raise CategoryConfigError("类别配置 created_at 必须包含时区")
+    return value
+
+
 @dataclass(frozen=True)
 class CategoryConfigData:
     uuid: str
+    created_at: str
     categories: tuple[Category, ...]
     content_hash: str
 
 
 class CategoryStore:
     FIELDS = {"id", "name", "supercategory", "description", "enabled"}
-    TOP_LEVEL_FIELDS = {"schema_version", "uuid", "preset", "categories"}
-    SCHEMA_VERSION = 2
+    TOP_LEVEL_FIELDS = {
+        "schema_version",
+        "uuid",
+        "created_at",
+        "preset",
+        "categories",
+    }
+    SCHEMA_VERSION = 3
 
     def __init__(self, path: Path, readonly=False):
         """Initialize a category store backed by one local JSON file."""
@@ -99,6 +119,7 @@ class CategoryStore:
                 f"不支持的类别配置版本：{payload.get('schema_version')}"
             )
         config_uuid = _canonical_uuid(payload.get("uuid"))
+        created_at = _created_at(payload.get("created_at"))
         raw_categories = payload.get("categories")
         if not isinstance(raw_categories, list):
             raise CategoryConfigError("类别配置必须包含 categories 数组")
@@ -131,6 +152,7 @@ class CategoryStore:
         self.validate(categories)
         return CategoryConfigData(
             config_uuid,
+            created_at,
             tuple(categories),
             _content_hash(payload),
         )
@@ -139,11 +161,12 @@ class CategoryStore:
         """Load validated categories from local JSON."""
         return list(self.load_data().categories)
 
-    def save(self, config_uuid, categories, overwrite=False):
+    def save(self, config_uuid, created_at, categories, overwrite=False):
         """Validate and atomically save a category configuration."""
         if self.readonly:
             raise CategoryConfigError("已有类别配置不可修改")
         config_uuid = _canonical_uuid(config_uuid)
+        created_at = _created_at(created_at)
         categories = list(categories)
         self.validate(categories)
         _write_json(
@@ -151,6 +174,7 @@ class CategoryStore:
             {
                 "schema_version": self.SCHEMA_VERSION,
                 "uuid": config_uuid,
+                "created_at": created_at,
                 "categories": [category.to_dict() for category in categories],
             },
             overwrite=overwrite,
@@ -192,6 +216,7 @@ class CategoryStore:
 class CategoryConfig:
     id: str
     name: str
+    created_at: str
     content_hash: str
     builtin: bool = False
 
@@ -261,6 +286,7 @@ class CategoryConfigManager:
             CategoryConfig(
                 builtin_data.uuid,
                 self.BUILTIN_NAME,
+                builtin_data.created_at,
                 builtin_data.content_hash,
                 True,
             )
@@ -276,7 +302,14 @@ class CategoryConfigManager:
             )
             for path in paths:
                 data = CategoryStore(path, readonly=True).load_data()
-                result.append(CategoryConfig(data.uuid, path.stem, data.content_hash))
+                result.append(
+                    CategoryConfig(
+                        data.uuid,
+                        path.stem,
+                        data.created_at,
+                        data.content_hash,
+                    )
+                )
         duplicates = {
             config.id
             for config in result
@@ -343,7 +376,10 @@ class CategoryConfigManager:
             pass
         else:
             raise CategoryConfigError(f"类别配置 uuid 重复：{config_uuid}")
-        CategoryStore(self._config_path(name)).save(config_uuid, categories)
+        created_at = datetime.now().astimezone().isoformat(timespec="seconds")
+        CategoryStore(self._config_path(name)).save(
+            config_uuid, created_at, categories
+        )
         self._drafts[config_uuid] = name
         return config_uuid
 
@@ -355,7 +391,12 @@ class CategoryConfigManager:
         data = CategoryStore(self._config_path(name), readonly=True).load_data()
         if data.uuid != config_id:
             raise CategoryConfigError("草稿配置 uuid 与文件不一致")
-        CategoryStore(self._config_path(name)).save(config_id, categories, overwrite=True)
+        CategoryStore(self._config_path(name)).save(
+            config_id,
+            data.created_at,
+            categories,
+            overwrite=True,
+        )
 
     def freeze(self, config_id):
         """Make a saved draft immutable."""
