@@ -97,7 +97,7 @@ class CategoryStore:
         "preset",
         "categories",
     }
-    SCHEMA_VERSION = 3
+    SCHEMA_VERSION = 4
 
     def __init__(self, path: Path, readonly=False):
         """Initialize a category store backed by one local JSON file."""
@@ -122,17 +122,6 @@ class CategoryStore:
             )
         config_uuid = _canonical_uuid(payload.get("uuid"))
         created_at = _created_at(payload.get("created_at"))
-        content_hash = _content_hash(payload)
-        sha256 = payload.get("sha256")
-        if sha256 is not None:
-            if (
-                not isinstance(sha256, str)
-                or len(sha256) != 64
-                or any(character not in "0123456789abcdef" for character in sha256)
-            ):
-                raise CategoryConfigError("类别配置 sha256 无效")
-            if sha256 != content_hash:
-                raise CategoryConfigError("类别配置 sha256 校验失败")
         raw_categories = payload.get("categories")
         if not isinstance(raw_categories, list):
             raise CategoryConfigError("类别配置必须包含 categories 数组")
@@ -163,6 +152,16 @@ class CategoryStore:
                 raise CategoryConfigError(f"第 {row} 条类别文本字段必须是字符串")
             categories.append(Category.from_dict(value))
         self.validate(categories)
+        content_hash = _content_hash(payload)
+        sha256 = payload.get("sha256")
+        if (
+            not isinstance(sha256, str)
+            or len(sha256) != 64
+            or any(character not in "0123456789abcdef" for character in sha256)
+        ):
+            raise CategoryConfigError("类别配置 sha256 无效")
+        if sha256 != content_hash:
+            raise CategoryConfigError("类别配置 sha256 校验失败")
         return CategoryConfigData(
             config_uuid,
             created_at,
