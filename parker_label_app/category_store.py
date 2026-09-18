@@ -360,6 +360,13 @@ class CategoryConfigManager:
                 return config
         raise CategoryConfigError(f"找不到类别配置：{config_id}")
 
+    def config_filename(self, config_id):
+        """Return the JSON filename for one configuration."""
+        config = self.configuration(config_id)
+        if config.builtin:
+            return self.builtin_store.path.name
+        return self._config_path(config.name).name
+
     def load_data(self, config_id):
         """Load one built-in or user category configuration by UUID."""
         config = self.configuration(config_id)

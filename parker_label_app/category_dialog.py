@@ -36,6 +36,7 @@ class CategoryConfigDialog(QDialog):
         self.config_id = None
         self.config_name = ""
         self.created_at = ""
+        self.preset = None
         self.is_draft = False
         self.draft_saved = False
         self.dirty = False
@@ -86,6 +87,9 @@ class CategoryConfigDialog(QDialog):
         self.uuid_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.created_at_label = QLabel()
         self.created_at_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.preset_label = QLabel()
+        self.preset_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.preset_title_label = QLabel(self.t("category.preset"))
         heading = QHBoxLayout()
         heading.addWidget(self.config_title)
         heading.addSpacing(12)
@@ -97,11 +101,16 @@ class CategoryConfigDialog(QDialog):
         uuid_row.addWidget(QLabel("UUID:"))
         uuid_row.addWidget(self.uuid_label)
         uuid_row.addStretch(1)
+        preset_row = QHBoxLayout()
+        preset_row.addWidget(self.preset_title_label)
+        preset_row.addWidget(self.preset_label)
+        preset_row.addStretch(1)
         created_at_row = QHBoxLayout()
         created_at_row.addWidget(QLabel(self.t("category.created_at")))
         created_at_row.addWidget(self.created_at_label)
         created_at_row.addStretch(1)
         identity.addLayout(uuid_row)
+        identity.addLayout(preset_row)
         identity.addLayout(created_at_row)
 
         self.table = QTableWidget(0, len(self.columns), self)
@@ -199,6 +208,7 @@ class CategoryConfigDialog(QDialog):
         self.config_id = config.id
         self.config_name = config.name
         self.created_at = data.created_at
+        self.preset = data.preset
         self.is_draft = False
         self.draft_saved = False
         self.populate(categories)
@@ -263,6 +273,7 @@ class CategoryConfigDialog(QDialog):
         self.created_at_label.setText(
             self.created_at or self.t("category.not_created")
         )
+        self.preset_label.setText(self.preset_display())
         self.save_button.setText(self.t("common.save"))
         self.save_button.setEnabled(self.is_draft)
         self.copy_button.setEnabled(not self.is_draft)
@@ -282,6 +293,21 @@ class CategoryConfigDialog(QDialog):
         """Return trimmed text from an editor cell."""
         item = self.table.item(row, column)
         return item.text().strip() if item is not None else ""
+
+    def preset_display(self):
+        """Return the source configuration UUID and filename for display."""
+        preset_id = (
+            self.config_id
+            if self.config_id == CategoryConfigManager.BUILTIN_ID
+            else self.preset
+        )
+        if preset_id is None:
+            return self.t("category.preset_none")
+        try:
+            filename = self.manager.config_filename(preset_id)
+        except CategoryConfigError:
+            return self.t("category.preset_missing", uuid=preset_id)
+        return f"{preset_id} · {filename}"
 
     def categories(self):
         """Build validated category objects from the editor rows."""
@@ -331,6 +357,7 @@ class CategoryConfigDialog(QDialog):
         self.config_id = self.manager.new_uuid()
         self.config_name = name
         self.created_at = ""
+        self.preset = None
         self.is_draft = True
         self.draft_saved = False
         self.populate([])
@@ -371,7 +398,9 @@ class CategoryConfigDialog(QDialog):
             return
         self.config_id = config_id
         self.config_name = name
-        self.created_at = self.manager.load_data(config_id).created_at
+        data = self.manager.load_data(config_id)
+        self.created_at = data.created_at
+        self.preset = data.preset
         self.is_draft = True
         self.draft_saved = True
         self.populate(categories)
@@ -421,7 +450,9 @@ class CategoryConfigDialog(QDialog):
                 self.manager.save_draft(self.config_id, categories)
             else:
                 self.manager.create(self.config_name, self.config_id, categories)
-                self.created_at = self.manager.load_data(self.config_id).created_at
+                data = self.manager.load_data(self.config_id)
+                self.created_at = data.created_at
+                self.preset = data.preset
                 self.draft_saved = True
             self.dirty = False
             self.refresh_config_list(self.config_id)
