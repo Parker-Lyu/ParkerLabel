@@ -40,6 +40,7 @@ from .editing import (
     apply_manual_constraints,
     arrays_equal,
     build_effective_mask_input,
+    paint_brush_segment,
 )
 from .image_utils import color_id_to_rgb, id_mask_to_rgb, qimage_from_rgb
 from .i18n import language_manager
@@ -229,6 +230,7 @@ class MainWindow(QWidget):
         self.redo_stack = []
         self.history_limit = 30
         self._brush_snapshot = None
+        self._brush_position = None
         self.quality_check_enabled = False
         self.mask_quality = MaskQuality()
         self.mode = "query"
@@ -1588,6 +1590,7 @@ class MainWindow(QWidget):
             if not self.ensure_edit_mask():
                 return
             self._brush_snapshot = snapshot
+            self._brush_position = None
             self.painting = 1 if event.button() == Qt.LeftButton else 0
             self.paint_at(x, y)
 
@@ -1604,8 +1607,10 @@ class MainWindow(QWidget):
         if self.painting is None:
             return
         position = self.image_position(event.pos())
-        if position is not None:
-            self.paint_at(*position)
+        if position is None:
+            self._brush_position = None
+            return
+        self.paint_at(*position)
 
     def canvas_mouse_release(self, event):
         """End an active pan or brush stroke."""
@@ -1616,6 +1621,7 @@ class MainWindow(QWidget):
         snapshot = self._brush_snapshot
         self.painting = None
         self._brush_snapshot = None
+        self._brush_position = None
         if snapshot is not None:
             current = self.capture_edit_snapshot()
             if (
@@ -1633,17 +1639,20 @@ class MainWindow(QWidget):
                 self.restore_edit_snapshot(snapshot)
 
     def paint_at(self, x, y):
-        """Paint or erase a circular area in the pending mask."""
+        """Paint or erase continuously from the previous brush position."""
+        end = (x, y)
+        start = self._brush_position or end
         radius = self.brush_slider.value()
-        cv2.circle(self.edit_mask, (x, y), radius, self.painting, -1)
+        paint_brush_segment(self.edit_mask, start, end, radius, self.painting)
         if self.manual_constraints is not None:
-            cv2.circle(
+            paint_brush_segment(
                 self.manual_constraints,
-                (x, y),
+                start,
+                end,
                 radius,
                 1 if self.painting else -1,
-                -1,
             )
+        self._brush_position = end
         self.edit_dirty = True
         self.update_mask_quality()
         self.refresh_table()

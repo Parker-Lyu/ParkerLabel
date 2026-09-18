@@ -26,6 +26,15 @@ def arrays_equal(first, second):
     return np.array_equal(first, second)
 
 
+def paint_brush_segment(mask, start, end, radius, value):
+    start = (int(start[0]), int(start[1]))
+    end = (int(end[0]), int(end[1]))
+    radius = max(1, int(radius))
+    cv2.line(mask, start, end, value, radius * 2, cv2.LINE_8)
+    cv2.circle(mask, start, radius, value, -1)
+    cv2.circle(mask, end, radius, value, -1)
+
+
 def low_res_manual_constraints(
     manual_constraints: np.ndarray,
     model_input_size: int = 1024,
