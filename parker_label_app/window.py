@@ -330,6 +330,7 @@ class MainWindow(QWidget):
         self.scroll_area.setWidgetResizable(False)
         self.scroll_area.setAlignment(Qt.AlignCenter)
         self.quality_summary_label = QLabel(self.scroll_area.viewport())
+        self.quality_summary_label.setTextFormat(Qt.RichText)
         self.quality_summary_label.setFont(QFont("Arial", 11, QFont.Bold))
         self.quality_summary_label.setContentsMargins(7, 7, 7, 7)
         self.quality_summary_label.setStyleSheet(
@@ -643,11 +644,13 @@ class MainWindow(QWidget):
         if self.current_quality_mask() is None:
             text = self.t("quality.no_target")
         else:
-            text = self.t(
-                "quality.summary",
-                regions=self.mask_quality.mask_region_count,
-                holes=self.mask_quality.hole_count,
+            regions_text = self.t(
+                "quality.regions", regions=self.mask_quality.mask_region_count
             )
+            holes_text = self.t("quality.holes", holes=self.mask_quality.hole_count)
+            if self.mask_quality.hole_count > 0:
+                holes_text = f'<span style="color:#ff5252;">{holes_text}</span>'
+            text = f"{regions_text}&nbsp;&nbsp;{holes_text}"
         self.quality_summary_label.setText(text)
         self.quality_summary_label.adjustSize()
         self.position_quality_overlay()
