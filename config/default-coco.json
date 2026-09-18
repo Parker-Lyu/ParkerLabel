@@ -1,8 +1,8 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "uuid": "c2da0de2-f465-4109-98f1-08a5bd881803",
   "created_at": "2026-09-18T09:52:35+08:00",
-  "sha256": "86608970fac4a10ff5ca7986a08c3e6a4b4763a48ca4efde2e3e62e82bd01b86",
+  "sha256": "31e16a2704753c2bf672dbdd53b4da29cf66ae5f1ad5f0c4b73a6ec91dc433c7",
   "preset": "coco-detection-2017",
   "categories": [
     {"id": 1, "name": "person", "supercategory": "person", "description": "", "enabled": true},

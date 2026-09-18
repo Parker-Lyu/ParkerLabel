@@ -97,7 +97,7 @@ class CategoryStore:
         "preset",
         "categories",
     }
-    SCHEMA_VERSION = 4
+    SCHEMA_VERSION = 5
 
     def __init__(self, path: Path, readonly=False):
         """Initialize a category store backed by one local JSON file."""
@@ -113,15 +113,25 @@ class CategoryStore:
             raise CategoryConfigError(f"无法读取类别配置：{error}") from error
         if not isinstance(payload, dict):
             raise CategoryConfigError("类别配置必须是 JSON 对象")
-        extra = sorted(set(payload) - self.TOP_LEVEL_FIELDS)
-        if extra:
-            raise CategoryConfigError(f"类别配置包含未知字段：{', '.join(extra)}")
+        fields = set(payload)
+        if fields != self.TOP_LEVEL_FIELDS:
+            missing = sorted(self.TOP_LEVEL_FIELDS - fields)
+            extra = sorted(fields - self.TOP_LEVEL_FIELDS)
+            details = []
+            if missing:
+                details.append(f"缺少字段：{', '.join(missing)}")
+            if extra:
+                details.append(f"未知字段：{', '.join(extra)}")
+            raise CategoryConfigError(f"类别配置字段无效（{'；'.join(details)}）")
         if payload.get("schema_version") != self.SCHEMA_VERSION:
             raise CategoryConfigError(
                 f"不支持的类别配置版本：{payload.get('schema_version')}"
             )
         config_uuid = _canonical_uuid(payload.get("uuid"))
         created_at = _created_at(payload.get("created_at"))
+        preset = payload["preset"]
+        if preset is not None and (not isinstance(preset, str) or not preset):
+            raise CategoryConfigError("类别配置 preset 必须是非空字符串或 null")
         raw_categories = payload.get("categories")
         if not isinstance(raw_categories, list):
             raise CategoryConfigError("类别配置必须包含 categories 数组")
@@ -185,6 +195,7 @@ class CategoryStore:
             "schema_version": self.SCHEMA_VERSION,
             "uuid": config_uuid,
             "created_at": created_at,
+            "preset": None,
             "categories": [category.to_dict() for category in categories],
         }
         payload["sha256"] = _content_hash(payload)
