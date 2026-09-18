@@ -41,9 +41,15 @@ The per-image JSON uses COCO annotation fields but is not a complete COCO datase
 ## Modules
 
 - `main.py` starts the application.
-- `parker_label_app/window.py` coordinates the desktop interface.
+- `parker_label_app/window.py` coordinates the desktop interface and annotation workflow.
+- `parker_label_app/canvas.py` renders the interactive canvas and forwards pointer, wheel, and drop events.
 - `parker_label_app/models.py` owns annotation state and independent instance masks.
 - `parker_label_app/inference.py` runs the ONNX encoder and decoder.
 - `parker_label_app/annotation_io.py` loads and saves annotation artifacts.
-- `parker_label_app/category_store.py` validates and persists category configuration.
+- `parker_label_app/image_utils.py` handles image loading, resizing, mask colors, and Qt image conversion.
+- `parker_label_app/quality.py` detects disconnected mask regions and enclosed holes.
+- `parker_label_app/category_store.py` validates and persists category configurations.
 - `parker_label_app/category_dialog.py` provides category editing in the interface.
+- `parker_label_app/i18n.py` stores Chinese and English interface text and the selected language.
+- `export_mobilesam_encoder.py` and `export_mobilesam_decoder.py` regenerate the ONNX deployment models.
+- `mobile_sam/` contains the MobileSAM model implementation used by the export scripts.
