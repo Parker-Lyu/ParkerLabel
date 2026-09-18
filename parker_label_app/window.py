@@ -4,7 +4,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PyQt5.QtCore import QPoint, QRect, Qt, pyqtSignal
+from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QFont, QPainter, QPalette, QPen, QPixmap
 from PyQt5.QtWidgets import (
     QApplication,
@@ -329,6 +329,15 @@ class MainWindow(QWidget):
         self.scroll_area.setWidget(self.canvas)
         self.scroll_area.setWidgetResizable(False)
         self.scroll_area.setAlignment(Qt.AlignCenter)
+        self.quality_summary_label = QLabel(self.scroll_area.viewport())
+        self.quality_summary_label.setFont(QFont("Arial", 11, QFont.Bold))
+        self.quality_summary_label.setContentsMargins(7, 7, 7, 7)
+        self.quality_summary_label.setStyleSheet(
+            "color: white; background-color: rgba(0, 0, 0, 165); border-radius: 5px;"
+        )
+        self.quality_summary_label.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.quality_summary_label.hide()
+        self.scroll_area.viewport().installEventFilter(self)
         controls = QVBoxLayout()
         self.primary_controls = self.build_primary_controls()
         self.tool_controls = self.build_tool_controls()
@@ -605,6 +614,45 @@ class MainWindow(QWidget):
         self.primary_controls.invalidate()
         self.primary_controls.activate()
         self.resize_segment_table_columns()
+        self.update_quality_overlay()
+
+    def eventFilter(self, watched, event):
+        """Keep viewport overlays aligned when the image viewport changes size."""
+        if (
+            hasattr(self, "scroll_area")
+            and watched is self.scroll_area.viewport()
+            and event.type() == QEvent.Resize
+        ):
+            self.position_quality_overlay()
+        return super().eventFilter(watched, event)
+
+    def position_quality_overlay(self):
+        """Anchor the quality summary to the viewport's upper-right corner."""
+        if not hasattr(self, "quality_summary_label"):
+            return
+        margin = 8
+        viewport = self.scroll_area.viewport()
+        left = max(margin, viewport.width() - self.quality_summary_label.width() - margin)
+        self.quality_summary_label.move(left, margin)
+
+    def update_quality_overlay(self):
+        """Refresh the viewport-level mask quality summary."""
+        if not self.quality_check_enabled or self.document is None:
+            self.quality_summary_label.hide()
+            return
+        if self.current_quality_mask() is None:
+            text = self.t("quality.no_target")
+        else:
+            text = self.t(
+                "quality.summary",
+                regions=self.mask_quality.mask_region_count,
+                holes=self.mask_quality.hole_count,
+            )
+        self.quality_summary_label.setText(text)
+        self.quality_summary_label.adjustSize()
+        self.position_quality_overlay()
+        self.quality_summary_label.raise_()
+        self.quality_summary_label.show()
 
     def reset_document_view(self):
         """Reset table and canvas state when no document is active."""
@@ -616,6 +664,7 @@ class MainWindow(QWidget):
         self.canvas.setText(self.t("canvas.open_image"))
         self.canvas.setFixedSize(640, 480)
         self.update_editing_state()
+        self.update_quality_overlay()
 
     def choose_image(self):
         """Open a file picker and load the selected image."""
@@ -644,6 +693,7 @@ class MainWindow(QWidget):
             self.resolve_open_document_configuration()
             self.current_index = None
             self.clear_edit_state()
+            self.update_mask_quality()
             self.zoom_factor = 1.0
             self.calculate_base_canvas_size()
             self.refresh_table()
@@ -1379,17 +1429,17 @@ class MainWindow(QWidget):
         """Refresh cached quality details for the selected target."""
         self.mask_quality = MaskQuality()
         quality_mask = self.current_quality_mask()
-        if not self.quality_check_enabled or quality_mask is None:
-            return
-        primary_point = next(
-            (
-                point
-                for point, label in zip(self.prompt_points, self.prompt_labels)
-                if label == 1
-            ),
-            None,
-        )
-        self.mask_quality = inspect_mask_quality(quality_mask, primary_point)
+        if self.quality_check_enabled and quality_mask is not None:
+            primary_point = next(
+                (
+                    point
+                    for point, label in zip(self.prompt_points, self.prompt_labels)
+                    if label == 1
+                ),
+                None,
+            )
+            self.mask_quality = inspect_mask_quality(quality_mask, primary_point)
+        self.update_quality_overlay()
 
     def discard_edit(self):
         """Discard the pending edit for the selected segment."""
@@ -1750,8 +1800,6 @@ class MainWindow(QWidget):
                 self.draw_quality_boxes(pixmap)
             if self.view_mode == "overlay":
                 self.draw_prompt_points(pixmap)
-            if self.quality_check_enabled:
-                self.draw_quality_summary(pixmap)
         self.canvas.setPixmap(pixmap)
 
     def draw_quality_boxes(self, pixmap):
@@ -1770,31 +1818,6 @@ class MainWindow(QWidget):
             right = int(round((x + width) * scale_x))
             bottom = int(round((y + height) * scale_y))
             painter.drawRect(left, top, max(1, right - left), max(1, bottom - top))
-        painter.end()
-
-    def draw_quality_summary(self, pixmap):
-        """Draw live quality counts in the image's upper-right corner."""
-        if self.current_quality_mask() is None:
-            text = self.t("quality.no_target")
-        else:
-            text = self.t(
-                "quality.summary",
-                regions=self.mask_quality.mask_region_count,
-                holes=self.mask_quality.hole_count,
-            )
-        painter = QPainter(pixmap)
-        painter.setFont(QFont("Arial", 11, QFont.Bold))
-        metrics = painter.fontMetrics()
-        padding = 7
-        width = metrics.horizontalAdvance(text) + padding * 2
-        height = metrics.height() + padding * 2
-        left = max(0, pixmap.width() - width - 8)
-        top = 8
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor(0, 0, 0, 165))
-        painter.drawRoundedRect(left, top, width, height, 5, 5)
-        painter.setPen(Qt.white)
-        painter.drawText(left + padding, top + padding + metrics.ascent(), text)
         painter.end()
 
     def draw_segment_labels(self, pixmap, identifier_mask):
