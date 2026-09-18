@@ -4,7 +4,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, pyqtSignal
+from PyQt5.QtCore import QEvent, QPoint, QRect, QSettings, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QFont, QPainter, QPalette, QPen, QPixmap
 from PyQt5.QtWidgets import (
     QApplication,
@@ -197,6 +197,7 @@ class MainWindow(QWidget):
     COL_CATEGORY = 3
     COL_COLOR = 4
     COL_DELETE = 5
+    QUALITY_SETTING_KEY = "interface/quality_check_enabled"
 
     def __init__(self):
         """Initialize application services, state, and interface."""
@@ -206,6 +207,7 @@ class MainWindow(QWidget):
         self.active_category_config_id = None
         self.active_category_config_sha256 = ""
         self.category_config_name = ""
+        self.settings = QSettings("ParkerLabel", "ParkerLabel")
         self.repository = AnnotationRepository(target_size=1024)
         self.engine = SegmentationEngine(
             root / "pretrain" / "encoder.onnx",
@@ -232,7 +234,9 @@ class MainWindow(QWidget):
         self._brush_snapshot = None
         self._brush_position = None
         self._brush_preview_base = None
-        self.quality_check_enabled = False
+        self.quality_check_enabled = self.settings.value(
+            self.QUALITY_SETTING_KEY, True, type=bool
+        )
         self.mask_quality = MaskQuality()
         self.mode = "query"
         self.view_mode = "overlay"
@@ -362,6 +366,7 @@ class MainWindow(QWidget):
         layout = QGridLayout()
         self.open_button = QPushButton()
         self.quality_button = QualityToggleButton("")
+        self.quality_button.set_active(self.quality_check_enabled)
         self.category_button = QPushButton()
         self.save_button = QPushButton()
         self.save_button.setShortcut("Ctrl+S")
@@ -1413,6 +1418,8 @@ class MainWindow(QWidget):
     def toggle_quality_check(self, _checked=False):
         """Toggle visual quality hints for the active mask."""
         self.quality_check_enabled = not self.quality_check_enabled
+        self.settings.setValue(self.QUALITY_SETTING_KEY, self.quality_check_enabled)
+        self.settings.sync()
         self.quality_button.setText(
             self.t("main.quality.on" if self.quality_check_enabled else "main.quality.off")
         )
