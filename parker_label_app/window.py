@@ -647,6 +647,8 @@ class MainWindow(QWidget):
             regions_text = self.t(
                 "quality.regions", regions=self.mask_quality.mask_region_count
             )
+            if self.mask_quality.mask_region_count > 1:
+                regions_text = f'<span style="color:#ff5252;">{regions_text}</span>'
             holes_text = self.t("quality.holes", holes=self.mask_quality.hole_count)
             if self.mask_quality.hole_count > 0:
                 holes_text = f'<span style="color:#ff5252;">{holes_text}</span>'
