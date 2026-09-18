@@ -57,8 +57,9 @@ def _canonical_uuid(value):
 
 
 def _content_hash(payload):
+    content = {key: value for key, value in payload.items() if key != "sha256"}
     encoded = json.dumps(
-        payload,
+        content,
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
@@ -92,6 +93,7 @@ class CategoryStore:
         "schema_version",
         "uuid",
         "created_at",
+        "sha256",
         "preset",
         "categories",
     }
@@ -120,6 +122,17 @@ class CategoryStore:
             )
         config_uuid = _canonical_uuid(payload.get("uuid"))
         created_at = _created_at(payload.get("created_at"))
+        content_hash = _content_hash(payload)
+        sha256 = payload.get("sha256")
+        if sha256 is not None:
+            if (
+                not isinstance(sha256, str)
+                or len(sha256) != 64
+                or any(character not in "0123456789abcdef" for character in sha256)
+            ):
+                raise CategoryConfigError("类别配置 sha256 无效")
+            if sha256 != content_hash:
+                raise CategoryConfigError("类别配置 sha256 校验失败")
         raw_categories = payload.get("categories")
         if not isinstance(raw_categories, list):
             raise CategoryConfigError("类别配置必须包含 categories 数组")
@@ -154,7 +167,7 @@ class CategoryStore:
             config_uuid,
             created_at,
             tuple(categories),
-            _content_hash(payload),
+            content_hash,
         )
 
     def load(self):
@@ -169,16 +182,14 @@ class CategoryStore:
         created_at = _created_at(created_at)
         categories = list(categories)
         self.validate(categories)
-        _write_json(
-            self.path,
-            {
-                "schema_version": self.SCHEMA_VERSION,
-                "uuid": config_uuid,
-                "created_at": created_at,
-                "categories": [category.to_dict() for category in categories],
-            },
-            overwrite=overwrite,
-        )
+        payload = {
+            "schema_version": self.SCHEMA_VERSION,
+            "uuid": config_uuid,
+            "created_at": created_at,
+            "categories": [category.to_dict() for category in categories],
+        }
+        payload["sha256"] = _content_hash(payload)
+        _write_json(self.path, payload, overwrite=overwrite)
 
     @staticmethod
     def validate(categories):

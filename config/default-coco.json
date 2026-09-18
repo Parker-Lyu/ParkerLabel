@@ -2,6 +2,7 @@
   "schema_version": 3,
   "uuid": "c2da0de2-f465-4109-98f1-08a5bd881803",
   "created_at": "2026-09-18T09:52:35+08:00",
+  "sha256": "21210e9cdaa9d1eb7192f5f7144afe48a4e2a9247d9fb8741c7b0dfd9554051a",
   "preset": "coco-detection-2017",
   "categories": [
     {"id": 1, "name": "person", "supercategory": "person", "description": "", "enabled": true},
