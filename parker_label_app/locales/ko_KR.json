@@ -1,7 +1,7 @@
 {
   "app.start_failed": "시작 실패",
   "canvas.open_image": "이미지를 여세요",
-  "category.current": "현재 설정 ‘{name}’",
+  "category.current": "현재 범주 설정: ‘{name}’",
   "category.builtin_name": "COCO 기본값",
   "common.close": "닫기",
   "common.delete": "삭제",

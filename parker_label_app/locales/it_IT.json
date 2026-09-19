@@ -1,7 +1,7 @@
 {
   "app.start_failed": "Avvio non riuscito",
   "canvas.open_image": "Apri un'immagine",
-  "category.current": "Config.: «{name}»",
+  "category.current": "Configurazione categorie attuale: «{name}»",
   "category.builtin_name": "COCO predefinito",
   "common.close": "Chiudi",
   "common.delete": "Elimina",

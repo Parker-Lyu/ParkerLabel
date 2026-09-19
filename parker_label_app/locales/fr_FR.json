@@ -1,7 +1,7 @@
 {
   "app.start_failed": "Échec du démarrage",
   "canvas.open_image": "Ouvrez une image",
-  "category.current": "Configuration : « {name} »",
+  "category.current": "Configuration de catégories actuelle : « {name} »",
   "category.builtin_name": "COCO par défaut",
   "common.close": "Fermer",
   "common.delete": "Supprimer",

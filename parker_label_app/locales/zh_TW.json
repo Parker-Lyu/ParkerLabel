@@ -1,7 +1,7 @@
 {
   "app.start_failed": "啟動失敗",
   "canvas.open_image": "請開啟圖片",
-  "category.current": "目前使用「{name}」",
+  "category.current": "目前類別設定：「{name}」",
   "category.builtin_name": "COCO 預設",
   "common.close": "關閉",
   "common.delete": "刪除",

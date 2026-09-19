@@ -1,7 +1,7 @@
 {
   "app.start_failed": "起動に失敗しました",
   "canvas.open_image": "画像を開いてください",
-  "category.current": "現在の設定「{name}」",
+  "category.current": "現在のカテゴリ設定「{name}」",
   "category.builtin_name": "COCO デフォルト",
   "common.close": "閉じる",
   "common.delete": "削除",

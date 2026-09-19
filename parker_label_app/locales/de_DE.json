@@ -1,7 +1,7 @@
 {
   "app.start_failed": "Start fehlgeschlagen",
   "canvas.open_image": "Bitte ein Bild öffnen",
-  "category.current": "Aktuell: „{name}“",
+  "category.current": "Aktuelle Kategoriekonfiguration: „{name}“",
   "category.builtin_name": "COCO-Standard",
   "common.close": "Schließen",
   "common.delete": "Löschen",
