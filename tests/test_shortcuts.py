@@ -8,7 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt5.QtCore import QSettings, Qt
 from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication, QComboBox, QLineEdit
+from PyQt5.QtWidgets import QAction, QApplication, QComboBox, QLineEdit
 
 from parker_label_app.i18n import LANGUAGE_NAMES, _TEXT, language_manager
 from parker_label_app.shortcut_dialog import ShortcutSettingsDialog
@@ -112,6 +112,14 @@ class ShortcutWindowTests(unittest.TestCase):
         self.assertEqual(
             self.window.settings_menu.title(), self.window.t("menu.settings")
         )
+        self.assertEqual(
+            self.window.shortcut_settings_action.menuRole(), QAction.NoRole
+        )
+        self.assertEqual(self.window.about_action.menuRole(), QAction.NoRole)
+        self.assertIn(
+            self.window.shortcut_settings_action, self.window.settings_menu.actions()
+        )
+        self.assertIn(self.window.about_action, self.window.help_menu.actions())
         for code in LANGUAGE_NAMES:
             self.assertIn("shortcut.title", _TEXT[code])
             self.assertIn("menu.settings", _TEXT[code])

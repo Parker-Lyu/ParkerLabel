@@ -662,11 +662,10 @@ class MainWindow(QWidget):
         """Create Settings and Help menus with explicit native menu roles."""
         self.settings_menu = self.menu_bar.addMenu("")
         self.shortcut_settings_action = QAction(self)
-        self.shortcut_settings_action.setMenuRole(QAction.PreferencesRole)
+        self.shortcut_settings_action.setMenuRole(QAction.NoRole)
         self.shortcut_settings_action.triggered.connect(self.open_shortcut_settings)
         self.settings_menu.addAction(self.shortcut_settings_action)
-        if sys.platform != "darwin":
-            self.settings_menu.addSeparator()
+        self.settings_menu.addSeparator()
 
         self.language_menu = QMenu(self.settings_menu)
         self.language_actions = QActionGroup(self.language_menu)
@@ -700,10 +699,9 @@ class MainWindow(QWidget):
         self.changelog_action.triggered.connect(lambda: self.open_external_url(CHANGELOG_URL))
         self.help_menu.addAction(self.changelog_action)
         self.about_action = QAction(self)
-        self.about_action.setMenuRole(QAction.AboutRole)
+        self.about_action.setMenuRole(QAction.NoRole)
         self.about_action.triggered.connect(self.show_about_dialog)
-        if sys.platform != "darwin":
-            self.help_menu.addSeparator()
+        self.help_menu.addSeparator()
         self.help_menu.addAction(self.about_action)
 
         if sys.platform == "darwin":

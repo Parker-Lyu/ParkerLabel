@@ -11,7 +11,7 @@ python main.py
 
 Use **Settings → Interface Language** to select 中文（简体）, 中文（繁體）, English, 日本語, 한국어, Deutsch, Français, Italiano, or Español. The selection is saved for the next launch. **Settings → Tooltips** controls contextual hints.
 
-Use **Settings → Keyboard Shortcuts** to view, change, clear, or restore key bindings. On macOS, keyboard shortcuts and About appear in the ParkerLabel application menu. Smart, Manual, and Inspect modes use `Q`, `W`, and `E` by default. Edited bindings take effect when saved and persist across launches.
+Use **Settings → Keyboard Shortcuts** to view, change, clear, or restore key bindings. **Help → About ParkerLabel** shows application information. Smart, Manual, and Inspect modes use `Q`, `W`, and `E` by default. Edited bindings take effect when saved and persist across launches.
 
 ## Categories
 
