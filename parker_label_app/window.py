@@ -155,6 +155,7 @@ class MainWindow(QWidget):
     COL_CATEGORY = 3
     COL_COLOR = 4
     COL_DELETE = 5
+    PRIMARY_COLUMN_SPACING = 8
     QUALITY_SETTING_KEY = "interface/quality_check_enabled"
     TOOLTIPS_SETTING_KEY = "interface/tooltips_enabled"
 
@@ -324,7 +325,7 @@ class MainWindow(QWidget):
     def build_primary_controls(self):
         """Create the aligned primary actions and language menu."""
         layout = QGridLayout()
-        layout.setHorizontalSpacing(8)
+        layout.setHorizontalSpacing(self.PRIMARY_COLUMN_SPACING)
         layout.setVerticalSpacing(6)
         self.open_button = QPushButton()
         self.quality_button = QualityToggleButton("")
@@ -353,7 +354,8 @@ class MainWindow(QWidget):
         self.save_button.clicked.connect(self.save_document)
         self.tooltip_button.clicked.connect(self.toggle_tooltips)
         self.category_config_label = QLabel()
-        self.category_config_label.setAlignment(Qt.AlignCenter)
+        self.category_config_label.setTextFormat(Qt.PlainText)
+        self.category_config_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.update_primary_control_text()
         self.resize_primary_buttons()
         layout.addWidget(self.open_button, 0, 0)
@@ -362,7 +364,7 @@ class MainWindow(QWidget):
         layout.addWidget(self.category_button, 1, 0)
         layout.addWidget(self.tooltip_button, 1, 1)
         layout.addWidget(self.save_button, 1, 2)
-        layout.addWidget(self.category_config_label, 2, 0, Qt.AlignTop)
+        layout.addWidget(self.category_config_label, 2, 0, 1, 3, Qt.AlignLeft | Qt.AlignTop)
         layout.setColumnStretch(3, 1)
         return layout
 
@@ -498,14 +500,14 @@ class MainWindow(QWidget):
         )
 
     def update_category_config_label(self):
-        """Keep the active configuration name within its button column."""
-        name = self.category_config_display_name()
+        """Show the active configuration on one line."""
+        label = self.t("category.current", name=self.category_config_display_name())
         width = self.category_config_label.width() - 4
         if width > 0:
-            name = self.category_config_label.fontMetrics().elidedText(
-                name, Qt.ElideRight, width
+            label = self.category_config_label.fontMetrics().elidedText(
+                label, Qt.ElideRight, width
             )
-        self.category_config_label.setText(self.t("category.current", name=name))
+        self.category_config_label.setText(label)
 
     def resize_primary_buttons(self):
         """Keep all six buttons aligned across languages and toggle states."""
@@ -532,7 +534,9 @@ class MainWindow(QWidget):
             )
         for button in buttons:
             button.setFixedSize(width, height)
-        self.category_config_label.setFixedWidth(width)
+        self.category_config_label.setFixedWidth(
+            width * 3 + self.PRIMARY_COLUMN_SPACING * 2
+        )
         self.update_category_config_label()
 
     def update_tool_control_text(self):
