@@ -3,12 +3,14 @@ import sys
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
 from parker_label_app import MainWindow
+from parker_label_app.app_info import APP_NAME
 from parker_label_app.i18n import language_manager
 
 
 def main():
     """Start the desktop annotation application."""
     app = QApplication(sys.argv)
+    app.setApplicationName(APP_NAME)
     try:
         window = MainWindow()
     except Exception as error:

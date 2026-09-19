@@ -9,7 +9,9 @@ conda activate parker-label
 python main.py
 ```
 
-Use **Language** to select 中文（简体）, 中文（繁體）, English, 日本語, 한국어, Deutsch, Français, Italiano, or Español. The selection is saved for the next launch.
+Use **Settings → Interface Language** to select 中文（简体）, 中文（繁體）, English, 日本語, 한국어, Deutsch, Français, Italiano, or Español. The selection is saved for the next launch. **Settings → Tooltips** controls contextual hints.
+
+Use **Settings → Keyboard Shortcuts** to view, change, clear, or restore key bindings. On macOS, keyboard shortcuts and About appear in the ParkerLabel application menu. Smart, Manual, and Inspect modes use `Q`, `W`, and `E` by default. Edited bindings take effect when saved and persist across launches.
 
 ## Categories
 
@@ -52,6 +54,8 @@ The per-image JSON uses COCO annotation fields but is not a complete COCO datase
 - `parker_label_app/quality.py` detects disconnected mask regions and enclosed holes.
 - `parker_label_app/category_store.py` validates and persists category configurations.
 - `parker_label_app/category_dialog.py` provides category editing in the interface.
+- `parker_label_app/shortcuts.py` manages platform key bindings and persistence; `shortcut_dialog.py` provides the editor.
+- `parker_label_app/app_info.py` holds application identity and project links.
 - `parker_label_app/locales/` contains JSON translations for all nine interface languages; `parker_label_app/i18n.py` loads them and persists the selected language.
 - `export_mobilesam_encoder.py` and `export_mobilesam_decoder.py` regenerate the ONNX deployment models.
 - `mobile_sam/` contains the MobileSAM model implementation used by the export scripts.

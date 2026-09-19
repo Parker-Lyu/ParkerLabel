@@ -1,17 +1,20 @@
 import random
+import sys
 import traceback
 from pathlib import Path
 
 import cv2
 import numpy as np
-from PyQt5.QtCore import QEvent, QPoint, QRect, QSettings, Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QFont, QPainter, QPalette, QPen, QPixmap
+from PyQt5.QtCore import QEvent, QPoint, QRect, QSettings, Qt, QUrl, pyqtSignal
+from PyQt5.QtGui import QColor, QDesktopServices, QFont, QPainter, QPalette, QPen, QPixmap
 from PyQt5.QtWidgets import (
+    QAction,
     QApplication,
     QActionGroup,
     QButtonGroup,
     QCheckBox,
     QComboBox,
+    QDialog,
     QFileDialog,
     QGridLayout,
     QGroupBox,
@@ -19,6 +22,7 @@ from PyQt5.QtWidgets import (
     QHeaderView,
     QLabel,
     QMenu,
+    QMenuBar,
     QMessageBox,
     QPushButton,
     QRadioButton,
@@ -34,6 +38,13 @@ from PyQt5.QtWidgets import (
 )
 
 from .annotation_io import AnnotationRepository
+from .app_info import (
+    APP_DEVELOPER,
+    APP_NAME,
+    APP_VERSION,
+    CHANGELOG_URL,
+    REPOSITORY_URL,
+)
 from .canvas import AnnotationCanvas
 from .category_dialog import CategoryConfigDialog
 from .category_store import CategoryConfigError, CategoryConfigManager
@@ -48,31 +59,8 @@ from .image_utils import color_id_to_rgb, id_mask_to_rgb, qimage_from_rgb
 from .i18n import LANGUAGE_NAMES, language_manager
 from .inference import SegmentationEngine
 from .quality import MaskQuality, inspect_mask_quality
-
-
-class CenteredMenuButton(QPushButton):
-    def paintEvent(self, event):
-        option = QStyleOptionButton()
-        self.initStyleOption(option)
-        text = option.text
-        option.text = ""
-        painter = QStylePainter(self)
-        painter.drawControl(QStyle.CE_PushButton, option)
-        metrics = option.fontMetrics
-        bounds = metrics.tightBoundingRect(text)
-        painter.translate(
-            0,
-            (metrics.descent() - metrics.ascent() - bounds.top() - bounds.bottom()) / 2,
-        )
-        self.style().drawItemText(
-            painter,
-            self.rect(),
-            Qt.AlignCenter,
-            option.palette,
-            bool(option.state & QStyle.State_Enabled),
-            text,
-            QPalette.ButtonText,
-        )
+from .shortcut_dialog import ShortcutSettingsDialog
+from .shortcuts import SPECS_BY_ID, ShortcutManager, ShortcutStore
 
 
 class StateToggleButton(QPushButton):
@@ -193,6 +181,9 @@ class MainWindow(QWidget):
         self.active_category_config_sha256 = ""
         self.category_config_name = ""
         self.settings = QSettings("ParkerLabel", "ParkerLabel")
+        self.shortcut_store = ShortcutStore(self.settings)
+        self.shortcut_manager = ShortcutManager(self, self.shortcut_store)
+        self.shortcut_dialog = None
         self.repository = AnnotationRepository(target_size=1024)
         self.engine = SegmentationEngine(
             root / "pretrain" / "encoder.onnx",
@@ -241,9 +232,17 @@ class MainWindow(QWidget):
         self.i18n = language_manager
         self.load_categories()
         self.build_ui()
+        self.bind_shortcuts()
+        self.build_menus()
         self.i18n.languageChanged.connect(self.retranslate_ui)
         self.reset_document_view()
         self.log(self.t("log.ready"))
+        if self.shortcut_store.warnings:
+            names = ", ".join(
+                self.t(SPECS_BY_ID[action_id].text_key)
+                for action_id in self.shortcut_store.warnings
+            )
+            self.log(self.t("log.shortcut_recovered", actions=names))
         if self.category_manager.warning:
             self.log(self.category_manager.warning)
 
@@ -342,13 +341,19 @@ class MainWindow(QWidget):
         controls.addWidget(self.log_area)
         self.control_panel = QWidget(self)
         self.control_panel.setLayout(controls)
-        layout = QHBoxLayout(self)
-        layout.addWidget(self.scroll_area, 1)
-        layout.addWidget(self.control_panel)
+        self.menu_bar = QMenuBar(self)
+        self.menu_bar.setNativeMenuBar(sys.platform == "darwin")
+        content_layout = QHBoxLayout()
+        content_layout.addWidget(self.scroll_area, 1)
+        content_layout.addWidget(self.control_panel)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.menu_bar)
+        layout.addLayout(content_layout, 1)
         self.resize_segment_table_columns()
 
     def build_primary_controls(self):
-        """Create the aligned primary actions and language menu."""
+        """Create the compact primary action grid."""
         layout = QVBoxLayout()
         layout.setSpacing(0)
         button_layout = QGridLayout()
@@ -359,28 +364,10 @@ class MainWindow(QWidget):
         self.quality_button.set_active(self.quality_check_enabled)
         self.category_button = QPushButton()
         self.save_button = QPushButton()
-        self.tooltip_button = StateToggleButton("")
-        self.tooltip_button.set_active(self.tooltips_enabled)
-        self.language_button = CenteredMenuButton("Language")
-        self.language_menu = QMenu(self.language_button)
-        self.language_actions = QActionGroup(self.language_menu)
-        self.language_actions.setExclusive(True)
-        for code, name in LANGUAGE_NAMES.items():
-            action = self.language_menu.addAction(name)
-            action.setData(code)
-            action.setCheckable(True)
-            action.setChecked(code == self.i18n.language)
-            self.language_actions.addAction(action)
-        self.language_actions.triggered.connect(
-            lambda action: self.i18n.set_language(action.data())
-        )
-        self.language_button.setMenu(self.language_menu)
-        self.save_button.setShortcut("Ctrl+S")
         self.open_button.clicked.connect(self.choose_image)
         self.quality_button.clicked.connect(self.toggle_quality_check)
         self.category_button.clicked.connect(self.configure_categories)
         self.save_button.clicked.connect(self.save_document)
-        self.tooltip_button.clicked.connect(self.toggle_tooltips)
         self.category_config_label = QLabel()
         self.category_config_label.setTextFormat(Qt.PlainText)
         self.category_config_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -388,11 +375,9 @@ class MainWindow(QWidget):
         self.resize_primary_buttons()
         button_layout.addWidget(self.open_button, 0, 0)
         button_layout.addWidget(self.quality_button, 0, 1)
-        button_layout.addWidget(self.language_button, 0, 2)
         button_layout.addWidget(self.category_button, 1, 0)
-        button_layout.addWidget(self.tooltip_button, 1, 1)
-        button_layout.addWidget(self.save_button, 1, 2)
-        button_layout.setColumnStretch(3, 1)
+        button_layout.addWidget(self.save_button, 1, 1)
+        button_layout.setColumnStretch(2, 1)
         layout.addLayout(button_layout)
         layout.addWidget(self.category_config_label, 0, Qt.AlignLeft)
         return layout
@@ -409,7 +394,6 @@ class MainWindow(QWidget):
         self.add_button = QPushButton()
         self.commit_button = QPushButton()
         self.discard_button = QPushButton()
-        self.add_button.setShortcut("A")
         self.undo_button.clicked.connect(self.undo_edit)
         self.redo_button.clicked.connect(self.redo_edit)
         self.add_button.clicked.connect(self.add_segment)
@@ -525,9 +509,6 @@ class MainWindow(QWidget):
         self.category_button.setText(self.t("main.category_config"))
         self.save_button.setText(self.t("main.save_disk"))
         self.update_category_config_label()
-        self.tooltip_button.setText(
-            self.t("main.tooltips.on" if self.tooltips_enabled else "main.tooltips.off")
-        )
 
     def update_category_config_label(self):
         """Show the active configuration on one line."""
@@ -540,32 +521,29 @@ class MainWindow(QWidget):
         self.category_config_label.setText(label)
 
     def resize_primary_buttons(self):
-        """Keep all six buttons aligned across languages and toggle states."""
+        """Keep the four primary buttons aligned across languages and toggle states."""
         buttons = (
             self.open_button,
             self.quality_button,
-            self.language_button,
             self.category_button,
-            self.tooltip_button,
             self.save_button,
         )
         width = max(button.sizeHint().width() for button in buttons)
         height = max(button.sizeHint().height() for button in buttons)
-        for button, keys in (
-            (self.quality_button, ("main.quality.off", "main.quality.on")),
-            (self.tooltip_button, ("main.tooltips.off", "main.tooltips.on")),
-        ):
-            padding = button.sizeHint().width() - button.fontMetrics().horizontalAdvance(
-                button.text()
-            )
-            width = max(
-                width,
-                *(button.fontMetrics().horizontalAdvance(self.t(key)) + padding for key in keys),
-            )
+        padding = self.quality_button.sizeHint().width() - self.quality_button.fontMetrics().horizontalAdvance(
+            self.quality_button.text()
+        )
+        width = max(
+            width,
+            *(
+                self.quality_button.fontMetrics().horizontalAdvance(self.t(key)) + padding
+                for key in ("main.quality.off", "main.quality.on")
+            ),
+        )
         for button in buttons:
             button.setFixedSize(width, height)
         self.category_config_label.setFixedWidth(
-            width * 3 + self.PRIMARY_COLUMN_SPACING * 2
+            width * 2 + self.PRIMARY_COLUMN_SPACING
         )
         self.update_category_config_label()
 
@@ -609,31 +587,53 @@ class MainWindow(QWidget):
         self.tooltips_enabled = not self.tooltips_enabled
         self.settings.setValue(self.TOOLTIPS_SETTING_KEY, self.tooltips_enabled)
         self.settings.sync()
-        self.tooltip_button.setText(
-            self.t("main.tooltips.on" if self.tooltips_enabled else "main.tooltips.off")
-        )
-        self.tooltip_button.set_active(self.tooltips_enabled)
+        if hasattr(self, "tooltip_action"):
+            self.tooltip_action.setChecked(self.tooltips_enabled)
         self.update_tooltips()
 
     def update_tooltips(self):
         """Refresh localized hints for controls that need extra clarification."""
         tooltip_map = (
-            (self.quality_button, "tooltip.quality"),
-            (self.commit_button, "tooltip.commit_target"),
-            (self.discard_button, "tooltip.discard_changes"),
-            (self.erode_button, "tooltip.erode"),
-            (self.dilate_button, "tooltip.dilate"),
+            (self.open_button, None, "open_image"),
+            (self.quality_button, "tooltip.quality", "toggle_quality"),
+            (self.category_button, None, "category_config"),
+            (self.save_button, None, "save_document"),
+            (self.undo_button, None, "undo_edit"),
+            (self.redo_button, None, "redo_edit"),
+            (self.add_button, None, "add_target"),
+            (self.commit_button, "tooltip.commit_target", "commit_target"),
+            (self.discard_button, "tooltip.discard_changes", "discard_edit"),
+            (self.erode_button, "tooltip.erode", "erode"),
+            (self.dilate_button, "tooltip.dilate", "dilate"),
         )
-        for control, key in tooltip_map:
-            control.setToolTip(self.t(key) if self.tooltips_enabled else "")
+        for control, key, action_id in tooltip_map:
+            base = self.t(key) if key else ""
+            control.setToolTip(self.shortcut_tooltip(base, action_id))
         for button in self.mode_group.buttons():
             key = f"tooltip.mode.{button.property('value')}"
-            button.setToolTip(self.t(key) if self.tooltips_enabled else "")
+            action_id = {
+                "smart": "mode_smart",
+                "brush": "mode_brush",
+                "query": "mode_query",
+            }[button.property("value")]
+            button.setToolTip(self.shortcut_tooltip(self.t(key), action_id))
+        for button in self.view_group.buttons():
+            action_id = f"view_{button.property('value')}"
+            button.setToolTip(self.shortcut_tooltip("", action_id))
+
+    def shortcut_tooltip(self, base, action_id):
+        """Append an active shortcut hint when interface tips are enabled."""
+        if not self.tooltips_enabled:
+            return ""
+        shortcut = self.shortcut_manager.shortcut_text(action_id)
+        hint = self.t("tooltip.shortcut", shortcut=shortcut) if shortcut else ""
+        return "\n".join(part for part in (base, hint) if part)
 
     def retranslate_ui(self, _language=None):
         """Refresh visible interface text after a language change."""
         for action in self.language_actions.actions():
             action.setChecked(action.data() == self.i18n.language)
+        self.retranslate_menus()
         self.update_primary_control_text()
         self.update_tool_control_text()
         for group in (self.edit_group, self.interaction_group):
@@ -657,6 +657,202 @@ class MainWindow(QWidget):
         self.tool_controls.activate()
         self.resize_segment_table_columns()
         self.update_quality_overlay()
+
+    def build_menus(self):
+        """Create Settings and Help menus with explicit native menu roles."""
+        self.settings_menu = self.menu_bar.addMenu("")
+        self.shortcut_settings_action = QAction(self)
+        self.shortcut_settings_action.setMenuRole(QAction.PreferencesRole)
+        self.shortcut_settings_action.triggered.connect(self.open_shortcut_settings)
+        self.settings_menu.addAction(self.shortcut_settings_action)
+        if sys.platform != "darwin":
+            self.settings_menu.addSeparator()
+
+        self.language_menu = QMenu(self.settings_menu)
+        self.language_actions = QActionGroup(self.language_menu)
+        self.language_actions.setExclusive(True)
+        for code, name in LANGUAGE_NAMES.items():
+            action = self.language_menu.addAction(name)
+            action.setData(code)
+            action.setCheckable(True)
+            action.setChecked(code == self.i18n.language)
+            action.setMenuRole(QAction.NoRole)
+            self.language_actions.addAction(action)
+        self.language_actions.triggered.connect(
+            lambda action: self.i18n.set_language(action.data())
+        )
+        self.settings_menu.addMenu(self.language_menu)
+
+        self.tooltip_action = QAction(self)
+        self.tooltip_action.setCheckable(True)
+        self.tooltip_action.setChecked(self.tooltips_enabled)
+        self.tooltip_action.setMenuRole(QAction.NoRole)
+        self.tooltip_action.triggered.connect(self.toggle_tooltips)
+        self.settings_menu.addAction(self.tooltip_action)
+
+        self.help_menu = self.menu_bar.addMenu("")
+        self.github_action = QAction(self)
+        self.github_action.setMenuRole(QAction.NoRole)
+        self.github_action.triggered.connect(lambda: self.open_external_url(REPOSITORY_URL))
+        self.help_menu.addAction(self.github_action)
+        self.changelog_action = QAction(self)
+        self.changelog_action.setMenuRole(QAction.NoRole)
+        self.changelog_action.triggered.connect(lambda: self.open_external_url(CHANGELOG_URL))
+        self.help_menu.addAction(self.changelog_action)
+        self.about_action = QAction(self)
+        self.about_action.setMenuRole(QAction.AboutRole)
+        self.about_action.triggered.connect(self.show_about_dialog)
+        if sys.platform != "darwin":
+            self.help_menu.addSeparator()
+        self.help_menu.addAction(self.about_action)
+
+        if sys.platform == "darwin":
+            self.quit_action = QAction(self)
+            self.quit_action.setMenuRole(QAction.QuitRole)
+            self.quit_action.triggered.connect(self.close)
+            self.settings_menu.addAction(self.quit_action)
+        self.retranslate_menus()
+
+    def retranslate_menus(self):
+        """Refresh menu labels and visible shortcut markers."""
+        if not hasattr(self, "settings_menu"):
+            return
+        self.settings_menu.setTitle(self.t("menu.settings"))
+        self.help_menu.setTitle(self.t("menu.help"))
+        self.language_menu.setTitle(self.t("menu.language"))
+        self.tooltip_action.setText(self.t("menu.tooltips"))
+        self.github_action.setText(self.t("menu.github"))
+        self.changelog_action.setText(self.t("menu.changelog"))
+        self.about_action.setText(self.t("menu.about"))
+        self.shortcut_settings_action.setText(
+            self.menu_text("menu.shortcut_settings", "shortcut_settings")
+        )
+        if hasattr(self, "quit_action"):
+            self.quit_action.setText(self.t("menu.quit"))
+
+    def menu_text(self, key, action_id):
+        """Return menu text with a visual shortcut marker."""
+        shortcut = self.shortcut_manager.shortcut_text(action_id)
+        return self.t(key) if not shortcut else f"{self.t(key)}\t{shortcut}"
+
+    def open_external_url(self, url):
+        """Open an application link in the system browser."""
+        if not QDesktopServices.openUrl(QUrl(url)):
+            self.show_warning(self.t("link.open_failed"), self.t("link.open_failed_detail"))
+
+    def show_about_dialog(self):
+        """Show application metadata without requiring network access."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle(self.t("menu.about"))
+        layout = QVBoxLayout(dialog)
+        title = QLabel(f"<b>{APP_NAME}</b>")
+        description = QLabel(self.t("about.description"))
+        description.setWordWrap(True)
+        details = QLabel(
+            self.t(
+                "about.details",
+                version=APP_VERSION or self.t("about.development_build"),
+                developer=APP_DEVELOPER,
+            )
+        )
+        links = QLabel(
+            f'<a href="{REPOSITORY_URL}">{self.t("menu.github")}</a>'
+            f'&nbsp;&nbsp;·&nbsp;&nbsp;'
+            f'<a href="{CHANGELOG_URL}">{self.t("menu.changelog")}</a>'
+        )
+        links.setTextFormat(Qt.RichText)
+        links.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        links.setOpenExternalLinks(False)
+        links.linkActivated.connect(self.open_external_url)
+        close_button = QPushButton(self.t("common.close"))
+        close_button.clicked.connect(dialog.accept)
+        layout.addWidget(title)
+        layout.addWidget(description)
+        layout.addWidget(details)
+        layout.addWidget(links)
+        layout.addWidget(close_button, 0, Qt.AlignRight)
+        dialog.setModal(True)
+        dialog.exec_()
+
+    def bind_shortcuts(self):
+        """Bind configurable shortcut IDs to existing application actions."""
+        bind = self.shortcut_manager.bind
+        bind("open_image", self.choose_image)
+        bind("save_document", self.save_document, lambda: self.save_button.isEnabled())
+        bind("shortcut_settings", self.open_shortcut_settings)
+        bind("undo_edit", self.undo_edit, lambda: self.undo_button.isEnabled())
+        bind("redo_edit", self.redo_edit, lambda: self.redo_button.isEnabled())
+        bind("add_target", self.add_segment, lambda: self.add_button.isEnabled())
+        bind("commit_target", self.commit_current_segment, lambda: self.commit_button.isEnabled())
+        bind("discard_edit", self.discard_edit, lambda: self.discard_button.isEnabled())
+        bind(
+            "delete_target",
+            self.delete_current_target,
+            lambda: self.document_is_editable() and self.current_index is not None,
+        )
+        bind("mode_smart", lambda: self.activate_mode("smart"), lambda: self.mode_enabled("smart"))
+        bind("mode_brush", lambda: self.activate_mode("brush"), lambda: self.mode_enabled("brush"))
+        bind("mode_query", lambda: self.activate_mode("query"), lambda: self.mode_enabled("query"))
+        bind("view_image", lambda: self.activate_view("image"), lambda: self.document is not None)
+        bind("view_mask", lambda: self.activate_view("mask"), lambda: self.document is not None)
+        bind("view_overlay", lambda: self.activate_view("overlay"), lambda: self.document is not None)
+        bind("brush_smaller", lambda: self.adjust_brush(-1), lambda: self.brush_slider.isEnabled())
+        bind("brush_larger", lambda: self.adjust_brush(1), lambda: self.brush_slider.isEnabled())
+        bind("erode", self.erode_edit_mask, lambda: self.erode_button.isEnabled())
+        bind("dilate", self.dilate_edit_mask, lambda: self.dilate_button.isEnabled())
+        bind("toggle_quality", self.toggle_quality_check)
+        bind("category_config", self.configure_categories)
+
+    def open_shortcut_settings(self):
+        """Open one modal shortcut settings window."""
+        if self.shortcut_dialog is not None and self.shortcut_dialog.isVisible():
+            self.shortcut_dialog.raise_()
+            self.shortcut_dialog.activateWindow()
+            return
+        self.shortcut_dialog = ShortcutSettingsDialog(self, self.shortcut_manager)
+        self.shortcut_dialog.finished.connect(
+            lambda _result: setattr(self, "shortcut_dialog", None)
+        )
+        self.shortcut_dialog.open()
+
+    def shortcuts_changed(self):
+        """Refresh UI elements that show active shortcut bindings."""
+        self.retranslate_menus()
+        self.update_tooltips()
+
+    def mode_enabled(self, value):
+        """Return whether a mode can currently be entered."""
+        if self.document is None:
+            return False
+        for button in self.mode_group.buttons():
+            if button.property("value") == value:
+                return button.isEnabled()
+        return False
+
+    def activate_mode(self, value):
+        """Switch mode through the same handler used by radio buttons."""
+        for button in self.mode_group.buttons():
+            if button.property("value") == value:
+                self.change_mode(button)
+                self.set_checked_button(self.mode_group, self.mode)
+                return
+
+    def activate_view(self, value):
+        """Switch view through the same handler used by radio buttons."""
+        for button in self.view_group.buttons():
+            if button.property("value") == value:
+                self.change_view(button)
+                self.set_checked_button(self.view_group, self.view_mode)
+                return
+
+    def adjust_brush(self, delta):
+        """Move the brush slider by one unit."""
+        self.brush_slider.setValue(self.brush_slider.value() + delta)
+
+    def delete_current_target(self):
+        """Delete only the explicitly selected current target."""
+        if self.current_index is not None:
+            self.delete_segment(self.current_index)
 
     def eventFilter(self, watched, event):
         """Keep viewport overlays aligned when the image viewport changes size."""
@@ -1956,6 +2152,7 @@ class MainWindow(QWidget):
     def closeEvent(self, event):
         """Resolve unsaved work before closing the application."""
         if self.confirm_document_transition():
+            self.shortcut_manager.dispose()
             event.accept()
         else:
             event.ignore()

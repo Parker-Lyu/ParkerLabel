@@ -15,6 +15,7 @@ venv/
 .idea/
 .vscode/
 .DS_Store
+.worktrees/
 
 # Local project instructions
 AGENTS.md
@@ -27,8 +28,7 @@ export_mobilesam_decoder.py
 mobile_sam/
 
 # Models and sample data
-pretrain/
-tests/
+pretrain
 example_img/*
 !example_img/sa_224099.jpg
 !example_img/sa_226614.jpg
