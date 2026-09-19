@@ -50,9 +50,9 @@ from .inference import SegmentationEngine
 from .quality import MaskQuality, inspect_mask_quality
 
 
-class QualityToggleButton(QPushButton):
+class StateToggleButton(QPushButton):
     def __init__(self, text, parent=None):
-        """Create a fixed-geometry quality toggle button."""
+        """Create a button with a colored enabled-state word."""
         super().__init__(text, parent)
         self.active = False
 
@@ -330,11 +330,12 @@ class MainWindow(QWidget):
         button_layout.setHorizontalSpacing(self.PRIMARY_COLUMN_SPACING)
         button_layout.setVerticalSpacing(6)
         self.open_button = QPushButton()
-        self.quality_button = QualityToggleButton("")
+        self.quality_button = StateToggleButton("")
         self.quality_button.set_active(self.quality_check_enabled)
         self.category_button = QPushButton()
         self.save_button = QPushButton()
-        self.tooltip_button = QPushButton()
+        self.tooltip_button = StateToggleButton("")
+        self.tooltip_button.set_active(self.tooltips_enabled)
         self.language_button = QPushButton("Language")
         self.language_menu = QMenu(self.language_button)
         self.language_actions = QActionGroup(self.language_menu)
@@ -585,6 +586,7 @@ class MainWindow(QWidget):
         self.tooltip_button.setText(
             self.t("main.tooltips.on" if self.tooltips_enabled else "main.tooltips.off")
         )
+        self.tooltip_button.set_active(self.tooltips_enabled)
         self.update_tooltips()
 
     def update_tooltips(self):
