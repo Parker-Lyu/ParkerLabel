@@ -52,6 +52,6 @@ The per-image JSON uses COCO annotation fields but is not a complete COCO datase
 - `parker_label_app/quality.py` detects disconnected mask regions and enclosed holes.
 - `parker_label_app/category_store.py` validates and persists category configurations.
 - `parker_label_app/category_dialog.py` provides category editing in the interface.
-- `parker_label_app/i18n.py` and `parker_label_app/locales/` provide nine interface languages and persist the selected language.
+- `parker_label_app/locales/` contains JSON translations for all nine interface languages; `parker_label_app/i18n.py` loads them and persists the selected language.
 - `export_mobilesam_encoder.py` and `export_mobilesam_decoder.py` regenerate the ONNX deployment models.
 - `mobile_sam/` contains the MobileSAM model implementation used by the export scripts.
