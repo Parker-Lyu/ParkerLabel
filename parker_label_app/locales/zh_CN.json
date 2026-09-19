@@ -1,7 +1,7 @@
 {
   "app.start_failed": "启动失败",
   "canvas.open_image": "请打开图片",
-  "category.current": "当前“{name}”",
+  "category.current": "当前类别配置：“{name}”",
   "category.builtin_name": "COCO 默认",
   "common.close": "关闭",
   "common.delete": "删除",
