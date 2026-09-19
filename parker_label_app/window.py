@@ -324,9 +324,11 @@ class MainWindow(QWidget):
 
     def build_primary_controls(self):
         """Create the aligned primary actions and language menu."""
-        layout = QGridLayout()
-        layout.setHorizontalSpacing(self.PRIMARY_COLUMN_SPACING)
-        layout.setVerticalSpacing(6)
+        layout = QVBoxLayout()
+        layout.setSpacing(0)
+        button_layout = QGridLayout()
+        button_layout.setHorizontalSpacing(self.PRIMARY_COLUMN_SPACING)
+        button_layout.setVerticalSpacing(6)
         self.open_button = QPushButton()
         self.quality_button = QualityToggleButton("")
         self.quality_button.set_active(self.quality_check_enabled)
@@ -358,14 +360,15 @@ class MainWindow(QWidget):
         self.category_config_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.update_primary_control_text()
         self.resize_primary_buttons()
-        layout.addWidget(self.open_button, 0, 0)
-        layout.addWidget(self.quality_button, 0, 1)
-        layout.addWidget(self.language_button, 0, 2)
-        layout.addWidget(self.category_button, 1, 0)
-        layout.addWidget(self.tooltip_button, 1, 1)
-        layout.addWidget(self.save_button, 1, 2)
-        layout.addWidget(self.category_config_label, 2, 0, 1, 3, Qt.AlignLeft | Qt.AlignTop)
-        layout.setColumnStretch(3, 1)
+        button_layout.addWidget(self.open_button, 0, 0)
+        button_layout.addWidget(self.quality_button, 0, 1)
+        button_layout.addWidget(self.language_button, 0, 2)
+        button_layout.addWidget(self.category_button, 1, 0)
+        button_layout.addWidget(self.tooltip_button, 1, 1)
+        button_layout.addWidget(self.save_button, 1, 2)
+        button_layout.setColumnStretch(3, 1)
+        layout.addLayout(button_layout)
+        layout.addWidget(self.category_config_label, 0, Qt.AlignLeft)
         return layout
 
     def build_tool_controls(self):
