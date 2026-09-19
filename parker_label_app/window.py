@@ -50,6 +50,25 @@ from .inference import SegmentationEngine
 from .quality import MaskQuality, inspect_mask_quality
 
 
+class CenteredMenuButton(QPushButton):
+    def paintEvent(self, event):
+        option = QStyleOptionButton()
+        self.initStyleOption(option)
+        text = option.text
+        option.text = ""
+        painter = QStylePainter(self)
+        painter.drawControl(QStyle.CE_PushButton, option)
+        self.style().drawItemText(
+            painter,
+            self.rect(),
+            Qt.AlignCenter,
+            option.palette,
+            bool(option.state & QStyle.State_Enabled),
+            text,
+            QPalette.ButtonText,
+        )
+
+
 class StateToggleButton(QPushButton):
     def __init__(self, text, parent=None):
         """Create a button with a colored enabled-state word."""
@@ -336,7 +355,7 @@ class MainWindow(QWidget):
         self.save_button = QPushButton()
         self.tooltip_button = StateToggleButton("")
         self.tooltip_button.set_active(self.tooltips_enabled)
-        self.language_button = QPushButton("Language")
+        self.language_button = CenteredMenuButton("Language")
         self.language_menu = QMenu(self.language_button)
         self.language_actions = QActionGroup(self.language_menu)
         self.language_actions.setExclusive(True)
