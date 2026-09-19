@@ -9,6 +9,8 @@ conda activate parker-label
 python main.py
 ```
 
+Use **Language** to select 中文（简体）, 中文（繁體）, English, 日本語, 한국어, Deutsch, Français, Italiano, or Español. The selection is saved for the next launch.
+
 ## Categories
 
 The application reads `config/default-coco.json`. The default configuration contains the 80 COCO detection categories. Use the **类别配置** button to add, delete, disable, or rename categories.
@@ -50,6 +52,6 @@ The per-image JSON uses COCO annotation fields but is not a complete COCO datase
 - `parker_label_app/quality.py` detects disconnected mask regions and enclosed holes.
 - `parker_label_app/category_store.py` validates and persists category configurations.
 - `parker_label_app/category_dialog.py` provides category editing in the interface.
-- `parker_label_app/i18n.py` stores Chinese and English interface text and the selected language.
+- `parker_label_app/i18n.py` and `parker_label_app/locales/` provide nine interface languages and persist the selected language.
 - `export_mobilesam_encoder.py` and `export_mobilesam_decoder.py` regenerate the ONNX deployment models.
 - `mobile_sam/` contains the MobileSAM model implementation used by the export scripts.

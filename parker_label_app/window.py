@@ -466,6 +466,7 @@ class MainWindow(QWidget):
         for group in (self.edit_group, self.view_group_box, self.interaction_group):
             group.setStyleSheet(group_style)
         lower_row = QHBoxLayout()
+        self.tool_control_row = lower_row
         lower_row.addWidget(self.edit_group, 0, Qt.AlignTop)
         lower_row.addWidget(self.interaction_group, 0, Qt.AlignTop)
         lower_row.addStretch(1)
@@ -610,6 +611,12 @@ class MainWindow(QWidget):
             action.setChecked(action.data() == self.i18n.language)
         self.update_primary_control_text()
         self.update_tool_control_text()
+        for group in (self.edit_group, self.interaction_group):
+            for index in range(group.layout().count()):
+                child_layout = group.layout().itemAt(index).layout()
+                if child_layout is not None:
+                    child_layout.invalidate()
+            group.layout().invalidate()
         self.update_table_headers()
         self.update_tooltips()
         if self.document is None:
@@ -620,6 +627,9 @@ class MainWindow(QWidget):
         self.resize_primary_buttons()
         self.primary_controls.invalidate()
         self.primary_controls.activate()
+        self.tool_control_row.invalidate()
+        self.tool_controls.invalidate()
+        self.tool_controls.activate()
         self.resize_segment_table_columns()
         self.update_quality_overlay()
 
