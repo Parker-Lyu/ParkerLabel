@@ -58,6 +58,12 @@ class CenteredMenuButton(QPushButton):
         option.text = ""
         painter = QStylePainter(self)
         painter.drawControl(QStyle.CE_PushButton, option)
+        metrics = option.fontMetrics
+        bounds = metrics.tightBoundingRect(text)
+        painter.translate(
+            0,
+            (metrics.descent() - metrics.ascent() - bounds.top() - bounds.bottom()) / 2,
+        )
         self.style().drawItemText(
             painter,
             self.rect(),
