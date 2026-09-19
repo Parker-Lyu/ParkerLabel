@@ -8,6 +8,7 @@ from PyQt5.QtCore import QEvent, QPoint, QRect, QSettings, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QFont, QPainter, QPalette, QPen, QPixmap
 from PyQt5.QtWidgets import (
     QApplication,
+    QActionGroup,
     QButtonGroup,
     QCheckBox,
     QComboBox,
@@ -17,6 +18,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QMenu,
     QMessageBox,
     QPushButton,
     QRadioButton,
@@ -43,7 +45,7 @@ from .editing import (
     paint_brush_segment,
 )
 from .image_utils import color_id_to_rgb, id_mask_to_rgb, qimage_from_rgb
-from .i18n import language_manager
+from .i18n import LANGUAGE_NAMES, language_manager
 from .inference import SegmentationEngine
 from .quality import MaskQuality, inspect_mask_quality
 
@@ -101,50 +103,6 @@ class QualityToggleButton(QPushButton):
         painter.drawText(prefix_rect, Qt.AlignCenter, prefix)
         painter.setPen(QColor("#15803d"))
         painter.drawText(state_rect, Qt.AlignCenter, state_text)
-
-
-class LanguageToggleLabel(QLabel):
-    clicked = pyqtSignal()
-
-    def __init__(self, language, parent=None):
-        """Create a compact bilingual language toggle."""
-        super().__init__("中｜EN", parent)
-        self.language = language
-        self.setCursor(Qt.PointingHandCursor)
-        self.setAlignment(Qt.AlignCenter)
-        self.setContentsMargins(4, 0, 4, 0)
-
-    def set_language(self, language):
-        """Update the highlighted language without changing geometry."""
-        self.language = language
-        self.update()
-
-    def mouseReleaseEvent(self, event):
-        """Emit a click when the primary button is released over the label."""
-        if event.button() == Qt.LeftButton and self.rect().contains(event.pos()):
-            self.clicked.emit()
-        super().mouseReleaseEvent(event)
-
-    def paintEvent(self, event):
-        """Paint the current language character in green."""
-        painter = QPainter(self)
-        painter.setFont(self.font())
-        parts = ("中", "｜", "EN")
-        widths = [painter.fontMetrics().horizontalAdvance(part) for part in parts]
-        left = self.contentsRect().center().x() - sum(widths) // 2
-        normal_color = self.palette().color(QPalette.WindowText)
-        active_index = 0 if self.language == "zh_CN" else 2
-
-        for index, (part, width) in enumerate(zip(parts, widths)):
-            painter.setPen(QColor("#15803d") if index == active_index else normal_color)
-            part_rect = QRect(
-                left,
-                self.contentsRect().y(),
-                width,
-                self.contentsRect().height(),
-            )
-            painter.drawText(part_rect, Qt.AlignCenter, part)
-            left += width
 
 
 class VisibilityHeader(QHeaderView):
@@ -278,9 +236,7 @@ class MainWindow(QWidget):
         self.categories = [category for category in categories if category.enabled]
         self.categories_by_name = {category.name: category for category in self.categories}
         if hasattr(self, "category_config_label"):
-            self.category_config_label.setText(
-                self.t("category.current", name=self.category_config_display_name())
-            )
+            self.update_category_config_label()
 
     def t(self, key, **values):
         """Return localized interface text."""
@@ -366,58 +322,48 @@ class MainWindow(QWidget):
         self.resize_segment_table_columns()
 
     def build_primary_controls(self):
-        """Create primary actions and compact interface status controls."""
+        """Create the aligned primary actions and language menu."""
         layout = QGridLayout()
+        layout.setHorizontalSpacing(8)
+        layout.setVerticalSpacing(6)
         self.open_button = QPushButton()
         self.quality_button = QualityToggleButton("")
         self.quality_button.set_active(self.quality_check_enabled)
         self.category_button = QPushButton()
         self.save_button = QPushButton()
         self.tooltip_button = QPushButton()
+        self.language_button = QPushButton("Language")
+        self.language_menu = QMenu(self.language_button)
+        self.language_actions = QActionGroup(self.language_menu)
+        self.language_actions.setExclusive(True)
+        for code, name in LANGUAGE_NAMES.items():
+            action = self.language_menu.addAction(name)
+            action.setData(code)
+            action.setCheckable(True)
+            action.setChecked(code == self.i18n.language)
+            self.language_actions.addAction(action)
+        self.language_actions.triggered.connect(
+            lambda action: self.i18n.set_language(action.data())
+        )
+        self.language_button.setMenu(self.language_menu)
         self.save_button.setShortcut("Ctrl+S")
         self.open_button.clicked.connect(self.choose_image)
         self.quality_button.clicked.connect(self.toggle_quality_check)
         self.category_button.clicked.connect(self.configure_categories)
         self.save_button.clicked.connect(self.save_document)
         self.tooltip_button.clicked.connect(self.toggle_tooltips)
-        self.language_toggle = LanguageToggleLabel(self.i18n.language)
-        self.language_toggle.clicked.connect(self.toggle_language)
         self.category_config_label = QLabel()
         self.category_config_label.setAlignment(Qt.AlignCenter)
-        buttons = (
-            self.open_button,
-            self.quality_button,
-            self.category_button,
-            self.save_button,
-        )
         self.update_primary_control_text()
-        button_width = max(button.sizeHint().width() for button in buttons)
-        button_height = max(button.sizeHint().height() for button in buttons)
-        for button in buttons:
-            button.setFixedSize(button_width, button_height)
-
-        category_panel = QWidget(self)
-        category_layout = QVBoxLayout(category_panel)
-        category_layout.setContentsMargins(0, 0, 0, 0)
-        category_layout.setSpacing(2)
-        category_layout.addWidget(self.category_button)
-        self.category_config_label.setFixedWidth(button_width)
-        self.category_config_label.setWordWrap(True)
-        category_layout.addWidget(self.category_config_label)
-
+        self.resize_primary_buttons()
         layout.addWidget(self.open_button, 0, 0)
         layout.addWidget(self.quality_button, 0, 1)
-        layout.addWidget(category_panel, 1, 0, Qt.AlignTop)
-        layout.addWidget(self.save_button, 1, 1, Qt.AlignTop)
-        layout.setColumnStretch(2, 1)
-
-        status_panel = QWidget(self)
-        status_layout = QVBoxLayout(status_panel)
-        status_layout.setContentsMargins(0, 0, 0, 0)
-        status_layout.setSpacing(4)
-        status_layout.addWidget(self.language_toggle, 0, Qt.AlignRight)
-        status_layout.addWidget(self.tooltip_button, 0, Qt.AlignRight)
-        layout.addWidget(status_panel, 0, 3, 2, 1, Qt.AlignRight | Qt.AlignVCenter)
+        layout.addWidget(self.language_button, 0, 2)
+        layout.addWidget(self.category_button, 1, 0)
+        layout.addWidget(self.tooltip_button, 1, 1)
+        layout.addWidget(self.save_button, 1, 2)
+        layout.addWidget(self.category_config_label, 2, 0, Qt.AlignTop)
+        layout.setColumnStretch(3, 1)
         return layout
 
     def build_tool_controls(self):
@@ -546,12 +492,48 @@ class MainWindow(QWidget):
         )
         self.category_button.setText(self.t("main.category_config"))
         self.save_button.setText(self.t("main.save_disk"))
-        self.category_config_label.setText(
-            self.t("category.current", name=self.category_config_display_name())
-        )
+        self.update_category_config_label()
         self.tooltip_button.setText(
             self.t("main.tooltips.on" if self.tooltips_enabled else "main.tooltips.off")
         )
+
+    def update_category_config_label(self):
+        """Keep the active configuration name within its button column."""
+        name = self.category_config_display_name()
+        width = self.category_config_label.width() - 4
+        if width > 0:
+            name = self.category_config_label.fontMetrics().elidedText(
+                name, Qt.ElideRight, width
+            )
+        self.category_config_label.setText(self.t("category.current", name=name))
+
+    def resize_primary_buttons(self):
+        """Keep all six buttons aligned across languages and toggle states."""
+        buttons = (
+            self.open_button,
+            self.quality_button,
+            self.language_button,
+            self.category_button,
+            self.tooltip_button,
+            self.save_button,
+        )
+        width = max(button.sizeHint().width() for button in buttons)
+        height = max(button.sizeHint().height() for button in buttons)
+        for button, keys in (
+            (self.quality_button, ("main.quality.off", "main.quality.on")),
+            (self.tooltip_button, ("main.tooltips.off", "main.tooltips.on")),
+        ):
+            padding = button.sizeHint().width() - button.fontMetrics().horizontalAdvance(
+                button.text()
+            )
+            width = max(
+                width,
+                *(button.fontMetrics().horizontalAdvance(self.t(key)) + padding for key in keys),
+            )
+        for button in buttons:
+            button.setFixedSize(width, height)
+        self.category_config_label.setFixedWidth(width)
+        self.update_category_config_label()
 
     def update_tool_control_text(self):
         """Refresh localized text for editing and viewing controls."""
@@ -588,11 +570,6 @@ class MainWindow(QWidget):
         )
         table.horizontalHeader().checkbox.setText(self.t("table.show"))
 
-    def toggle_language(self):
-        """Switch between the supported interface languages."""
-        language = "en_US" if self.i18n.language == "zh_CN" else "zh_CN"
-        self.i18n.set_language(language)
-
     def toggle_tooltips(self, _checked=False):
         """Toggle contextual interface hints."""
         self.tooltips_enabled = not self.tooltips_enabled
@@ -620,7 +597,8 @@ class MainWindow(QWidget):
 
     def retranslate_ui(self, _language=None):
         """Refresh visible interface text after a language change."""
-        self.language_toggle.set_language(self.i18n.language)
+        for action in self.language_actions.actions():
+            action.setChecked(action.data() == self.i18n.language)
         self.update_primary_control_text()
         self.update_tool_control_text()
         self.update_table_headers()
@@ -630,38 +608,7 @@ class MainWindow(QWidget):
             if self.log_area.document().blockCount() == 1:
                 self.log_area.setPlainText(self.t("log.ready"))
         self.refresh_table()
-        for button in (
-            self.open_button,
-            self.quality_button,
-            self.category_button,
-            self.save_button,
-        ):
-            button.setFixedSize(button.sizeHint())
-        width = max(
-            button.sizeHint().width()
-            for button in (
-                self.open_button,
-                self.quality_button,
-                self.category_button,
-                self.save_button,
-            )
-        )
-        height = max(
-            button.sizeHint().height()
-            for button in (
-                self.open_button,
-                self.quality_button,
-                self.category_button,
-                self.save_button,
-            )
-        )
-        for button in (
-            self.open_button,
-            self.quality_button,
-            self.category_button,
-            self.save_button,
-        ):
-            button.setFixedSize(width, height)
+        self.resize_primary_buttons()
         self.primary_controls.invalidate()
         self.primary_controls.activate()
         self.resize_segment_table_columns()
