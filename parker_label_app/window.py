@@ -333,6 +333,8 @@ class MainWindow(QWidget):
         self.tool_controls = self.build_tool_controls()
         controls.addLayout(self.primary_controls)
         controls.addLayout(self.tool_controls)
+        if sys.platform == "win32":
+            controls.addSpacing(10)
         self.table = self.build_segment_table()
         controls.addWidget(self.table, 1)
         self.log_area = QTextEdit(self)
@@ -380,11 +382,15 @@ class MainWindow(QWidget):
         button_layout.setColumnStretch(2, 1)
         layout.addLayout(button_layout)
         layout.addWidget(self.category_config_label, 0, Qt.AlignLeft)
+        if sys.platform == "win32":
+            layout.addSpacing(10)
         return layout
 
     def build_tool_controls(self):
         """Create drawing, viewing, morphology, and brush controls."""
         outer = QVBoxLayout()
+        if sys.platform == "win32":
+            outer.setSpacing(14)
 
         self.edit_group = QGroupBox()
         edit_layout = QVBoxLayout(self.edit_group)
