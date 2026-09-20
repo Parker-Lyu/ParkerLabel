@@ -82,7 +82,7 @@ class ShortcutWindowTests(unittest.TestCase):
         self.settings = QSettings(
             str(Path(self.directory.name) / "window.ini"), QSettings.IniFormat
         )
-        with patch.object(window_module, "QSettings", return_value=self.settings), patch.object(
+        with patch.object(window_module, "portable_settings", return_value=self.settings), patch.object(
             window_module, "SegmentationEngine", return_value=object()
         ):
             self.window = window_module.MainWindow()

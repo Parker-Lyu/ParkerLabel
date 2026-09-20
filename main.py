@@ -1,20 +1,31 @@
+import logging
 import sys
 
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
-from parker_label_app import MainWindow
-from parker_label_app.app_info import APP_NAME
-from parker_label_app.i18n import language_manager
+from runtime_paths import prepare_runtime
 
 
 def main():
     """Start the desktop annotation application."""
     app = QApplication(sys.argv)
-    app.setApplicationName(APP_NAME)
+    app.setApplicationName("ParkerLabel")
     try:
+        prepare_runtime()
+        from parker_label_app import MainWindow
+        from parker_label_app.app_info import APP_NAME
+        from parker_label_app.i18n import language_manager
+
+        app.setApplicationName(APP_NAME)
         window = MainWindow()
     except Exception as error:
-        QMessageBox.critical(None, language_manager.text("app.start_failed"), str(error))
+        logging.getLogger("parker_label").exception("Startup failed")
+        title = (
+            language_manager.text("app.start_failed")
+            if "language_manager" in locals()
+            else "ParkerLabel"
+        )
+        QMessageBox.critical(None, title, str(error))
         return 1
     window.show()
     return app.exec_()

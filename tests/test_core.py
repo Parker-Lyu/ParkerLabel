@@ -3,6 +3,7 @@ import struct
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import cv2
 import numpy as np
@@ -59,6 +60,19 @@ class CategoryStoreTests(unittest.TestCase):
             path.write_text(json.dumps(payload), encoding="utf-8")
             with self.assertRaisesRegex(CategoryConfigError, "未知字段：color"):
                 CategoryStore(path).load()
+
+    def test_creates_configuration_when_hard_links_are_unsupported(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "categories.json"
+            builtin = Path(__file__).resolve().parent.parent / "config" / "default-coco.json"
+            categories = CategoryStore(builtin).load()[:1]
+            with patch("parker_label_app.category_store.os.link", side_effect=OSError("unsupported")):
+                CategoryStore(path).save(
+                    "11111111-1111-4111-8111-111111111111",
+                    "2026-09-18T09:52:35+08:00",
+                    categories,
+                )
+            self.assertEqual(CategoryStore(path).load(), categories)
 
     def test_manager_keeps_existing_configs_readonly_and_persists_named_default(self):
         """Create a draft, save it repeatedly, freeze it, and reload its UUID."""

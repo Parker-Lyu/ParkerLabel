@@ -1,3 +1,4 @@
+import logging
 import random
 import sys
 import traceback
@@ -5,7 +6,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PyQt5.QtCore import QEvent, QPoint, QRect, QSettings, Qt, QUrl, pyqtSignal
+from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, QUrl, pyqtSignal
 from PyQt5.QtGui import QColor, QDesktopServices, QFont, QPainter, QPalette, QPen, QPixmap
 from PyQt5.QtWidgets import (
     QAction,
@@ -36,6 +37,8 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from runtime_paths import config_directory, portable_settings, resource_root
 
 from .annotation_io import AnnotationRepository
 from .app_info import (
@@ -175,12 +178,17 @@ class MainWindow(QWidget):
     def __init__(self):
         """Initialize application services, state, and interface."""
         super().__init__()
-        root = Path(__file__).resolve().parent.parent
-        self.category_manager = CategoryConfigManager(root / "config" / "default-coco.json")
+        root = resource_root()
+        configs = config_directory()
+        self.settings = portable_settings()
+        self.category_manager = CategoryConfigManager(
+            root / "config" / "default-coco.json",
+            user_directory=configs / "categories",
+            settings=self.settings,
+        )
         self.active_category_config_id = None
         self.active_category_config_sha256 = ""
         self.category_config_name = ""
-        self.settings = QSettings("ParkerLabel", "ParkerLabel")
         self.shortcut_store = ShortcutStore(self.settings)
         self.shortcut_manager = ShortcutManager(self, self.shortcut_store)
         self.shortcut_dialog = None
@@ -340,6 +348,7 @@ class MainWindow(QWidget):
         self.log_area = QTextEdit(self)
         self.log_area.setReadOnly(True)
         self.log_area.setMaximumHeight(110)
+        self.log_area.document().setMaximumBlockCount(500)
         controls.addWidget(self.log_area)
         self.control_panel = QWidget(self)
         self.control_panel.setLayout(controls)
@@ -2138,6 +2147,7 @@ class MainWindow(QWidget):
     def log(self, message):
         """Append an ordinary message to the application log."""
         self.log_area.append(f"<span style='color:#222'>{message}</span>")
+        logging.getLogger("parker_label").info(message)
 
     def show_warning(self, title, message):
         """Show a blocking interaction warning."""
@@ -2146,6 +2156,7 @@ class MainWindow(QWidget):
     def log_error(self, message):
         """Append an error message to the application log."""
         self.log_area.append(f"<span style='color:#c62828'>{message}</span>")
+        logging.getLogger("parker_label").error(message.replace("<br>", "\n"))
 
     def log_exception(self, context, error):
         """Log an exception with its traceback for diagnosis."""

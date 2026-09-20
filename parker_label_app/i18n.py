@@ -1,8 +1,9 @@
 import json
-from pathlib import Path
 from string import Formatter
 
-from PyQt5.QtCore import QObject, QSettings, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal
+
+from runtime_paths import portable_settings, resource_root
 
 
 LANGUAGE_NAMES = {
@@ -21,7 +22,7 @@ LANGUAGE_NAMES = {
 _TEXT = {}
 
 
-_LOCALE_DIR = Path(__file__).resolve().parent / "locales"
+_LOCALE_DIR = resource_root() / "parker_label_app" / "locales"
 _FORMATTER = Formatter()
 for _code in LANGUAGE_NAMES:
     with (_LOCALE_DIR / f"{_code}.json").open(encoding="utf-8") as _file:
@@ -49,7 +50,7 @@ class LanguageManager(QObject):
     def __init__(self, settings=None):
         """Load and persist the selected interface language."""
         super().__init__()
-        self.settings = settings or QSettings("ParkerLabel", "ParkerLabel")
+        self.settings = settings if settings is not None else portable_settings()
         language = self.settings.value("interface/language", "zh_CN", type=str)
         self._language = language if language in _TEXT else "zh_CN"
 

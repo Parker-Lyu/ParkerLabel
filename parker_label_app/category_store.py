@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import shutil
 import tempfile
 import unicodedata
 from dataclasses import dataclass
@@ -34,6 +35,15 @@ def _write_json(path, payload, overwrite=True):
                 os.link(temporary_path, path)
             except FileExistsError as error:
                 raise CategoryConfigError(f"配置名称重复：{path.stem}") from error
+            except OSError:
+                try:
+                    with open(temporary_path, "rb") as source, path.open("xb") as target:
+                        shutil.copyfileobj(source, target)
+                except FileExistsError as error:
+                    raise CategoryConfigError(f"配置名称重复：{path.stem}") from error
+                except Exception:
+                    path.unlink(missing_ok=True)
+                    raise
             os.unlink(temporary_path)
     except Exception:
         try:
@@ -265,12 +275,13 @@ class CategoryConfigManager:
     BUILTIN_NAME = "COCO 默认"
     SETTINGS_NAME = "settings.json"
 
-    def __init__(self, builtin_path, user_directory=None):
+    def __init__(self, builtin_path, user_directory=None, settings=None):
         """Manage the built-in category set and immutable user configurations."""
         self.builtin_store = CategoryStore(builtin_path, readonly=True)
         if user_directory is None:
             user_directory = Path(builtin_path).parent / "category-configs"
         self.user_directory = Path(user_directory)
+        self.settings = settings
         self.settings_path = self.user_directory / self.SETTINGS_NAME
         self.warning = ""
         self._drafts = {}
@@ -303,9 +314,12 @@ class CategoryConfigManager:
         return name
 
     def _read_settings(self):
-        if not self.settings_path.exists():
+        if self.settings is None and not self.settings_path.exists():
             return self.BUILTIN_ID
         try:
+            if self.settings is not None:
+                value = self.settings.value("categories/default_config_uuid", self.BUILTIN_ID, type=str)
+                return _canonical_uuid(value)
             with self.settings_path.open("r", encoding="utf-8") as handle:
                 payload = json.load(handle)
             if set(payload) != {"default_config_uuid"}:
@@ -316,6 +330,12 @@ class CategoryConfigManager:
             return self.BUILTIN_ID
 
     def _write_settings(self, config_id):
+        if self.settings is not None:
+            self.settings.setValue("categories/default_config_uuid", config_id)
+            self.settings.sync()
+            if self.settings.status() != self.settings.NoError:
+                raise OSError("类别配置设置保存失败")
+            return
         _write_json(self.settings_path, {"default_config_uuid": config_id})
 
     def configurations(self):
