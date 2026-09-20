@@ -1,4 +1,5 @@
 import json
+import struct
 import tempfile
 import unittest
 from pathlib import Path
@@ -16,6 +17,7 @@ from parker_label_app.category_store import (
     CategoryConfigManager,
     CategoryStore,
 )
+from parker_label_app.image_utils import load_rgb_image
 from parker_label_app.models import AnnotationDocument, Category
 
 
@@ -126,6 +128,60 @@ class CategoryStoreTests(unittest.TestCase):
             payload = json.loads(path.read_text(encoding="utf-8"))
             path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
             self.assertEqual(manager.load_data(config_id).content_hash, before)
+
+
+class ImageLoadingTests(unittest.TestCase):
+    def test_loads_color_grayscale_and_transparent_images_from_unicode_paths(self):
+        color_bgr = np.array([[[10, 20, 30], [40, 50, 60]]], dtype=np.uint8)
+        grayscale = np.array([[10, 90]], dtype=np.uint8)
+        transparent_bgra = np.array([[[10, 20, 30, 0], [40, 50, 60, 255]]], dtype=np.uint8)
+        cases = [
+            (color_bgr, cv2.cvtColor(color_bgr, cv2.COLOR_BGR2RGB)),
+            (grayscale, cv2.cvtColor(grayscale, cv2.COLOR_GRAY2RGB)),
+            (transparent_bgra, cv2.cvtColor(transparent_bgra[:, :, :3], cv2.COLOR_BGR2RGB)),
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            for index, (pixels, expected) in enumerate(cases):
+                with self.subTest(index=index):
+                    path = Path(directory) / f"测试 图像 {index}.png"
+                    path.write_bytes(cv2.imencode(".png", pixels)[1].tobytes())
+                    image, source_size = load_rgb_image(path, 2)
+                    self.assertEqual(source_size, (1, 2))
+                    np.testing.assert_array_equal(image, expected)
+
+    def test_jpeg_exif_orientation_does_not_change_annotation_coordinates(self):
+        pixels = np.array(
+            [
+                [[0, 0, 255], [0, 255, 0], [255, 0, 0]],
+                [[255, 255, 255], [0, 0, 0], [0, 255, 255]],
+            ],
+            dtype=np.uint8,
+        )
+        encoded = cv2.imencode(".jpg", pixels)[1].tobytes()
+        original = cv2.imdecode(np.frombuffer(encoded, dtype=np.uint8), cv2.IMREAD_COLOR)
+        tiff = (
+            b"II*\x00\x08\x00\x00\x00\x01\x00\x12\x01\x03\x00"
+            b"\x01\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00"
+        )
+        payload = b"Exif\x00\x00" + tiff
+        encoded = encoded[:2] + b"\xff\xe1" + struct.pack(">H", len(payload) + 2) + payload + encoded[2:]
+        rotated = cv2.imdecode(np.frombuffer(encoded, dtype=np.uint8), cv2.IMREAD_COLOR)
+        self.assertEqual(rotated.shape[:2], (3, 2))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "rotated.jpg"
+            path.write_bytes(encoded)
+            image, source_size = load_rgb_image(path, 3)
+        self.assertEqual(source_size, (2, 3))
+        np.testing.assert_array_equal(image, cv2.cvtColor(original, cv2.COLOR_BGR2RGB))
+
+    def test_rejects_invalid_images(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "invalid.png"
+            for content in (b"", b"not an image"):
+                path.write_bytes(content)
+                with self.assertRaisesRegex(ValueError, "Cannot decode image"):
+                    load_rgb_image(path, 1024)
+
 
 class RleTests(unittest.TestCase):
     def test_round_trip_preserves_binary_mask(self):

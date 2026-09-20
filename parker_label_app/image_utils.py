@@ -2,7 +2,6 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PIL import Image
 
 
 def resize_longest_side(image_rgb: np.ndarray, target_size: int):
@@ -16,8 +15,13 @@ def resize_longest_side(image_rgb: np.ndarray, target_size: int):
 
 def load_rgb_image(path: Path, target_size: int):
     """Load an image as RGB and return its resized and source dimensions."""
-    with Image.open(path) as image:
-        source = np.asarray(image.convert("RGB"))
+    encoded = np.frombuffer(Path(path).read_bytes(), dtype=np.uint8)
+    if encoded.size == 0:
+        raise ValueError(f"Cannot decode image: {path}")
+    source_bgr = cv2.imdecode(encoded, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
+    if source_bgr is None:
+        raise ValueError(f"Cannot decode image: {path}")
+    source = cv2.cvtColor(source_bgr, cv2.COLOR_BGR2RGB)
     source_size = source.shape[:2]
     return resize_longest_side(source, target_size), source_size
 
