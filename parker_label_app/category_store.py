@@ -275,11 +275,9 @@ class CategoryConfigManager:
     BUILTIN_NAME = "COCO 默认"
     SETTINGS_NAME = "settings.json"
 
-    def __init__(self, builtin_path, user_directory=None, settings=None):
+    def __init__(self, builtin_path, user_directory, settings=None):
         """Manage the built-in category set and immutable user configurations."""
         self.builtin_store = CategoryStore(builtin_path, readonly=True)
-        if user_directory is None:
-            user_directory = Path(builtin_path).parent / "category-configs"
         self.user_directory = Path(user_directory)
         self.settings = settings
         self.settings_path = self.user_directory / self.SETTINGS_NAME

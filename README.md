@@ -17,7 +17,7 @@ Use **Settings → Keyboard Shortcuts** to view, change, clear, or restore key b
 
 The application bundles `config/default-coco.json` as the read-only set of 80 COCO detection categories. User category files are stored in `configs/categories/` beside the program. Use the **类别配置** button to add, delete, disable, or rename categories.
 
-Portable settings, including the startup category selection, are stored in `configs/settings.ini`. The application log is `configs/app.log`; it is cleared on each launch and limited to two 1 MB files while the app runs. Keep the program in a writable directory so it can create `configs/`. Existing source-checkout category files and system settings are copied to `configs/` on first launch.
+Portable settings, including the startup category selection, are stored in `configs/settings.ini`. The application log is `configs/app.log`; it is cleared on each launch and limited to two 1 MB files while the app runs. Keep the program in a writable directory so it can create `configs/`.
 
 ## Annotation files
 

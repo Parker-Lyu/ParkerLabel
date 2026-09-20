@@ -1,4 +1,3 @@
-import json
 import logging
 import tempfile
 import unittest
@@ -9,7 +8,7 @@ from PyQt5.QtCore import QSettings
 from PyQt5.QtWidgets import QApplication
 
 import runtime_paths
-from parker_label_app.category_store import CategoryConfigManager, CategoryStore
+from parker_label_app.category_store import CategoryStore
 import parker_label_app.window as window_module
 
 
@@ -31,76 +30,20 @@ class PortablePathTests(unittest.TestCase):
             ):
                 self.assertEqual(runtime_paths.config_directory(), root / "configs")
 
-    def test_migrates_existing_categories_and_settings_without_overwriting(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            builtin = Path(__file__).resolve().parent.parent / "config" / "default-coco.json"
-            original = root / "config" / "category-configs"
-            original.mkdir(parents=True)
-            category_id = "11111111-1111-4111-8111-111111111111"
-            categories = CategoryStore(builtin).load()[:1]
-            CategoryStore(original / "道路场景.json").save(
-                category_id, "2026-09-18T09:52:35+08:00", categories
-            )
-            (original / "settings.json").write_text(
-                json.dumps({"default_config_uuid": category_id}), encoding="utf-8"
-            )
-            configs = root / "configs"
-            with patch.object(runtime_paths, "_SOURCE_ROOT", root):
-                runtime_paths._migrate_categories(configs)
-                manager = CategoryConfigManager(
-                    builtin,
-                    user_directory=configs / "categories",
-                    settings=QSettings(str(configs / "settings.ini"), QSettings.IniFormat),
-                )
-                self.assertEqual(manager.default_config_id(), category_id)
-                self.assertEqual(manager.configuration(category_id).name, "道路场景")
-                manager.set_default(CategoryConfigManager.BUILTIN_ID)
-                manager.set_default(category_id)
-                reloaded = CategoryConfigManager(
-                    builtin,
-                    user_directory=configs / "categories",
-                    settings=QSettings(str(configs / "settings.ini"), QSettings.IniFormat),
-                )
-                self.assertEqual(reloaded.default_config_id(), category_id)
-                (configs / "categories" / "道路场景.json").write_text("custom", encoding="utf-8")
-                runtime_paths._migrate_categories(configs)
-                self.assertEqual((configs / "categories" / "道路场景.json").read_text(), "custom")
-
-            old_settings = QSettings(str(root / "old.ini"), QSettings.IniFormat)
-            old_settings.setValue("interface/language", "ja_JP")
-            old_settings.setValue("interface/quality_check_enabled", False)
-            old_settings.setValue("shortcuts/save", "Ctrl+S")
-            old_settings.setValue("AppleLocale", "en_US")
-            old_settings.sync()
-            with patch.object(runtime_paths, "_SOURCE_ROOT", root):
-                runtime_paths._migrate_settings(configs, old_settings)
-                self.assertEqual(runtime_paths.portable_settings().value("interface/language"), "ja_JP")
-                self.assertFalse(runtime_paths.portable_settings().value("interface/quality_check_enabled"))
-                self.assertEqual(runtime_paths.portable_settings().value("shortcuts/save"), "Ctrl+S")
-                self.assertFalse(runtime_paths.portable_settings().contains("AppleLocale"))
-                settings = runtime_paths.portable_settings()
-                settings.setValue("interface/language", "en_US")
-                settings.sync()
-                runtime_paths._migrate_settings(configs, old_settings)
-                self.assertEqual(runtime_paths.portable_settings().value("interface/language"), "en_US")
-
-    def test_legacy_categories_are_migrated_only_once(self):
+    def test_startup_does_not_import_old_category_files(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             original = root / "config" / "category-configs"
             original.mkdir(parents=True)
             (original / "Test.json").write_text("original", encoding="utf-8")
             logger = logging.getLogger("parker_label")
-            with patch.object(runtime_paths, "_SOURCE_ROOT", root), patch.object(
-                runtime_paths, "_migrate_settings"
-            ):
+            with patch.object(runtime_paths, "_SOURCE_ROOT", root):
                 runtime_paths.prepare_runtime()
-                target = root / "configs" / "categories" / "Test.json"
-                self.assertEqual(target.read_text(), "original")
-                target.unlink()
-                runtime_paths.prepare_runtime()
-                self.assertFalse(target.exists())
+                configs = root / "configs"
+                self.assertTrue((configs / "categories").is_dir())
+                self.assertFalse((configs / "categories" / "Test.json").exists())
+                self.assertFalse((configs / "settings.ini").exists())
+                self.assertFalse((configs / ".legacy-migration-complete").exists())
             for handler in logger.handlers[:]:
                 logger.removeHandler(handler)
                 handler.close()
@@ -140,9 +83,7 @@ class PortablePathTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             logger = logging.getLogger("parker_label")
-            with patch.object(runtime_paths, "_SOURCE_ROOT", root), patch.object(
-                runtime_paths, "_migrate_settings"
-            ):
+            with patch.object(runtime_paths, "_SOURCE_ROOT", root):
                 runtime_paths.prepare_runtime()
                 logger.info("previous launch")
                 for handler in logger.handlers:
