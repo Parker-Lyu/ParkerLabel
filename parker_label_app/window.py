@@ -482,8 +482,8 @@ class MainWindow(QWidget):
             group.setStyleSheet(group_style)
         lower_row = QHBoxLayout()
         self.tool_control_row = lower_row
-        lower_row.addWidget(self.edit_group, 0, Qt.AlignTop)
-        lower_row.addWidget(self.interaction_group, 0, Qt.AlignTop)
+        lower_row.addWidget(self.edit_group)
+        lower_row.addWidget(self.interaction_group)
         lower_row.addStretch(1)
         outer.addWidget(self.view_group_box, 0, Qt.AlignLeft)
         outer.addLayout(lower_row)
