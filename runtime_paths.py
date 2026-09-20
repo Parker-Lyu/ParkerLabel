@@ -36,8 +36,17 @@ def portable_settings():
 
 def _migrate_settings(directory, original=None):
     original = original if original is not None else QSettings("ParkerLabel", "ParkerLabel")
+    original.setFallbacksEnabled(False)
     settings = portable_settings()
-    keys = [key for key in original.allKeys() if not settings.contains(key)]
+    legacy_keys = {
+        "interface/language",
+        "interface/quality_check_enabled",
+        "interface/tooltips_enabled",
+    }
+    keys = [
+        key for key in original.allKeys()
+        if (key in legacy_keys or key.startswith("shortcuts/")) and not settings.contains(key)
+    ]
     if not keys:
         return
     for key in keys:

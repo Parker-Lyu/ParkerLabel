@@ -69,10 +69,16 @@ class PortablePathTests(unittest.TestCase):
 
             old_settings = QSettings(str(root / "old.ini"), QSettings.IniFormat)
             old_settings.setValue("interface/language", "ja_JP")
+            old_settings.setValue("interface/quality_check_enabled", False)
+            old_settings.setValue("shortcuts/save", "Ctrl+S")
+            old_settings.setValue("AppleLocale", "en_US")
             old_settings.sync()
             with patch.object(runtime_paths, "_SOURCE_ROOT", root):
                 runtime_paths._migrate_settings(configs, old_settings)
                 self.assertEqual(runtime_paths.portable_settings().value("interface/language"), "ja_JP")
+                self.assertFalse(runtime_paths.portable_settings().value("interface/quality_check_enabled"))
+                self.assertEqual(runtime_paths.portable_settings().value("shortcuts/save"), "Ctrl+S")
+                self.assertFalse(runtime_paths.portable_settings().contains("AppleLocale"))
                 settings = runtime_paths.portable_settings()
                 settings.setValue("interface/language", "en_US")
                 settings.sync()
