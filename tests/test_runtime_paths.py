@@ -19,11 +19,17 @@ class PortablePathTests(unittest.TestCase):
             with patch.object(runtime_paths, "_SOURCE_ROOT", root):
                 self.assertEqual(runtime_paths.resource_root(), root)
                 self.assertEqual(runtime_paths.config_directory(), root / "configs")
+                self.assertEqual(runtime_paths.model_directory(), root / "pretrain")
+                self.assertEqual(runtime_paths.model_manifest_path(), root / "model-bundle.json")
             with patch.object(runtime_paths.sys, "frozen", True, create=True), patch.object(
                 runtime_paths.sys, "_MEIPASS", str(root / "internal"), create=True
             ), patch.object(runtime_paths.sys, "executable", str(root / "ParkerLabel.exe")):
                 self.assertEqual(runtime_paths.resource_root(), root / "internal")
                 self.assertEqual(runtime_paths.config_directory(), root / "configs")
+                self.assertEqual(runtime_paths.model_directory(), root / "configs" / "pretrain")
+                self.assertEqual(
+                    runtime_paths.model_manifest_path(), root / "internal" / "model-bundle.json"
+                )
             executable = root / "ParkerLabel.app" / "Contents" / "MacOS" / "ParkerLabel"
             with patch.object(runtime_paths.sys, "frozen", True, create=True), patch.object(
                 runtime_paths.sys, "executable", str(executable)
@@ -66,6 +72,8 @@ class PortablePathTests(unittest.TestCase):
             settings.sync()
             with patch.object(window_module, "resource_root", return_value=root), patch.object(
                 window_module, "config_directory", return_value=configs
+            ), patch.object(
+                window_module, "model_directory", return_value=root / "pretrain"
             ), patch.object(window_module, "SegmentationEngine", return_value=object()) as engine, patch.object(
                 window_module,
                 "portable_settings",

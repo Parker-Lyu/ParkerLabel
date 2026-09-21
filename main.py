@@ -15,8 +15,11 @@ def main():
         from parker_label_app import MainWindow
         from parker_label_app.app_info import APP_NAME
         from parker_label_app.i18n import language_manager
+        from parker_label_app.model_download_dialog import ensure_runtime_models
 
         app.setApplicationName(APP_NAME)
+        if not ensure_runtime_models():
+            return 1
         window = MainWindow()
     except Exception as error:
         logging.getLogger("parker_label").exception("Startup failed")

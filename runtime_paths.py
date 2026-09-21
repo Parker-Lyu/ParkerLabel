@@ -28,6 +28,16 @@ def config_directory():
     return program_directory() / "configs"
 
 
+def model_directory():
+    if getattr(sys, "frozen", False):
+        return config_directory() / "pretrain"
+    return _SOURCE_ROOT / "pretrain"
+
+
+def model_manifest_path():
+    return resource_root() / "model-bundle.json"
+
+
 def portable_settings():
     return QSettings(str(config_directory() / "settings.ini"), QSettings.IniFormat)
 
@@ -35,6 +45,8 @@ def portable_settings():
 def prepare_runtime():
     directory = config_directory()
     (directory / "categories").mkdir(parents=True, exist_ok=True)
+    if getattr(sys, "frozen", False):
+        model_directory().mkdir(parents=True, exist_ok=True)
     logger = logging.getLogger(_LOGGER_NAME)
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)

@@ -15,11 +15,13 @@ python -m pip install -r requirements.txt
 python fetch_models.py
 ```
 
-`fetch_models.py` downloads `encoder.onnx` and `decoder.onnx` into `pretrain/`. It prefers GitHub when the measured download speed is at least 500 KB/s, falls back to Gitee, and verifies file size and SHA-256. Then start the app from the repository root with the environment active:
+`fetch_models.py` downloads `encoder.onnx` and `decoder.onnx` into `pretrain/`. It prefers GitHub when the measured download speed is at least 500 KiB/s, falls back to Gitee, and verifies file size and SHA-256. Then start the app from the repository root with the environment active:
 
 ```bash
 python main.py
 ```
+
+Packaged builds do not include the ONNX files. On startup, ParkerLabel verifies the files in `configs/pretrain/` beside the program and downloads missing or invalid files from GitHub, falling back to Gitee when GitHub is unavailable or slower than 500 KiB/s. If both sources fail, the dialog shows copyable release URLs and the exact destination directory for manual installation.
 
 Use **Settings → Interface Language** to select 中文（简体）, 中文（繁體）, English, 日本語, 한국어, Deutsch, Français, Italiano, or Español. The selection is saved for the next launch. **Settings → Tooltips** controls contextual hints.
 

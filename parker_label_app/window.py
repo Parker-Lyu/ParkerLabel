@@ -38,7 +38,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from runtime_paths import config_directory, portable_settings, resource_root
+from runtime_paths import config_directory, model_directory, portable_settings, resource_root
 
 from .annotation_io import AnnotationRepository
 from .app_info import (
@@ -194,9 +194,10 @@ class MainWindow(QWidget):
         self.shortcut_manager = ShortcutManager(self, self.shortcut_store)
         self.shortcut_dialog = None
         self.repository = AnnotationRepository(target_size=1024)
+        models = model_directory()
         self.engine = SegmentationEngine(
-            root / "pretrain" / "encoder.onnx",
-            root / "pretrain" / "decoder.onnx",
+            models / "encoder.onnx",
+            models / "decoder.onnx",
             target_size=1024,
         )
         self.categories = []
