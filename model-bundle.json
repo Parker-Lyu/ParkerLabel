@@ -1,5 +1,5 @@
 {
-  "version": "models-v1",
+  "version": "models-v2",
   "minimum_github_speed_bytes_per_second": 512000,
   "files": [
     {
@@ -7,17 +7,17 @@
       "size": 28016150,
       "sha256": "21e444e2aca6ccae137c89478de457af8dd285b3fb4373804053a9a3d535a12f",
       "sources": {
-        "github": "https://github.com/Parker-Lyu/ParkerLabel/releases/download/models-v1/encoder.onnx",
-        "gitee": "https://gitee.com/Parker-Lyu/ParkerLabel/releases/download/models-v1/encoder.onnx"
+        "github": "https://github.com/Parker-Lyu/ParkerLabel/releases/download/models-v2/encoder.onnx",
+        "gitee": "https://gitee.com/Parker-Lyu/ParkerLabel/releases/download/models-v2/encoder.onnx"
       }
     },
     {
       "path": "pretrain/decoder.onnx",
-      "size": 16514493,
-      "sha256": "bda6e405e9dddf4bc79dcc07474b3fcb124fb36b468559231583d2a0c7d820bd",
+      "size": 16509691,
+      "sha256": "1cdd16b569bdec96a6feddfd5fba704d192a3259e614e8f5c9b5e55c73096b8b",
       "sources": {
-        "github": "https://github.com/Parker-Lyu/ParkerLabel/releases/download/models-v1/decoder.onnx",
-        "gitee": "https://gitee.com/Parker-Lyu/ParkerLabel/releases/download/models-v1/decoder.onnx"
+        "github": "https://github.com/Parker-Lyu/ParkerLabel/releases/download/models-v2/decoder.onnx",
+        "gitee": "https://gitee.com/Parker-Lyu/ParkerLabel/releases/download/models-v2/decoder.onnx"
       }
     }
   ]

@@ -1,0 +1,29 @@
+{
+    "Id": "psl",
+    "Name": "The Public Suffix List",
+    "QDocModule": "qtcore",
+    "Description": "The Public Suffix List is an initiative of Mozilla,
+but is maintained as a community resource. It is available for use in any software,
+but was originally created to meet the needs of browser manufacturers.
+It allows browsers to, for example:
+
+- Avoid privacy-damaging \"supercookies\" being set for high-level domain name suffixes
+
+- Highlight the most important part of a domain name in the user interface
+
+- Accurately sort history entries by site",
+
+    "Files": "qurltlds_p.h",
+    "QtUsage": "See util/corelib/qurl-generateTLDs/ for code-generator",
+    "QtUsage": "Used in Qt Core to avoid setting \"supercookies\" in the cookie jar
+supported by Qt (by the QNetworkCookieJar class).",
+
+    "Homepage": "Consult https://github.com/publicsuffix/list for the sha1 but download from ...",
+    "Homepage": "http://publicsuffix.org/",
+    "Version": "903a83ff7bfc3148e3692e09396f9f3bdc9462ef, fetched on 2024-06-28",
+    "License": "Mozilla Public License 2.0",
+    "LicenseFile": "PSL-LICENSE.txt",
+    "LicenseId": "MPL-2.0",
+    "Copyright": "The list was originally provided by Jo Hermans <jo.hermans@gmail.com>.
+It is now maintained on github (https://github.com/publicsuffix/list)."
+}

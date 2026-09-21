@@ -1,24 +1,38 @@
-# Release license plan
+# Release license procedure
 
-The current development environment uses PyQt5 5.15.11 and Qt 5.15.15. Check the libraries and licenses in each actual release build before distributing it.
+Parker Label's root `LICENSE` remains GPL-3.0-only. Third-party components keep
+their own licenses and notices under `third_party_licenses/`.
 
-## Repository layout
+The macOS build scans the finished, pruned `.app` with
+`builds/audit_macos_licenses.py`. It compares every bundled `.so` and `.dylib`,
+the Qt frameworks, and the Qt plugins with
+`third_party_licenses/macos-arm64-inventory.json`. A build fails when a binary
+is unknown, the inventory changes, or required license material is missing.
 
-| Location | Purpose |
-| --- | --- |
-| `LICENSE` | GPL-3.0-only for Parker Label's original code. Third-party code retains its own licenses. |
-| `mobile_sam/LICENSE` | Apache License 2.0 for the included MobileSAM and Segment Anything code. |
-| `mobile_sam/TINYVIT_LICENSE` | TinyViT's MIT license and upstream third-party notices. |
-| `mobile_sam/THIRD_PARTY.md` | Source and file attribution for the included model and exporter code. |
-| `third_party_licenses/` | License texts and notices for the exact PyQt5, Qt, and other dependencies that the release build actually contains. Add this directory when the build dependency inventory is fixed. |
+The application bundle contains:
 
-The release archive or application bundle should include the root license, the applicable third-party license texts and notices, and a clear link to the complete corresponding source and build instructions for that release.
+```text
+Contents/Resources/LICENSE
+Contents/Resources/third_party_licenses/THIRD_PARTY_NOTICES.md
+Contents/Resources/third_party_licenses/<component>/...
+```
 
-## PyQt5 and Qt packaging
+`third_party_licenses/THIRD_PARTY_NOTICES.md` is the human-readable component
+list. The PyQt5 directory records how to obtain the exact GPL corresponding
+source. The Qt directory records the exact LGPL qtbase source revision,
+third-party attributions, and instructions for replacing the bundled dynamic
+libraries.
 
-1. Record the PyQt5 and Qt versions, license editions, Qt modules, plugins, and other libraries copied into the finished bundle. A development environment package list is not a substitute for inspecting the bundle.
-2. Provide the complete corresponding source for each build distributed with the GPL edition of PyQt5.
-3. For Qt libraries distributed under the LGPL, include their license and notices, make the corresponding Qt source available as required, and document how recipients can replace the bundled Qt libraries with modified compatible builds and run the application. Validate this with the actual packaged layout on each platform.
-4. Include the license texts and notices for any other libraries in the bundle. Copy the release's license directory into the distributed artifact and make it reachable from the README or About dialog.
+For every release:
 
-Licensing references: [Riverbank PyQt licensing](https://www.riverbankcomputing.com/software/pyqt), [Riverbank license FAQ](https://riverbankcomputing.com/commercial/license-faq), and [Qt open-source obligations](https://www.qt.io/development/open-source-lgpl-obligations).
+1. Build on the target platform from the release tag.
+2. Run the bundle audit after all pruning and before signing or archiving.
+3. Review inventory changes against the actual package and add or remove
+   license material accordingly.
+4. Keep `license-inventory.json`, `build-info.json`, `size-report.json`, the
+   archive, and `SHA256SUMS` with the release artifacts.
+5. Repeat the same final-package inventory work independently for Windows. The
+   macOS inventory is not evidence for the Windows portable package.
+
+Model source, checkpoint identity, exporter commits, commands, tool versions,
+and converted hashes are maintained in `docs/model-provenance.md`.

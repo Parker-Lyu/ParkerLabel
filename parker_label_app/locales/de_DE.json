@@ -165,6 +165,7 @@
   "menu.gitee": "Gitee-Repository",
   "menu.changelog": "Änderungsprotokoll",
   "menu.check_updates": "Nach Updates suchen…",
+  "menu.licenses": "Open-Source-Lizenzen",
   "menu.quit": "ParkerLabel beenden",
   "about.details": "Version: {version}\nEntwickler: {developer}",
   "update.title": "Nach Updates suchen",

@@ -25,14 +25,16 @@ force a clean OpenCV rebuild.
 
 Each build verifies the wheel archive, the exact OpenCV module set and required
 image operations, and all project unit tests. After packaging, it verifies the
-ad-hoc signature on both the generated application and a fresh extraction of
-the ZIP, tests the ZIP contents, and verifies `SHA256SUMS`.
+finished bundle's dynamic-library inventory and bundled license material, then
+verifies the ad-hoc signature on both the generated application and a fresh
+extraction of the ZIP, tests the ZIP contents, and verifies `SHA256SUMS`.
 
 The output directory contains:
 
 - `ParkerLabel.app`
 - `ParkerLabel-<version>-macos-arm64.zip`
 - `build-info.json`
+- `license-inventory.json`
 - `size-report.json`
 - `SHA256SUMS`
 

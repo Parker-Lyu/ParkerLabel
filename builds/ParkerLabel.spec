@@ -8,8 +8,10 @@ app_version = os.environ.get("PARKER_LABEL_VERSION", "dev")
 
 datas = [
     (str(project_root / "config" / "default-coco.json"), "config"),
+    (str(project_root / "LICENSE"), "."),
     (str(project_root / "model-bundle.json"), "."),
     (str(project_root / "parker_label_app" / "locales"), "parker_label_app/locales"),
+    (str(project_root / "third_party_licenses"), "third_party_licenses"),
     (str(generated_dir / "build-info.json"), "."),
 ]
 

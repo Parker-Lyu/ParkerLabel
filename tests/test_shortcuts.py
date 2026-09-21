@@ -118,16 +118,19 @@ class ShortcutWindowTests(unittest.TestCase):
         )
         self.assertEqual(self.window.about_action.menuRole(), QAction.NoRole)
         self.assertEqual(self.window.check_updates_action.menuRole(), QAction.NoRole)
+        self.assertEqual(self.window.licenses_action.menuRole(), QAction.NoRole)
         self.assertIn(
             self.window.shortcut_settings_action, self.window.settings_menu.actions()
         )
         self.assertIn(self.window.about_action, self.window.help_menu.actions())
         self.assertIn(self.window.check_updates_action, self.window.help_menu.actions())
+        self.assertIn(self.window.licenses_action, self.window.help_menu.actions())
         for code in LANGUAGE_NAMES:
             self.assertIn("shortcut.title", _TEXT[code])
             self.assertIn("menu.settings", _TEXT[code])
             self.assertIn("menu.gitee", _TEXT[code])
             self.assertIn("menu.check_updates", _TEXT[code])
+            self.assertIn("menu.licenses", _TEXT[code])
             self.assertIn("update.open_github", _TEXT[code])
             self.assertIn(code, [a.data() for a in self.window.language_actions.actions()])
 
@@ -148,6 +151,13 @@ class ShortcutWindowTests(unittest.TestCase):
             any(GITEE_REPOSITORY_URL in text for text in dialog_text), dialog_text
         )
         self.assertIn(self.window.t("menu.check_updates"), button_text)
+
+    @patch.object(window_module.QDesktopServices, "openUrl", return_value=True)
+    def test_open_source_licenses_uses_local_bundled_notice(self, open_url):
+        self.window.open_source_licenses()
+        url = open_url.call_args.args[0]
+        self.assertTrue(url.isLocalFile())
+        self.assertTrue(url.toLocalFile().endswith("third_party_licenses/THIRD_PARTY_NOTICES.md"))
 
     def test_shortcuts_dispatch_and_text_input_is_protected(self):
         called = []

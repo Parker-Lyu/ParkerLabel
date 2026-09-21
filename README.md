@@ -98,7 +98,7 @@ Parker Label's original code, including `mobile_sam/export_mobilesam_encoder.py`
 
 The third-party code in `mobile_sam/` retains its own licenses: [MobileSAM](https://github.com/ChaoningZhang/MobileSAM) and [Segment Anything](https://github.com/facebookresearch/segment-anything) use Apache License 2.0, and the TinyViT code carries a Microsoft MIT notice. See [`mobile_sam/LICENSE`](mobile_sam/LICENSE), [`mobile_sam/TINYVIT_LICENSE`](mobile_sam/TINYVIT_LICENSE), and [`mobile_sam/THIRD_PARTY.md`](mobile_sam/THIRD_PARTY.md) for the license texts and attribution.
 
-The GUI uses PyQt5 and Qt under their own licenses. See [Riverbank's PyQt licensing](https://www.riverbankcomputing.com/software/pyqt), [Qt's open-source obligations](https://www.qt.io/development/open-source-lgpl-obligations), and the [release license plan](docs/release-licenses.md).
+The GUI uses PyQt5 and Qt under their own licenses. Exact final-package notices, corresponding-source instructions, and Qt replacement instructions are maintained in [`third_party_licenses/`](third_party_licenses/). Model source and export provenance are recorded in [`docs/model-provenance.md`](docs/model-provenance.md), and the release audit procedure is in [`docs/release-licenses.md`](docs/release-licenses.md).
 
 ## Planned improvements
 

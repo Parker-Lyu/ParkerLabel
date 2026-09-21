@@ -721,6 +721,10 @@ class MainWindow(QWidget):
         self.check_updates_action.setMenuRole(QAction.NoRole)
         self.check_updates_action.triggered.connect(self.open_update_check)
         self.help_menu.addAction(self.check_updates_action)
+        self.licenses_action = QAction(self)
+        self.licenses_action.setMenuRole(QAction.NoRole)
+        self.licenses_action.triggered.connect(self.open_source_licenses)
+        self.help_menu.addAction(self.licenses_action)
         self.about_action = QAction(self)
         self.about_action.setMenuRole(QAction.NoRole)
         self.about_action.triggered.connect(self.show_about_dialog)
@@ -745,6 +749,7 @@ class MainWindow(QWidget):
         self.github_action.setText(self.t("menu.github"))
         self.changelog_action.setText(self.t("menu.changelog"))
         self.check_updates_action.setText(self.t("menu.check_updates"))
+        self.licenses_action.setText(self.t("menu.licenses"))
         self.about_action.setText(self.t("menu.about"))
         self.shortcut_settings_action.setText(
             self.menu_text("menu.shortcut_settings", "shortcut_settings")
@@ -760,6 +765,12 @@ class MainWindow(QWidget):
     def open_external_url(self, url):
         """Open an application link in the system browser."""
         if not QDesktopServices.openUrl(QUrl(url)):
+            self.show_warning(self.t("link.open_failed"), self.t("link.open_failed_detail"))
+
+    def open_source_licenses(self):
+        """Open the bundled third-party notices without network access."""
+        path = resource_root() / "third_party_licenses" / "THIRD_PARTY_NOTICES.md"
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
             self.show_warning(self.t("link.open_failed"), self.t("link.open_failed_detail"))
 
     def show_about_dialog(self):

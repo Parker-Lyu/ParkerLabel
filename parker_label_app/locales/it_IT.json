@@ -165,6 +165,7 @@
   "menu.gitee": "Repository Gitee",
   "menu.changelog": "Registro delle modifiche",
   "menu.check_updates": "Controlla aggiornamenti…",
+  "menu.licenses": "Licenze open source",
   "menu.quit": "Esci da ParkerLabel",
   "about.details": "Versione: {version}\nSviluppatore: {developer}",
   "update.title": "Controlla aggiornamenti",

@@ -165,6 +165,7 @@
   "menu.gitee": "Gitee 저장소",
   "menu.changelog": "변경 기록",
   "menu.check_updates": "업데이트 확인…",
+  "menu.licenses": "오픈 소스 라이선스",
   "menu.quit": "ParkerLabel 종료",
   "about.details": "버전: {version}\n개발자: {developer}",
   "update.title": "업데이트 확인",

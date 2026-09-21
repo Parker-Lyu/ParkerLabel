@@ -165,6 +165,7 @@
   "menu.gitee": "Gitee Repository",
   "menu.changelog": "Changelog",
   "menu.check_updates": "Check for Updates…",
+  "menu.licenses": "Open Source Licenses",
   "menu.quit": "Quit ParkerLabel",
   "about.details": "Version: {version}\nDeveloper: {developer}",
   "update.title": "Check for Updates",

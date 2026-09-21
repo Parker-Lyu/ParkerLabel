@@ -165,6 +165,7 @@
   "menu.gitee": "Gitee リポジトリ",
   "menu.changelog": "更新履歴",
   "menu.check_updates": "更新を確認…",
+  "menu.licenses": "オープンソースライセンス",
   "menu.quit": "ParkerLabel を終了",
   "about.details": "バージョン：{version}\n開発者：{developer}",
   "update.title": "更新を確認",

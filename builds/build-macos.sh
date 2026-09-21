@@ -58,6 +58,7 @@ rm -rf \
 rm -f \
   "${archive}" \
   "${output_dir}/build-info.json" \
+  "${output_dir}/license-inventory.json" \
   "${output_dir}/SHA256SUMS" \
   "${output_dir}/size-report.json"
 
@@ -75,6 +76,10 @@ PARKER_LABEL_VERSION="${version}" "${env_prefix}/bin/pyinstaller" \
 mv "${stage_dir}/ParkerLabel.app" "${output_dir}/ParkerLabel.app"
 "${env_prefix}/bin/python" "${project_root}/builds/prune_macos_bundle.py" \
   "${output_dir}/ParkerLabel.app"
+"${env_prefix}/bin/python" "${project_root}/builds/audit_macos_licenses.py" \
+  --app "${output_dir}/ParkerLabel.app" \
+  --expected "${project_root}/third_party_licenses/macos-arm64-inventory.json" \
+  --report "${output_dir}/license-inventory.json"
 codesign --force --deep --sign - "${output_dir}/ParkerLabel.app"
 codesign --verify --deep --strict --verbose=2 "${output_dir}/ParkerLabel.app"
 ditto -c -k --sequesterRsrc --keepParent "${output_dir}/ParkerLabel.app" "${archive}"

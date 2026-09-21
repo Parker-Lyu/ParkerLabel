@@ -165,6 +165,7 @@
   "menu.gitee": "Dépôt Gitee",
   "menu.changelog": "Journal des modifications",
   "menu.check_updates": "Rechercher des mises à jour…",
+  "menu.licenses": "Licences open source",
   "menu.quit": "Quitter ParkerLabel",
   "about.details": "Version : {version}\nDéveloppeur : {developer}",
   "update.title": "Rechercher des mises à jour",

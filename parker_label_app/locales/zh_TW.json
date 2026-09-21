@@ -165,6 +165,7 @@
   "menu.gitee": "Gitee 儲存庫",
   "menu.changelog": "更新紀錄",
   "menu.check_updates": "檢查更新…",
+  "menu.licenses": "開放原始碼授權",
   "menu.quit": "結束 ParkerLabel",
   "about.details": "版本：{version}\n開發者：{developer}",
   "update.title": "檢查更新",

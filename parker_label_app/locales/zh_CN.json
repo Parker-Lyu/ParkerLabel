@@ -165,6 +165,7 @@
   "menu.gitee": "Gitee 仓库",
   "menu.changelog": "更新日志",
   "menu.check_updates": "检查更新…",
+  "menu.licenses": "开源许可证",
   "menu.quit": "退出 ParkerLabel",
   "about.details": "版本：{version}\n开发者：{developer}",
   "update.title": "检查更新",

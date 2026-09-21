@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Publish the reproducible MobileSAM ONNX bundle as `models-v2` with fixed
+  source, tool-version, size, and SHA-256 provenance.
+- Bundle final-package third-party notices and add a macOS dynamic-library
+  license audit plus an offline Help menu entry.
+
 - Add manual background update checks with GitHub-to-Gitee fallback and localized release details.
 
 - Build the macOS arm64 package with a minimal OpenCV runtime.
