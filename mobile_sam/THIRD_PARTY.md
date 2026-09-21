@@ -6,4 +6,4 @@ The `mobile_sam/` implementation comes from [MobileSAM](https://github.com/Chaon
 
 `modeling/tiny_vit_sam.py` carries Microsoft's TinyViT copyright notice. The upstream [TinyViT license and third-party notices](https://github.com/microsoft/Cream/blob/main/TinyViT/LICENSE) are copied in [TINYVIT_LICENSE](TINYVIT_LICENSE).
 
-`export_mobilesam_encoder.py` was written for Parker Label. Its license will be set by the root project license when that license is selected.
+`export_mobilesam_encoder.py` was written for Parker Label and is licensed under the root [GPL-3.0-only](../LICENSE) license.
