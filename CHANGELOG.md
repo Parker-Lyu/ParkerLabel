@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add the bundled open-source license page to both the Help menu and About
+  dialog, including source and complete local license-file links.
+
 - Publish the reproducible MobileSAM ONNX bundle as `models-v2` with fixed
   source, tool-version, size, and SHA-256 provenance.
 - Bundle final-package third-party notices and add a macOS dynamic-library

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, QTimer, QUrl, pyqtSignal
+from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, QTimer, QUrl, QUrlQuery, pyqtSignal
 from PyQt5.QtGui import QColor, QDesktopServices, QFont, QPainter, QPalette, QPen, QPixmap
 from PyQt5.QtWidgets import (
     QAction,
@@ -48,6 +48,7 @@ from .app_info import (
     CHANGELOG_URL,
     GITEE_REPOSITORY_URL,
     REPOSITORY_URL,
+    source_code_url,
 )
 from .canvas import AnnotationCanvas
 from .category_dialog import CategoryConfigDialog
@@ -768,9 +769,14 @@ class MainWindow(QWidget):
             self.show_warning(self.t("link.open_failed"), self.t("link.open_failed_detail"))
 
     def open_source_licenses(self):
-        """Open the bundled third-party notices without network access."""
-        path = resource_root() / "third_party_licenses" / "THIRD_PARTY_NOTICES.md"
-        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
+        """Open the bundled license page without requiring network access."""
+        path = resource_root() / "third_party_licenses" / "OPEN_SOURCE_LICENSES.html"
+        url = QUrl.fromLocalFile(str(path))
+        query = QUrlQuery()
+        query.addQueryItem("version", APP_VERSION or self.t("about.development_build"))
+        query.addQueryItem("source", source_code_url())
+        url.setQuery(query)
+        if not QDesktopServices.openUrl(url):
             self.show_warning(self.t("link.open_failed"), self.t("link.open_failed_detail"))
 
     def show_about_dialog(self):
@@ -802,6 +808,9 @@ class MainWindow(QWidget):
         update_button = QPushButton(self.t("menu.check_updates"))
         update_button.clicked.connect(dialog.accept)
         update_button.clicked.connect(lambda: QTimer.singleShot(0, self.open_update_check))
+        licenses_button = QPushButton(self.t("menu.licenses"))
+        licenses_button.clicked.connect(dialog.accept)
+        licenses_button.clicked.connect(lambda: QTimer.singleShot(0, self.open_source_licenses))
         close_button = QPushButton(self.t("common.close"))
         close_button.clicked.connect(dialog.accept)
         layout.addWidget(title)
@@ -810,6 +819,7 @@ class MainWindow(QWidget):
         layout.addWidget(links)
         button_layout = QHBoxLayout()
         button_layout.addWidget(update_button)
+        button_layout.addWidget(licenses_button)
         button_layout.addStretch(1)
         button_layout.addWidget(close_button)
         layout.addLayout(button_layout)

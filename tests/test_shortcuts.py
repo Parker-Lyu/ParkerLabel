@@ -10,7 +10,7 @@ from PyQt5.QtCore import QSettings, Qt, QTimer
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QAction, QApplication, QComboBox, QLabel, QLineEdit, QPushButton
 
-from parker_label_app.app_info import GITEE_REPOSITORY_URL
+from parker_label_app.app_info import APP_VERSION, GITEE_REPOSITORY_URL, source_code_url
 from parker_label_app.i18n import LANGUAGE_NAMES, _TEXT, language_manager
 from parker_label_app.shortcut_dialog import ShortcutSettingsDialog
 from parker_label_app.shortcuts import (
@@ -151,13 +151,40 @@ class ShortcutWindowTests(unittest.TestCase):
             any(GITEE_REPOSITORY_URL in text for text in dialog_text), dialog_text
         )
         self.assertIn(self.window.t("menu.check_updates"), button_text)
+        self.assertIn(self.window.t("menu.licenses"), button_text)
 
     @patch.object(window_module.QDesktopServices, "openUrl", return_value=True)
     def test_open_source_licenses_uses_local_bundled_notice(self, open_url):
         self.window.open_source_licenses()
         url = open_url.call_args.args[0]
         self.assertTrue(url.isLocalFile())
-        self.assertTrue(url.toLocalFile().endswith("third_party_licenses/THIRD_PARTY_NOTICES.md"))
+        self.assertTrue(url.toLocalFile().endswith("third_party_licenses/OPEN_SOURCE_LICENSES.html"))
+        self.assertEqual(
+            url.query(),
+            f"version={APP_VERSION or self.window.t('about.development_build')}"
+            f"&source={source_code_url()}",
+        )
+
+    def test_offline_license_page_has_required_entries(self):
+        page = (
+            Path(window_module.resource_root())
+            / "third_party_licenses"
+            / "OPEN_SOURCE_LICENSES.html"
+        ).read_text(encoding="utf-8")
+        for text in (
+            "ParkerLabel",
+            "GPL-3.0-only",
+            "Third-party components",
+            "MobileSAM",
+            "Segment Anything",
+            "TinyViT",
+            "Model source",
+            "Source code for this version",
+            "Complete license files",
+            "../LICENSE",
+            "THIRD_PARTY_NOTICES.md",
+        ):
+            self.assertIn(text, page)
 
     def test_shortcuts_dispatch_and_text_input_is_protected(self):
         called = []

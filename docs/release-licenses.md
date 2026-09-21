@@ -13,6 +13,7 @@ The application bundle contains:
 
 ```text
 Contents/Resources/LICENSE
+Contents/Resources/third_party_licenses/OPEN_SOURCE_LICENSES.html
 Contents/Resources/third_party_licenses/THIRD_PARTY_NOTICES.md
 Contents/Resources/third_party_licenses/<component>/...
 ```

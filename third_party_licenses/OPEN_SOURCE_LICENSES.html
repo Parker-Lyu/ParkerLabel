@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ParkerLabel Open Source Licenses</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+    body {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+    h1, h2 { line-height: 1.2; }
+    h2 { margin-top: 32px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #888; padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: rgba(127, 127, 127, 0.12); }
+    code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <h1>ParkerLabel Open Source Licenses</h1>
+  <p><strong>ParkerLabel</strong> is licensed under <strong>GPL-3.0-only</strong>.</p>
+  <p>Version: <strong id="version">Development build</strong></p>
+  <p><a id="source" href="https://github.com/Parker-Lyu/ParkerLabel/tree/main">Source code for this version</a></p>
+
+  <h2>Third-party components</h2>
+  <p>The packaged application includes third-party software under its own licenses.</p>
+  <table>
+    <thead><tr><th>Component</th><th>License</th><th>Local material</th></tr></thead>
+    <tbody>
+      <tr><td>PyQt5</td><td>GPL v3 or commercial</td><td><a href="PyQt5/LICENSE.GPLv3">License</a> · <a href="PyQt5/SOURCE.md">Source</a></td></tr>
+      <tr><td>PyQt5-sip</td><td>BSD-2-Clause</td><td><a href="PyQt5_sip/LICENSE">License</a></td></tr>
+      <tr><td>Qt</td><td>LGPL v3 / GPL v3 with exceptions</td><td><a href="Qt/LICENSE.LGPL3">LGPL</a> · <a href="Qt/LICENSE.GPL3">GPL</a> · <a href="Qt/SOURCE.md">Source</a></td></tr>
+      <tr><td>NumPy</td><td>BSD-3-Clause and bundled notices</td><td><a href="NumPy/LICENSE.txt">License</a></td></tr>
+      <tr><td>OpenCV</td><td>Apache-2.0 and bundled notices</td><td><a href="OpenCV/LICENSE.txt">License</a> · <a href="OpenCV/LICENSE-3RD-PARTY.txt">Third-party notices</a></td></tr>
+      <tr><td>ONNX Runtime</td><td>MIT and bundled notices</td><td><a href="ONNXRuntime/LICENSE">License</a> · <a href="ONNXRuntime/ThirdPartyNotices.txt">Third-party notices</a></td></tr>
+      <tr><td>Python</td><td>Python Software Foundation License</td><td><a href="Python/LICENSE">License</a></td></tr>
+      <tr><td>OpenSSL</td><td>Apache-2.0</td><td><a href="OpenSSL/LICENSE.txt">License</a></td></tr>
+      <tr><td>bzip2</td><td>bzip2 license</td><td><a href="BZip2/LICENSE">License</a></td></tr>
+      <tr><td>libffi</td><td>MIT</td><td><a href="LibFFI/LICENSE">License</a></td></tr>
+      <tr><td>Expat</td><td>MIT</td><td><a href="Expat/COPYING">License</a></td></tr>
+      <tr><td>XZ Utils / liblzma</td><td>0BSD</td><td><a href="XZ/COPYING">License summary</a> · <a href="XZ/COPYING.0BSD">0BSD text</a></td></tr>
+      <tr><td>ncurses</td><td>MIT-style ncurses license</td><td><a href="NCurses/COPYING">License</a></td></tr>
+      <tr><td>GNU Readline</td><td>GPL-3.0-or-later</td><td><a href="Readline/COPYING">License</a></td></tr>
+      <tr><td>zlib</td><td>Zlib</td><td><a href="zlib/LICENSE">License</a></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Models and upstream source</h2>
+  <p>The downloaded ONNX models are derived from the official MobileSAM checkpoint.</p>
+  <ul>
+    <li><strong>MobileSAM</strong>: Apache License 2.0. <a href="MobileSAM/LICENSE.Apache-2.0">License</a></li>
+    <li><strong>Segment Anything</strong>: Apache License 2.0; decoder export provenance is recorded with the upstream commit.</li>
+    <li><strong>TinyViT</strong>: Microsoft MIT notice. <a href="MobileSAM/TINYVIT_LICENSE">License</a></li>
+    <li><strong>Model source</strong>: official MobileSAM <code>weights/mobile_sam.pt</code>, commit and SHA-256 details in <a href="MobileSAM/SOURCE.md">MobileSAM source record</a>.</li>
+  </ul>
+
+  <h2>Complete license files</h2>
+  <ul>
+    <li><a href="../LICENSE">ParkerLabel GPL-3.0-only license text</a></li>
+    <li><a href="THIRD_PARTY_NOTICES.md">Complete packaged component inventory and license directory index</a></li>
+    <li><a href="Qt/attributions/">Qt bundled third-party attribution files</a></li>
+  </ul>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const version = params.get("version");
+    const source = params.get("source");
+    if (version) document.getElementById("version").textContent = version;
+    if (source) document.getElementById("source").href = source;
+  </script>
+</body>
+</html>
