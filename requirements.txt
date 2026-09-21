@@ -1,0 +1,4 @@
+PyQt5==5.15.11
+numpy==2.4.6
+onnxruntime==1.29.1
+opencv-python-headless==5.0.0.93
