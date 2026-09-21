@@ -31,6 +31,10 @@ example_img/*
 config/*.xlsx
 config/category-configs/
 configs/
+builds/.env-macos-arm64/
+builds/.generated/
+builds/.pyinstaller-work/
+builds/output/
 
 # Generated annotation artifacts
 *.mask.png

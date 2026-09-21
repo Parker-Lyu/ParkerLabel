@@ -1,0 +1,12 @@
+PyInstaller==6.22.3
+pyinstaller-hooks-contrib==2026.7
+altgraph==0.17.5
+macholib==1.16.4
+PyQt5==5.15.11
+PyQt5-Qt5==5.15.18
+PyQt5_sip==12.17.1
+flatbuffers==25.12.19
+numpy==2.4.6
+onnxruntime==1.29.0
+opencv-python-headless==5.0.0.93
+protobuf==7.36.2
