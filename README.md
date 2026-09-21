@@ -12,9 +12,10 @@ cd ParkerLabel
 conda create -n parker-label -c conda-forge python=3.11 onnxruntime=1.29.1 -y
 conda activate parker-label
 python -m pip install -r requirements.txt
+python fetch_models.py
 ```
 
-To run segmentation, place `encoder.onnx` and `decoder.onnx` in `pretrain/`. See [Regenerate ONNX models](#regenerate-onnx-models) if you need to create them. Then start the app from the repository root with the environment active:
+`fetch_models.py` downloads `encoder.onnx` and `decoder.onnx` into `pretrain/`. It prefers GitHub when the measured download speed is at least 500 KB/s, falls back to Gitee, and verifies file size and SHA-256. Then start the app from the repository root with the environment active:
 
 ```bash
 python main.py
