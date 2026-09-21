@@ -4,16 +4,21 @@ Parker Label is a lightweight, interactive annotation tool powered by MobileSAM.
 
 ## Run
 
-Install [Miniforge](https://github.com/conda-forge/miniforge) first (recommended), then open a new terminal. From the repository root, create an environment with Python 3.11 and ONNX Runtime, install the remaining dependencies, and start the app:
+Install a Conda distribution if you do not already have one. [Miniforge](https://github.com/conda-forge/miniforge) is recommended, but other Conda distributions also work. Open a terminal, then clone the repository, create a Python 3.11 environment, and install the dependencies:
 
 ```bash
+git clone https://github.com/Parker-Lyu/ParkerLabel.git
+cd ParkerLabel
 conda create -n parker-label -c conda-forge python=3.11 onnxruntime=1.29.1 -y
 conda activate parker-label
 python -m pip install -r requirements.txt
-python main.py
 ```
 
-To run segmentation, place `encoder.onnx` and `decoder.onnx` in `pretrain/`. See [Regenerate ONNX models](#regenerate-onnx-models) if you need to create them.
+To run segmentation, place `encoder.onnx` and `decoder.onnx` in `pretrain/`. See [Regenerate ONNX models](#regenerate-onnx-models) if you need to create them. Then start the app from the repository root with the environment active:
+
+```bash
+python main.py
+```
 
 Use **Settings → Interface Language** to select 中文（简体）, 中文（繁體）, English, 日本語, 한국어, Deutsch, Français, Italiano, or Español. The selection is saved for the next launch. **Settings → Tooltips** controls contextual hints.
 
