@@ -1,14 +1,12 @@
 该项目使用 Miniforge 管理 Python 运行环境。`conda activate parker-label`。
 修改的时候保持文件简洁，不要写为什么修改，直接改就行
 任何代码修改必须在基于最新 main 创建的独立 Git worktree 中进行，
-禁止直接修改主工作区。任务完成后测试并 commit，提交到main分支
+禁止直接修改主工作区。任务完成后测试并 commit，提交到main分支，然后清理worktree
 commit格式，按照业界标准格式，比如feat:***等
 不要push代码
 
 ## 发布约定
-
 - macOS 和 Windows 均提供免安装便携包，解压后运行，无需安装 Python、Conda 或依赖；配置和模型保存在程序旁的 `configs/`，升级保留该目录。
-- 不含模型的下载压缩包目标小于 100 MB，争取 50 MB（1 MB = 1,000,000 字节）；分别记录压缩包、解压程序、模型及首次启动后的体积，以实测为准。
 - SOP、平台说明、脚本、PyInstaller spec 和分平台依赖锁文件统一放在 `builds/`。macOS 用 `build-macos.sh`；Windows 用 `build-windows.ps1`，另提供 `.sh` 入口。详细步骤维护在 SOP，不在此重复。
 - 程序版本唯一来源为 `parker_label_app/app_info.py` 的 `APP_VERSION`，UI、平台元数据和产物名称统一读取；根目录 `CHANGELOG.md` 日常记录到 `Unreleased`，发布时归入版本及日期。
 - 正式发布使用指向源码提交的 Git Tag（如 `v0.1.0`）；构建校验工作区干净、HEAD 对应 Tag 且 Tag 与程序版本一致。普通开发提交不创建发布 Tag。
