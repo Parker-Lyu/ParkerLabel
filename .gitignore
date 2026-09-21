@@ -23,9 +23,6 @@ AGENTS.md
 # Legacy implementation
 parker_label.py
 check_panoptic.py
-export_mobilesam_encoder.py
-export_mobilesam_decoder.py
-mobile_sam/
 
 # Models and sample data
 pretrain

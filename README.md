@@ -60,5 +60,21 @@ The per-image JSON uses COCO annotation fields but is not a complete COCO datase
 - `parker_label_app/shortcuts.py` manages platform key bindings and persistence; `shortcut_dialog.py` provides the editor.
 - `parker_label_app/app_info.py` holds application identity and project links.
 - `parker_label_app/locales/` contains JSON translations for all nine interface languages; `parker_label_app/i18n.py` loads them and persists the selected language.
-- `export_mobilesam_encoder.py` and `export_mobilesam_decoder.py` regenerate the ONNX deployment models.
-- `mobile_sam/` contains the MobileSAM model implementation used by the export scripts.
+- `mobile_sam/` contains the MobileSAM model implementation and ONNX export scripts.
+
+## Regenerate ONNX models
+
+The application runs the ONNX files in `pretrain/`; PyTorch and `mobile_sam/` are needed only to regenerate them. Install the export dependencies (`torch`, `torchvision`, `timm`, `onnx`, and `onnxruntime`) in the development environment and place the checkpoint from the [MobileSAM project](https://github.com/ChaoningZhang/MobileSAM) at `pretrain/mobile_sam.pt`. From the repository root, run:
+
+```bash
+python -m mobile_sam.export_mobilesam_encoder --checkpoint pretrain/mobile_sam.pt --output pretrain/encoder.onnx
+python -m mobile_sam.export_mobilesam_decoder --checkpoint pretrain/mobile_sam.pt --model-type vit_t --output pretrain/decoder.onnx
+```
+
+The checkpoint and generated ONNX files are excluded from Git.
+
+## Licenses
+
+`mobile_sam/` includes source from [MobileSAM](https://github.com/ChaoningZhang/MobileSAM) and [Segment Anything](https://github.com/facebookresearch/segment-anything), both under Apache License 2.0, plus TinyViT code with a Microsoft MIT notice. Their copyright headers remain in the source files. See [`mobile_sam/LICENSE`](mobile_sam/LICENSE), [`mobile_sam/TINYVIT_LICENSE`](mobile_sam/TINYVIT_LICENSE), and [`mobile_sam/THIRD_PARTY.md`](mobile_sam/THIRD_PARTY.md) for the license texts and source attribution, including the decoder export script. The encoder export script was written for Parker Label and will follow this project's own license when one is selected.
+
+Parker Label does not yet have a root project license. Select one before presenting the complete project as open source or distributing an open-source build. The current GUI uses PyQt5, which is offered under GPL v3 or a commercial license; the bundled Qt libraries have separate terms. See [Riverbank's PyQt licensing](https://www.riverbankcomputing.com/software/pyqt), [Qt's open-source obligations](https://www.qt.io/development/open-source-lgpl-obligations), and the [release license plan](docs/release-licenses.md).
