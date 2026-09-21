@@ -144,6 +144,7 @@
   "menu.shortcut_settings": "Scorciatoie da tastiera…",
   "menu.about": "Informazioni su ParkerLabel…",
   "menu.github": "Repository GitHub",
+  "menu.gitee": "Repository Gitee",
   "menu.changelog": "Registro delle modifiche",
   "menu.quit": "Esci da ParkerLabel",
   "about.details": "Versione: {version}\nSviluppatore: {developer}",

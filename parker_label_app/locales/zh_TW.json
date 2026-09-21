@@ -144,6 +144,7 @@
   "menu.shortcut_settings": "快捷鍵設定…",
   "menu.about": "關於 ParkerLabel…",
   "menu.github": "GitHub 儲存庫",
+  "menu.gitee": "Gitee 儲存庫",
   "menu.changelog": "更新紀錄",
   "menu.quit": "結束 ParkerLabel",
   "about.details": "版本：{version}\n開發者：{developer}",

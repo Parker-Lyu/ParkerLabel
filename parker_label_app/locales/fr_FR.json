@@ -144,6 +144,7 @@
   "menu.shortcut_settings": "Raccourcis clavier…",
   "menu.about": "À propos de ParkerLabel…",
   "menu.github": "Dépôt GitHub",
+  "menu.gitee": "Dépôt Gitee",
   "menu.changelog": "Journal des modifications",
   "menu.quit": "Quitter ParkerLabel",
   "about.details": "Version : {version}\nDéveloppeur : {developer}",

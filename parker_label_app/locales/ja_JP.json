@@ -144,6 +144,7 @@
   "menu.shortcut_settings": "ショートカット設定…",
   "menu.about": "ParkerLabel について…",
   "menu.github": "GitHub リポジトリ",
+  "menu.gitee": "Gitee リポジトリ",
   "menu.changelog": "更新履歴",
   "menu.quit": "ParkerLabel を終了",
   "about.details": "バージョン：{version}\n開発者：{developer}",

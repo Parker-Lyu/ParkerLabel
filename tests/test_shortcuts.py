@@ -6,10 +6,11 @@ from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt5.QtCore import QSettings, Qt
+from PyQt5.QtCore import QSettings, Qt, QTimer
 from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QAction, QApplication, QComboBox, QLineEdit
+from PyQt5.QtWidgets import QAction, QApplication, QComboBox, QLabel, QLineEdit
 
+from parker_label_app.app_info import GITEE_REPOSITORY_URL
 from parker_label_app.i18n import LANGUAGE_NAMES, _TEXT, language_manager
 from parker_label_app.shortcut_dialog import ShortcutSettingsDialog
 from parker_label_app.shortcuts import (
@@ -123,7 +124,23 @@ class ShortcutWindowTests(unittest.TestCase):
         for code in LANGUAGE_NAMES:
             self.assertIn("shortcut.title", _TEXT[code])
             self.assertIn("menu.settings", _TEXT[code])
+            self.assertIn("menu.gitee", _TEXT[code])
             self.assertIn(code, [a.data() for a in self.window.language_actions.actions()])
+
+    def test_about_dialog_contains_gitee_repository_link(self):
+        dialog_text = []
+
+        def capture_dialog():
+            dialog = self.app.activeModalWidget()
+            dialog_text.extend(label.text() for label in dialog.findChildren(QLabel))
+            dialog.accept()
+
+        QTimer.singleShot(0, capture_dialog)
+        self.window.show_about_dialog()
+
+        self.assertTrue(
+            any(GITEE_REPOSITORY_URL in text for text in dialog_text), dialog_text
+        )
 
     def test_shortcuts_dispatch_and_text_input_is_protected(self):
         called = []

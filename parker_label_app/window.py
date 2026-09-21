@@ -46,6 +46,7 @@ from .app_info import (
     APP_NAME,
     APP_VERSION,
     CHANGELOG_URL,
+    GITEE_REPOSITORY_URL,
     REPOSITORY_URL,
 )
 from .canvas import AnnotationCanvas
@@ -770,6 +771,8 @@ class MainWindow(QWidget):
         )
         links = QLabel(
             f'<a href="{REPOSITORY_URL}">{self.t("menu.github")}</a>'
+            f'&nbsp;&nbsp;·&nbsp;&nbsp;'
+            f'<a href="{GITEE_REPOSITORY_URL}">{self.t("menu.gitee")}</a>'
             f'&nbsp;&nbsp;·&nbsp;&nbsp;'
             f'<a href="{CHANGELOG_URL}">{self.t("menu.changelog")}</a>'
         )
