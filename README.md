@@ -64,14 +64,18 @@ The per-image JSON uses COCO annotation fields but is not a complete COCO datase
 
 ## Regenerate ONNX models
 
-The application runs the ONNX files in `pretrain/`; PyTorch and `mobile_sam/` are needed only to regenerate them. Install the export dependencies (`torch`, `torchvision`, `timm`, `onnx`, and `onnxruntime`) in the development environment and place the checkpoint from the [MobileSAM project](https://github.com/ChaoningZhang/MobileSAM) at `pretrain/mobile_sam.pt`. From the repository root, run:
+**Dependencies:** Install `torch` and `torchvision` using the [PyTorch instructions for your platform](https://pytorch.org/get-started/locally/), then run `python -m pip install timm onnx onnxruntime`. Verified versions: torch 2.13.0, torchvision 0.28.0, timm 1.0.19, onnx 1.22.0, and onnxruntime 1.29.1.
+
+**Checkpoint:** Create `pretrain/`, then download the official [MobileSAM `mobile_sam.pt`](https://github.com/ChaoningZhang/MobileSAM/blob/master/weights/mobile_sam.pt) to `pretrain/mobile_sam.pt`. It is the only weight needed for both exports; no separate TinyViT or SAM checkpoint is required.
+
+**Export:** From the repository root, run:
 
 ```bash
 python -m mobile_sam.export_mobilesam_encoder --checkpoint pretrain/mobile_sam.pt --output pretrain/encoder.onnx
 python -m mobile_sam.export_mobilesam_decoder --checkpoint pretrain/mobile_sam.pt --model-type vit_t --output pretrain/decoder.onnx
 ```
 
-The checkpoint and generated ONNX files are excluded from Git.
+The application runs the resulting ONNX files. `mobile_sam.pt` and the export dependencies are not needed at runtime. Model files in `pretrain/` are excluded from Git.
 
 ## Licenses
 
