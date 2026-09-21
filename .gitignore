@@ -18,7 +18,6 @@ venv/
 .worktrees/
 
 # Local project instructions
-AGENTS.md
 
 # Legacy implementation
 parker_label.py

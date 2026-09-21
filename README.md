@@ -99,3 +99,7 @@ Parker Label's original code, including `mobile_sam/export_mobilesam_encoder.py`
 The third-party code in `mobile_sam/` retains its own licenses: [MobileSAM](https://github.com/ChaoningZhang/MobileSAM) and [Segment Anything](https://github.com/facebookresearch/segment-anything) use Apache License 2.0, and the TinyViT code carries a Microsoft MIT notice. See [`mobile_sam/LICENSE`](mobile_sam/LICENSE), [`mobile_sam/TINYVIT_LICENSE`](mobile_sam/TINYVIT_LICENSE), and [`mobile_sam/THIRD_PARTY.md`](mobile_sam/THIRD_PARTY.md) for the license texts and attribution.
 
 The GUI uses PyQt5 and Qt under their own licenses. See [Riverbank's PyQt licensing](https://www.riverbankcomputing.com/software/pyqt), [Qt's open-source obligations](https://www.qt.io/development/open-source-lgpl-obligations), and the [release license plan](docs/release-licenses.md).
+
+## Planned improvements
+
+- Validate `.npy` embedding caches against the encoder SHA-256, preprocessing version, and source-image fingerprint. Currently only the embedding shape is checked, so a cache from a different encoder or image may be reused incorrectly. A future implementation will recompute mismatched or unverifiable caches while preserving annotations; reuse after a decoder-only update will depend on interface compatibility. This is deferred and is not implemented yet.
