@@ -52,21 +52,22 @@ The per-image JSON uses COCO annotation fields but is not a complete COCO datase
 
 ## Modules
 
-- `main.py` starts the application.
+- `main.py` creates the Qt application and opens the main window.
+- `runtime_paths.py` locates bundled resources and portable data paths, and initializes logging.
 - `parker_label_app/window.py` coordinates the desktop interface and annotation workflow.
-- `runtime_paths.py` locates bundled resources and portable user data.
 - `parker_label_app/canvas.py` renders the interactive canvas and forwards pointer, wheel, and drop events.
-- `parker_label_app/models.py` owns annotation state and independent instance masks.
-- `parker_label_app/inference.py` runs the ONNX encoder and decoder.
-- `parker_label_app/annotation_io.py` loads and saves annotation artifacts.
+- `parker_label_app/models.py` defines categories, segments, documents, and independent instance masks.
+- `parker_label_app/editing.py` handles brush strokes, manual mask constraints, and edit snapshots.
+- `parker_label_app/inference.py` loads and runs the ONNX encoder and decoder.
+- `parker_label_app/annotation_io.py` loads images, annotations, and embeddings, then saves annotation files, embeddings, and mask previews.
 - `parker_label_app/image_utils.py` handles image loading, resizing, mask colors, and Qt image conversion.
 - `parker_label_app/quality.py` detects disconnected mask regions and enclosed holes.
-- `parker_label_app/category_store.py` validates and persists category configurations.
+- `parker_label_app/category_store.py` validates and persists versioned category configurations.
 - `parker_label_app/category_dialog.py` provides category editing in the interface.
-- `parker_label_app/shortcuts.py` manages platform key bindings and persistence; `shortcut_dialog.py` provides the editor.
+- `parker_label_app/shortcuts.py` manages platform key bindings and persistence; `parker_label_app/shortcut_dialog.py` provides the editor.
 - `parker_label_app/app_info.py` holds application identity and project links.
 - `parker_label_app/locales/` contains JSON translations for all nine interface languages; `parker_label_app/i18n.py` loads them and persists the selected language.
-- `mobile_sam/` contains the MobileSAM model implementation and ONNX export scripts.
+- `mobile_sam/` contains the MobileSAM model source and ONNX export scripts; normal annotation uses the exported ONNX files.
 
 ## Regenerate ONNX models
 
