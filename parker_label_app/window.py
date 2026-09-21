@@ -195,7 +195,7 @@ class MainWindow(QWidget):
         self.repository = AnnotationRepository(target_size=1024)
         self.engine = SegmentationEngine(
             root / "pretrain" / "encoder.onnx",
-            root / "pretrain" / "H" / "decoder.onnx",
+            root / "pretrain" / "decoder.onnx",
             target_size=1024,
         )
         self.categories = []

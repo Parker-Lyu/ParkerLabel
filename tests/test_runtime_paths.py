@@ -66,13 +66,18 @@ class PortablePathTests(unittest.TestCase):
             settings.sync()
             with patch.object(window_module, "resource_root", return_value=root), patch.object(
                 window_module, "config_directory", return_value=configs
-            ), patch.object(window_module, "SegmentationEngine", return_value=object()), patch.object(
+            ), patch.object(window_module, "SegmentationEngine", return_value=object()) as engine, patch.object(
                 window_module,
                 "portable_settings",
                 return_value=settings,
             ):
                 window = window_module.MainWindow()
             try:
+                engine.assert_called_once_with(
+                    root / "pretrain" / "encoder.onnx",
+                    root / "pretrain" / "decoder.onnx",
+                    target_size=1024,
+                )
                 self.assertEqual(window.active_category_config_id, category_id)
                 self.assertEqual(window.category_manager.configuration(category_id).name, "Test")
             finally:
