@@ -1,9 +1,12 @@
 import hashlib
+import io
 import tempfile
 import unittest
+from contextlib import redirect_stderr
 from pathlib import Path
 from unittest.mock import patch
 
+import fetch_models
 from parker_label_app import model_manager
 
 
@@ -121,6 +124,36 @@ class ModelManagerTest(unittest.TestCase):
                     2,
                     minimum_speed=512000,
                 )
+
+class FetchModelsCliTest(unittest.TestCase):
+    def test_failure_prints_release_links_destination_and_retry_command(self):
+        manifest = {
+            "version": "models-v1",
+            "minimum_github_speed_bytes_per_second": 512000,
+            "files": [
+                {
+                    "path": "pretrain/encoder.onnx",
+                    "size": 10,
+                    "sha256": "0" * 64,
+                    "sources": {
+                        "github": "https://github.example/releases/encoder.onnx",
+                        "gitee": "https://gitee.example/releases/encoder.onnx",
+                    },
+                }
+            ],
+        }
+        stderr = io.StringIO()
+        with patch.object(fetch_models, "load_manifest", return_value=manifest), patch.object(
+            fetch_models, "ensure_models", side_effect=model_manager.DownloadError("offline")
+        ), redirect_stderr(stderr):
+            result = fetch_models.main()
+
+        output = stderr.getvalue()
+        self.assertEqual(result, 1)
+        self.assertIn("https://github.example/releases/encoder.onnx", output)
+        self.assertIn("https://gitee.example/releases/encoder.onnx", output)
+        self.assertIn(str(fetch_models.ROOT / "pretrain"), output)
+        self.assertIn("python fetch_models.py", output)
 
 
 if __name__ == "__main__":
