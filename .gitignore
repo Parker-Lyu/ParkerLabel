@@ -32,7 +32,10 @@ config/*.xlsx
 config/category-configs/
 configs/
 builds/.env-macos-arm64/
+builds/.env-opencv-macos-arm64/
 builds/.generated/
+builds/.opencv-python-src/
+builds/.opencv-wheelhouse/
 builds/.pyinstaller-work/
 builds/output/
 

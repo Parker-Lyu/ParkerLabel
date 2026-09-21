@@ -8,5 +8,4 @@ PyQt5_sip==12.17.1
 flatbuffers==25.12.19
 numpy==2.4.6
 onnxruntime==1.29.0
-opencv-python-headless==5.0.0.93
 protobuf==7.36.2

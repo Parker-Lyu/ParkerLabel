@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Build the macOS arm64 package with a minimal OpenCV runtime.
+
 - Add a reproducible, size-focused macOS arm64 portable build with component reports.
 
 - Add native Settings and Help menus, including interface language, tooltips, and application information.
