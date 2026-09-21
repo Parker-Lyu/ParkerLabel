@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add manual background update checks with GitHub-to-Gitee fallback and localized release details.
+
 - Build the macOS arm64 package with a minimal OpenCV runtime.
 
 - Add a reproducible, size-focused macOS arm64 portable build with component reports.

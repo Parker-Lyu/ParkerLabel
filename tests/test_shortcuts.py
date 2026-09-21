@@ -8,7 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt5.QtCore import QSettings, Qt, QTimer
 from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QAction, QApplication, QComboBox, QLabel, QLineEdit
+from PyQt5.QtWidgets import QAction, QApplication, QComboBox, QLabel, QLineEdit, QPushButton
 
 from parker_label_app.app_info import GITEE_REPOSITORY_URL
 from parker_label_app.i18n import LANGUAGE_NAMES, _TEXT, language_manager
@@ -117,22 +117,28 @@ class ShortcutWindowTests(unittest.TestCase):
             self.window.shortcut_settings_action.menuRole(), QAction.NoRole
         )
         self.assertEqual(self.window.about_action.menuRole(), QAction.NoRole)
+        self.assertEqual(self.window.check_updates_action.menuRole(), QAction.NoRole)
         self.assertIn(
             self.window.shortcut_settings_action, self.window.settings_menu.actions()
         )
         self.assertIn(self.window.about_action, self.window.help_menu.actions())
+        self.assertIn(self.window.check_updates_action, self.window.help_menu.actions())
         for code in LANGUAGE_NAMES:
             self.assertIn("shortcut.title", _TEXT[code])
             self.assertIn("menu.settings", _TEXT[code])
             self.assertIn("menu.gitee", _TEXT[code])
+            self.assertIn("menu.check_updates", _TEXT[code])
+            self.assertIn("update.open_github", _TEXT[code])
             self.assertIn(code, [a.data() for a in self.window.language_actions.actions()])
 
     def test_about_dialog_contains_gitee_repository_link(self):
         dialog_text = []
+        button_text = []
 
         def capture_dialog():
             dialog = self.app.activeModalWidget()
             dialog_text.extend(label.text() for label in dialog.findChildren(QLabel))
+            button_text.extend(button.text() for button in dialog.findChildren(QPushButton))
             dialog.accept()
 
         QTimer.singleShot(0, capture_dialog)
@@ -141,6 +147,7 @@ class ShortcutWindowTests(unittest.TestCase):
         self.assertTrue(
             any(GITEE_REPOSITORY_URL in text for text in dialog_text), dialog_text
         )
+        self.assertIn(self.window.t("menu.check_updates"), button_text)
 
     def test_shortcuts_dispatch_and_text_input_is_protected(self):
         called = []

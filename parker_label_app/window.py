@@ -6,7 +6,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, QUrl, pyqtSignal
+from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, QTimer, QUrl, pyqtSignal
 from PyQt5.QtGui import QColor, QDesktopServices, QFont, QPainter, QPalette, QPen, QPixmap
 from PyQt5.QtWidgets import (
     QAction,
@@ -65,6 +65,7 @@ from .inference import SegmentationEngine
 from .quality import MaskQuality, inspect_mask_quality
 from .shortcut_dialog import ShortcutSettingsDialog
 from .shortcuts import SPECS_BY_ID, ShortcutManager, ShortcutStore
+from .update_dialog import UpdateCheckDialog
 
 
 class StateToggleButton(QPushButton):
@@ -193,6 +194,7 @@ class MainWindow(QWidget):
         self.shortcut_store = ShortcutStore(self.settings)
         self.shortcut_manager = ShortcutManager(self, self.shortcut_store)
         self.shortcut_dialog = None
+        self.update_dialog = None
         self.repository = AnnotationRepository(target_size=1024)
         models = model_directory()
         self.engine = SegmentationEngine(
@@ -715,6 +717,10 @@ class MainWindow(QWidget):
         self.changelog_action.setMenuRole(QAction.NoRole)
         self.changelog_action.triggered.connect(lambda: self.open_external_url(CHANGELOG_URL))
         self.help_menu.addAction(self.changelog_action)
+        self.check_updates_action = QAction(self)
+        self.check_updates_action.setMenuRole(QAction.NoRole)
+        self.check_updates_action.triggered.connect(self.open_update_check)
+        self.help_menu.addAction(self.check_updates_action)
         self.about_action = QAction(self)
         self.about_action.setMenuRole(QAction.NoRole)
         self.about_action.triggered.connect(self.show_about_dialog)
@@ -738,6 +744,7 @@ class MainWindow(QWidget):
         self.tooltip_action.setText(self.t("menu.tooltips"))
         self.github_action.setText(self.t("menu.github"))
         self.changelog_action.setText(self.t("menu.changelog"))
+        self.check_updates_action.setText(self.t("menu.check_updates"))
         self.about_action.setText(self.t("menu.about"))
         self.shortcut_settings_action.setText(
             self.menu_text("menu.shortcut_settings", "shortcut_settings")
@@ -781,15 +788,35 @@ class MainWindow(QWidget):
         links.setTextInteractionFlags(Qt.TextBrowserInteraction)
         links.setOpenExternalLinks(False)
         links.linkActivated.connect(self.open_external_url)
+        update_button = QPushButton(self.t("menu.check_updates"))
+        update_button.clicked.connect(dialog.accept)
+        update_button.clicked.connect(lambda: QTimer.singleShot(0, self.open_update_check))
         close_button = QPushButton(self.t("common.close"))
         close_button.clicked.connect(dialog.accept)
         layout.addWidget(title)
         layout.addWidget(description)
         layout.addWidget(details)
         layout.addWidget(links)
-        layout.addWidget(close_button, 0, Qt.AlignRight)
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(update_button)
+        button_layout.addStretch(1)
+        button_layout.addWidget(close_button)
+        layout.addLayout(button_layout)
         dialog.setModal(True)
         dialog.exec_()
+
+    def open_update_check(self):
+        """Open one non-blocking update check window."""
+        if self.update_dialog is not None and self.update_dialog.isVisible():
+            self.update_dialog.raise_()
+            self.update_dialog.activateWindow()
+            return
+        self.update_dialog = UpdateCheckDialog(self, self.open_external_url)
+        self.update_dialog.finished.connect(
+            lambda _result: setattr(self, "update_dialog", None)
+        )
+        self.update_dialog.show()
+        self.update_dialog.start()
 
     def bind_shortcuts(self):
         """Bind configurable shortcut IDs to existing application actions."""
