@@ -49,7 +49,9 @@ if ($Candidate) {
 
 $outputDir = Join-Path $projectRoot "builds\output\$artifactVersion\windows-x64"
 $stageDir = Join-Path $workDir "dist"
-$appDir = Join-Path $outputDir "ParkerLabel"
+$executable = Join-Path $outputDir "ParkerLabel.exe"
+$configsDir = Join-Path $outputDir "configs"
+$packageDir = Join-Path $workDir "package"
 $archive = Join-Path $outputDir "ParkerLabel-$artifactVersion-windows-x64.zip"
 $buildsRoot = [System.IO.Path]::GetFullPath((Join-Path $projectRoot "builds"))
 foreach ($path in @($generatedDir, $workDir)) {
@@ -60,7 +62,7 @@ foreach ($path in @($generatedDir, $workDir)) {
     if (Test-Path -LiteralPath $resolved) { Remove-Item -LiteralPath $resolved -Recurse -Force }
 }
 New-Item -ItemType Directory -Force -Path $generatedDir, $workDir, $outputDir | Out-Null
-foreach ($path in @($appDir, (Join-Path $outputDir "configs"))) {
+foreach ($path in @($executable, $configsDir, (Join-Path $outputDir "ParkerLabel"))) {
     if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force }
 }
 foreach ($path in @($archive, (Join-Path $outputDir "build-info.json"), (Join-Path $outputDir "license-inventory.json"), (Join-Path $outputDir "SHA256SUMS"), (Join-Path $outputDir "size-report.json"))) {
@@ -74,17 +76,21 @@ if ($LASTEXITCODE -ne 0) { throw "Unable to stage Windows license material." }
 $env:PARKER_LABEL_VERSION = $version
 & $pyinstaller --noconfirm --clean --distpath $stageDir --workpath (Join-Path $workDir "build") (Join-Path $projectRoot "builds\ParkerLabel.spec")
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed." }
-Move-Item -LiteralPath (Join-Path $stageDir "ParkerLabel") -Destination $appDir
-& $python (Join-Path $projectRoot "builds\prune_windows_bundle.py") $appDir
-& $python (Join-Path $projectRoot "builds\audit_windows_licenses.py") --app $appDir --expected (Join-Path $projectRoot "third_party_licenses\windows-x64-inventory.json") --report (Join-Path $outputDir "license-inventory.json")
+Move-Item -LiteralPath (Join-Path $stageDir "ParkerLabel.exe") -Destination $executable
+New-Item -ItemType Directory -Force -Path $configsDir | Out-Null
+$probe = Start-Process -FilePath $executable -ArgumentList "--runtime-self-test" -PassThru -Wait
+if ($probe.ExitCode -ne 0) { throw "Packaged Qt/OpenCV/NumPy/ONNX Runtime self-test failed." }
+& $python (Join-Path $projectRoot "builds\audit_windows_licenses.py") --executable $executable --expected (Join-Path $projectRoot "third_party_licenses\windows-x64-inventory.json") --report (Join-Path $outputDir "license-inventory.json")
 if ($LASTEXITCODE -ne 0) { throw "Windows license audit failed." }
 
-Compress-Archive -LiteralPath $appDir -DestinationPath $archive -CompressionLevel Optimal
+New-Item -ItemType Directory -Force -Path $packageDir, (Join-Path $packageDir "configs") | Out-Null
+Copy-Item -LiteralPath $executable -Destination (Join-Path $packageDir "ParkerLabel.exe")
+Compress-Archive -Path (Join-Path $packageDir "*") -DestinationPath $archive -CompressionLevel Optimal
 $verificationDir = Join-Path $env:TEMP ("ParkerLabel-verify-" + [guid]::NewGuid().ToString("N"))
 try {
     Expand-Archive -LiteralPath $archive -DestinationPath $verificationDir
-    if (-not (Test-Path -LiteralPath (Join-Path $verificationDir "ParkerLabel\ParkerLabel.exe") -PathType Leaf)) {
-        throw "The archive does not contain ParkerLabel\ParkerLabel.exe."
+    if (-not (Test-Path -LiteralPath (Join-Path $verificationDir "ParkerLabel.exe") -PathType Leaf)) {
+        throw "The archive does not contain ParkerLabel.exe."
     }
 } finally {
     if (Test-Path -LiteralPath $verificationDir) { Remove-Item -LiteralPath $verificationDir -Recurse -Force }
@@ -96,5 +102,5 @@ $checksum = "$hash  $([System.IO.Path]::GetFileName($archive))`n"
 [System.IO.File]::WriteAllText((Join-Path $outputDir "SHA256SUMS"), $checksum, [System.Text.UTF8Encoding]::new($false))
 $verifiedHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($verifiedHash -ne $hash) { throw "Archive checksum verification failed." }
-& $python (Join-Path $projectRoot "builds\measure_bundle.py") --app $appDir --archive $archive --manifest (Join-Path $projectRoot "model-bundle.json") --configs (Join-Path $appDir "configs") --output (Join-Path $outputDir "size-report.json")
+& $python (Join-Path $projectRoot "builds\measure_bundle.py") --app $executable --archive $archive --manifest (Join-Path $projectRoot "model-bundle.json") --configs $configsDir --output (Join-Path $outputDir "size-report.json")
 if ($LASTEXITCODE -ne 0) { throw "Bundle measurement failed." }

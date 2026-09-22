@@ -25,6 +25,8 @@ def measurement(byte_count):
 
 
 def component_sizes(app):
+    if app.is_file():
+        return {"single_executable": measurement(app.stat().st_size)}
     if (app / "Contents" / "Frameworks").is_dir():
         runtime_root = app / "Contents" / "Frameworks"
         roots = {
@@ -54,6 +56,8 @@ def component_sizes(app):
 
 
 def largest_files(app, limit=20):
+    if app.is_file():
+        return [{"path": app.name, **measurement(app.stat().st_size)}]
     files = (
         item
         for item in app.rglob("*")

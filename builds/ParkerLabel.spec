@@ -73,28 +73,28 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
-exe = EXE(
-    pyz,
-    a.scripts,
-    [],
-    exclude_binaries=True,
-    name="ParkerLabel",
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=sys.platform == "darwin",
-    upx=False,
-    console=False,
-    target_arch="arm64" if sys.platform == "darwin" else None,
-)
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.datas,
-    strip=sys.platform == "darwin",
-    upx=False,
-    name="ParkerLabel",
-)
 if sys.platform == "darwin":
+    exe = EXE(
+        pyz,
+        a.scripts,
+        [],
+        exclude_binaries=True,
+        name="ParkerLabel",
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=True,
+        upx=False,
+        console=False,
+        target_arch="arm64",
+    )
+    coll = COLLECT(
+        exe,
+        a.binaries,
+        a.datas,
+        strip=True,
+        upx=False,
+        name="ParkerLabel",
+    )
     app = BUNDLE(
         coll,
         name="ParkerLabel.app",
@@ -106,4 +106,20 @@ if sys.platform == "darwin":
             "LSMinimumSystemVersion": "11.0",
             "NSHighResolutionCapable": True,
         },
+    )
+else:
+    from builds.prune_windows_bundle import filtered_toc
+
+    a.binaries = filtered_toc(a.binaries)
+    exe = EXE(
+        pyz,
+        a.scripts,
+        a.binaries,
+        a.datas,
+        name="ParkerLabel",
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=False,
+        console=False,
     )

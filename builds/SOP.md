@@ -77,9 +77,9 @@ Do not instruct users to disable Gatekeeper globally.
 
 ## Windows x64
 
-Run from 64-bit Windows with Miniforge and Visual Studio 2022 Build Tools. The
-Build Tools installation must include the **Desktop development with C++**
-workload:
+Run from 64-bit Windows with Miniforge. Visual Studio 2022 Build Tools with the
+**Desktop development with C++** workload is preferred; when it is unavailable,
+the script uses the pinned Miniforge GCC toolchain:
 
 ```powershell
 .\builds\build-windows.ps1
@@ -103,22 +103,25 @@ BMP remain available; video I/O, FFmpeg, MSMF, highgui, OpenEXR, DNN and unused
 codecs are disabled. The cached wheel is under `builds/.opencv-wheelhouse/`.
 
 The build runs the OpenCV runtime verifier and all project tests before
-packaging. It then prunes unused Qt DLLs and plugins, compares every `.dll` and
-`.pyd` in the final directory with
-`third_party_licenses/windows-x64-inventory.json`, validates the bundled
+packaging. It removes unused Qt DLLs and plugins and Qt's obsolete private MSVC
+runtime copies before creating a single executable. It then runs the packaged
+Qt/OpenCV/NumPy/ONNX Runtime self-test, audits every embedded `.dll` and `.pyd`
+against `third_party_licenses/windows-x64-inventory.json`, validates embedded
 license material, tests a fresh ZIP extraction, and verifies `SHA256SUMS`.
 
 Outputs are written under `builds/output/<version>/windows-x64/`:
 
-- `ParkerLabel/`
+- `ParkerLabel.exe`
+- `configs/`
 - `ParkerLabel-<version>-windows-x64.zip`
 - `build-info.json`
 - `license-inventory.json`
 - `size-report.json`
 - `SHA256SUMS`
 
-Users extract the ZIP and run `ParkerLabel.exe`; Python, Conda and project
-dependencies are not required. Models and user configuration are stored in
-`configs/` beside the executable. Preserve that directory when replacing the
-other application files during an upgrade. Windows SmartScreen or antivirus
-software may still show a security prompt for unsigned portable builds.
+Users extract the ZIP and run the single `ParkerLabel.exe`; its packaged
+dependencies are extracted to a temporary runtime directory automatically.
+Python, Conda and project dependencies are not required. Models and user
+configuration are stored in `configs/` beside the executable. Preserve that
+directory when replacing the executable during an upgrade. Windows SmartScreen
+or antivirus software may still show a security prompt for unsigned builds.

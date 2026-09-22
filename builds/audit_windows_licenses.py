@@ -10,7 +10,7 @@ VERSIONS = {
     "LibFFI": "3.7.0",
     "MicrosoftDirect3DCompiler": "6.3.9600.16384",
     "MicrosoftUniversalCRT": "10.0.26100.4654",
-    "MicrosoftVisualCRuntime": "14.51.36247; Qt-bundled 14.26.28720.3",
+    "MicrosoftVisualCRuntime": "14.51.36247",
     "NumPy": "2.4.6",
     "ONNXRuntime": "1.29.0",
     "OpenCV": "5.0.0.93",
@@ -94,14 +94,11 @@ def classify_binary(relative_path):
     return RUNTIME_LIBRARY_COMPONENTS.get(name)
 
 
-def collect_inventory(app_path):
-    runtime_root = app_path / "_internal"
-    if not runtime_root.is_dir():
-        raise ValueError(f"missing runtime directory: {runtime_root}")
+def inventory_from_paths(paths):
     binaries = sorted(
-        path.relative_to(runtime_root)
-        for path in runtime_root.rglob("*")
-        if path.is_file() and path.suffix.lower() in {".dll", ".pyd"}
+        Path(str(path).replace("\\", "/"))
+        for path in paths
+        if Path(str(path)).suffix.lower() in {".dll", ".pyd"}
     )
     components = set()
     unknown = []
@@ -111,12 +108,11 @@ def collect_inventory(app_path):
             unknown.append(path.as_posix())
         else:
             components.add(component)
-    qt_dlls = sorted(
-        path.name for path in (runtime_root / "PyQt5" / "Qt5" / "bin").glob("Qt5*.dll")
-    )
+    qt_dlls = sorted(path.name for path in binaries if path.as_posix().startswith("PyQt5/Qt5/bin/Qt5"))
     qt_plugins = sorted(
-        path.relative_to(runtime_root).as_posix()
-        for path in (runtime_root / "PyQt5" / "Qt5" / "plugins").rglob("*.dll")
+        path.as_posix()
+        for path in binaries
+        if path.as_posix().startswith("PyQt5/Qt5/plugins/")
     )
     return {
         "platform": "windows-x64",
@@ -128,31 +124,55 @@ def collect_inventory(app_path):
     }
 
 
+def collect_inventory(app_path):
+    runtime_root = app_path / "_internal"
+    if not runtime_root.is_dir():
+        raise ValueError(f"missing runtime directory: {runtime_root}")
+    return inventory_from_paths(
+        path.relative_to(runtime_root)
+        for path in runtime_root.rglob("*")
+        if path.is_file()
+    )
+
+
+def archive_entries(executable):
+    from PyInstaller.archive.readers import CArchiveReader
+
+    return {name.replace("\\", "/") for name in CArchiveReader(str(executable)).toc}
+
+
+def required_license_paths(component_names):
+    paths = {"THIRD_PARTY_NOTICES.md", *ALWAYS_REQUIRED_LICENSE_FILES}
+    for component in component_names:
+        paths.update(REQUIRED_LICENSE_FILES[component])
+    return paths
+
+
 def validate_licenses(licenses_path, component_names):
     errors = []
-    notices = licenses_path / "THIRD_PARTY_NOTICES.md"
-    if not notices.is_file():
-        errors.append(f"missing {notices}")
-    for filename in ALWAYS_REQUIRED_LICENSE_FILES:
+    for filename in sorted(required_license_paths(component_names)):
         path = licenses_path / filename
         if not path.is_file():
             errors.append(f"missing {path}")
-    for component in sorted(component_names):
-        for filename in REQUIRED_LICENSE_FILES[component]:
-            path = licenses_path / filename
-            if not path.is_file():
-                errors.append(f"missing {path}")
     return errors
+
+
+def validate_archive_licenses(entries, component_names):
+    required = {f"third_party_licenses/{path}" for path in required_license_paths(component_names)}
+    return [f"missing embedded {path}" for path in sorted(required - entries)]
 
 
 def main():
     parser = argparse.ArgumentParser(description="Audit licenses in a Windows portable bundle.")
-    parser.add_argument("--app", type=Path, required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--app", type=Path)
+    source.add_argument("--executable", type=Path)
     parser.add_argument("--expected", type=Path)
     parser.add_argument("--licenses", type=Path)
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
-    inventory = collect_inventory(args.app)
+    entries = archive_entries(args.executable) if args.executable else None
+    inventory = inventory_from_paths(entries) if entries is not None else collect_inventory(args.app)
     errors = []
     if inventory["unknown_dynamic_binaries"]:
         errors.append("unmapped dynamic binaries: " + ", ".join(inventory["unknown_dynamic_binaries"]))
@@ -160,12 +180,17 @@ def main():
         expected = json.loads(args.expected.read_text(encoding="utf-8"))
         if inventory != expected:
             errors.append("bundle inventory differs from the committed license inventory")
-    licenses_path = args.licenses or args.app / "_internal" / "third_party_licenses"
     component_names = {item["name"] for item in inventory["components"]}
-    errors.extend(validate_licenses(licenses_path, component_names))
-    root_license = args.app / "_internal" / "LICENSE"
-    if not root_license.is_file():
-        errors.append(f"missing {root_license}")
+    if entries is not None:
+        errors.extend(validate_archive_licenses(entries, component_names))
+        if "LICENSE" not in entries:
+            errors.append("missing embedded LICENSE")
+    else:
+        licenses_path = args.licenses or args.app / "_internal" / "third_party_licenses"
+        errors.extend(validate_licenses(licenses_path, component_names))
+        root_license = args.app / "_internal" / "LICENSE"
+        if not root_license.is_file():
+            errors.append(f"missing {root_license}")
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(inventory, indent=2, sort_keys=True) + "\n", encoding="utf-8")

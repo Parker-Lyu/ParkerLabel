@@ -4,11 +4,11 @@ Parker Label's root `LICENSE` remains GPL-3.0-only. Third-party components keep
 their own licenses and notices under `third_party_licenses/`.
 
 The macOS build scans the finished, pruned `.app` with
-`builds/audit_macos_licenses.py`; the Windows build scans the finished portable
-directory with `builds/audit_windows_licenses.py`. Each compares every bundled
-native binary and Qt plugin with its own committed platform inventory. A build
-fails when a binary is unknown, the inventory changes, or required license
-material is missing.
+`builds/audit_macos_licenses.py`; the Windows build scans the PyInstaller
+single-executable archive with `builds/audit_windows_licenses.py`. Each compares
+every bundled native binary and Qt plugin with its own committed platform
+inventory. A build fails when a binary is unknown, the inventory changes, or
+required license material is missing.
 
 Each application bundle contains:
 

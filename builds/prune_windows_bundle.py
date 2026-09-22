@@ -20,6 +20,31 @@ QT_PLUGIN_PATHS = (
     "platforms/qminimal.dll", "platforms/qoffscreen.dll", "platforms/qwebgl.dll",
 )
 
+QT_PRIVATE_MSVC_RUNTIMES = (
+    "msvcp140.dll",
+    "msvcp140_1.dll",
+    "vcruntime140.dll",
+    "vcruntime140_1.dll",
+)
+
+
+def should_exclude(relative_path):
+    path = Path(relative_path)
+    normalized = path.as_posix().lower()
+    if normalized.startswith("pyqt5/qt5/bin/"):
+        return path.name.lower() in {
+            name.lower() for name in (*QT_MODULES, *QT_PRIVATE_MSVC_RUNTIMES)
+        }
+    for item in QT_PLUGIN_PATHS:
+        target = f"pyqt5/qt5/plugins/{item}".lower()
+        if normalized == target or normalized.startswith(target + "/"):
+            return True
+    return False
+
+
+def filtered_toc(entries):
+    return type(entries)(entry for entry in entries if not should_exclude(entry[0]))
+
 
 def remove(path):
     if path.is_dir() and not path.is_symlink():
@@ -34,6 +59,8 @@ def main():
     args = parser.parse_args()
     qt_root = args.app / "_internal" / "PyQt5" / "Qt5"
     for name in QT_MODULES:
+        remove(qt_root / "bin" / name)
+    for name in QT_PRIVATE_MSVC_RUNTIMES:
         remove(qt_root / "bin" / name)
     for relative_path in QT_PLUGIN_PATHS:
         remove(qt_root / "plugins" / relative_path)

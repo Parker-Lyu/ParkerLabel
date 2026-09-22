@@ -6,6 +6,8 @@ from builds.audit_windows_licenses import (
     ALWAYS_REQUIRED_LICENSE_FILES,
     REQUIRED_LICENSE_FILES,
     collect_inventory,
+    inventory_from_paths,
+    validate_archive_licenses,
     validate_licenses,
 )
 
@@ -58,6 +60,36 @@ class WindowsLicenseAuditTests(unittest.TestCase):
         self.assertEqual(validate_licenses(licenses, {"MicrosoftVisualCRuntime", "Qt"}), [])
         (licenses / "Qt" / "REPLACEMENT-windows-x64.md").unlink()
         self.assertEqual(len(validate_licenses(licenses, {"MicrosoftVisualCRuntime", "Qt"})), 1)
+
+    def test_collects_inventory_from_onefile_entries(self):
+        inventory = inventory_from_paths(
+            {
+                "PyQt5/Qt5/bin/Qt5Core.dll",
+                "PyQt5/Qt5/plugins/platforms/qwindows.dll",
+                "onnxruntime/capi/onnxruntime.dll",
+                "onnxruntime/capi/onnxruntime_pybind11_state.pyd",
+                "python311.dll",
+            }
+        )
+        self.assertEqual(inventory["unknown_dynamic_binaries"], [])
+        self.assertEqual(inventory["qt_dlls"], ["Qt5Core.dll"])
+        self.assertEqual(
+            {item["name"] for item in inventory["components"]},
+            {"ONNXRuntime", "Python", "Qt"},
+        )
+
+    def test_validates_embedded_license_entries(self):
+        components = {"MicrosoftVisualCRuntime"}
+        entries = {"LICENSE"}
+        entries.update(
+            f"third_party_licenses/{path}"
+            for path in (
+                "THIRD_PARTY_NOTICES.md",
+                *ALWAYS_REQUIRED_LICENSE_FILES,
+                *REQUIRED_LICENSE_FILES["MicrosoftVisualCRuntime"],
+            )
+        )
+        self.assertEqual(validate_archive_licenses(entries, components), [])
 
 
 if __name__ == "__main__":

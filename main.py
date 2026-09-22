@@ -10,6 +10,14 @@ def main():
     """Start the desktop annotation application."""
     app = QApplication(sys.argv)
     app.setApplicationName("ParkerLabel")
+    if "--runtime-self-test" in sys.argv:
+        import cv2
+        import numpy
+        import onnxruntime
+
+        if not cv2.__version__ or not numpy.__version__ or not onnxruntime.__version__:
+            return 1
+        return 0
     try:
         prepare_runtime()
         from parker_label_app import MainWindow

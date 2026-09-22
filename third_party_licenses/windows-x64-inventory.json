@@ -22,7 +22,7 @@
     },
     {
       "name": "MicrosoftVisualCRuntime",
-      "version": "14.51.36247; Qt-bundled 14.26.28720.3"
+      "version": "14.51.36247"
     },
     {
       "name": "NumPy",
@@ -152,16 +152,12 @@
     "PyQt5/Qt5/bin/d3dcompiler_47.dll",
     "PyQt5/Qt5/bin/libEGL.dll",
     "PyQt5/Qt5/bin/libGLESv2.dll",
-    "PyQt5/Qt5/bin/MSVCP140.dll",
-    "PyQt5/Qt5/bin/MSVCP140_1.dll",
     "PyQt5/Qt5/bin/opengl32sw.dll",
     "PyQt5/Qt5/bin/Qt5Core.dll",
     "PyQt5/Qt5/bin/Qt5DBus.dll",
     "PyQt5/Qt5/bin/Qt5Gui.dll",
     "PyQt5/Qt5/bin/Qt5Network.dll",
     "PyQt5/Qt5/bin/Qt5Widgets.dll",
-    "PyQt5/Qt5/bin/VCRUNTIME140.dll",
-    "PyQt5/Qt5/bin/VCRUNTIME140_1.dll",
     "PyQt5/Qt5/plugins/platforms/qwindows.dll",
     "PyQt5/Qt5/plugins/styles/qwindowsvistastyle.dll",
     "PyQt5/QtCore.pyd",
