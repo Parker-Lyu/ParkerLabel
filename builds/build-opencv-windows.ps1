@@ -117,6 +117,14 @@ if (-not (Test-Path -LiteralPath $wheel -PathType Leaf)) {
 
 & $TargetPython -m zipfile -t $wheel
 if ($LASTEXITCODE -ne 0) { throw "OpenCV wheel archive validation failed." }
-& $TargetPython -m pip uninstall --yes opencv-contrib-python opencv-contrib-python-headless opencv-python opencv-python-headless 2>$null | Out-Null
+$installedOpenCvPackages = @(
+    & $TargetPython -c "import re; from importlib.metadata import distributions; normalize = lambda name: re.sub(r'[-_.]+', '-', name).lower(); wanted = {'opencv-contrib-python', 'opencv-contrib-python-headless', 'opencv-python', 'opencv-python-headless'}; print(*(distribution.metadata['Name'] for distribution in distributions() if normalize(distribution.metadata['Name']) in wanted), sep='\n')" |
+        Where-Object { $_ }
+)
+if ($LASTEXITCODE -ne 0) { throw "Unable to inspect installed OpenCV packages." }
+if ($installedOpenCvPackages.Count -gt 0) {
+    & $TargetPython -m pip uninstall --yes $installedOpenCvPackages | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Unable to uninstall existing OpenCV packages." }
+}
 & $TargetPython -m pip install --disable-pip-version-check --force-reinstall --no-deps $wheel
 if ($LASTEXITCODE -ne 0) { throw "Unable to install the minimal OpenCV wheel." }

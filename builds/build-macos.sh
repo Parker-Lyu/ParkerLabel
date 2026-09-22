@@ -84,6 +84,9 @@ elif [[ "${version}" != "dev" ]]; then
 fi
 output_dir="${project_root}/builds/output/${artifact_version}/macos-arm64"
 stage_dir="${work_dir}/dist"
+package_dir="${work_dir}/package"
+archive_directory_name="ParkerLabel-${version}"
+archive_root="${package_dir}/${archive_directory_name}"
 archive="${output_dir}/ParkerLabel-${artifact_version}-macos-arm64.zip"
 
 rm -rf "${generated_dir}" "${work_dir}"
@@ -123,14 +126,16 @@ mv "${stage_dir}/ParkerLabel.app" "${output_dir}/ParkerLabel.app"
   --report "${output_dir}/license-inventory.json"
 codesign --force --deep --sign - "${output_dir}/ParkerLabel.app"
 codesign --verify --deep --strict --verbose=2 "${output_dir}/ParkerLabel.app"
-ditto -c -k --sequesterRsrc --keepParent "${output_dir}/ParkerLabel.app" "${archive}"
+mkdir -p "${archive_root}"
+ditto "${output_dir}/ParkerLabel.app" "${archive_root}/ParkerLabel.app"
+ditto -c -k --sequesterRsrc --keepParent "${archive_root}" "${archive}"
 unzip -tq "${archive}"
 
 verification_dir="$(mktemp -d)"
 trap 'rm -rf "${verification_dir}"' EXIT
 ditto -x -k "${archive}" "${verification_dir}"
 codesign --verify --deep --strict --verbose=2 \
-  "${verification_dir}/ParkerLabel.app"
+  "${verification_dir}/${archive_directory_name}/ParkerLabel.app"
 
 cp "${generated_dir}/build-info.json" "${output_dir}/build-info.json"
 (

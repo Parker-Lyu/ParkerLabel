@@ -52,6 +52,8 @@ $stageDir = Join-Path $workDir "dist"
 $executable = Join-Path $outputDir "ParkerLabel.exe"
 $configsDir = Join-Path $outputDir "configs"
 $packageDir = Join-Path $workDir "package"
+$archiveDirectoryName = "ParkerLabel-$version"
+$archiveRoot = Join-Path $packageDir $archiveDirectoryName
 $archive = Join-Path $outputDir "ParkerLabel-$artifactVersion-windows-x64.zip"
 $buildsRoot = [System.IO.Path]::GetFullPath((Join-Path $projectRoot "builds"))
 foreach ($path in @($generatedDir, $workDir)) {
@@ -77,20 +79,25 @@ $env:PARKER_LABEL_VERSION = $version
 & $pyinstaller --noconfirm --clean --distpath $stageDir --workpath (Join-Path $workDir "build") (Join-Path $projectRoot "builds\ParkerLabel.spec")
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed." }
 Move-Item -LiteralPath (Join-Path $stageDir "ParkerLabel.exe") -Destination $executable
+& $python (Join-Path $projectRoot "builds\verify_windows_icon.py") --executable $executable --icon (Join-Path $projectRoot "parker_label_app\assets\app-icon.ico")
+if ($LASTEXITCODE -ne 0) { throw "Packaged executable icon verification failed." }
 New-Item -ItemType Directory -Force -Path $configsDir | Out-Null
 $probe = Start-Process -FilePath $executable -ArgumentList "--runtime-self-test" -PassThru -Wait
 if ($probe.ExitCode -ne 0) { throw "Packaged Qt/OpenCV/NumPy/ONNX Runtime self-test failed." }
 & $python (Join-Path $projectRoot "builds\audit_windows_licenses.py") --executable $executable --expected (Join-Path $projectRoot "third_party_licenses\windows-x64-inventory.json") --report (Join-Path $outputDir "license-inventory.json")
 if ($LASTEXITCODE -ne 0) { throw "Windows license audit failed." }
 
-New-Item -ItemType Directory -Force -Path $packageDir, (Join-Path $packageDir "configs") | Out-Null
-Copy-Item -LiteralPath $executable -Destination (Join-Path $packageDir "ParkerLabel.exe")
-Compress-Archive -Path (Join-Path $packageDir "*") -DestinationPath $archive -CompressionLevel Optimal
+New-Item -ItemType Directory -Force -Path $archiveRoot, (Join-Path $archiveRoot "configs") | Out-Null
+Copy-Item -LiteralPath $executable -Destination (Join-Path $archiveRoot "ParkerLabel.exe")
+Compress-Archive -Path $archiveRoot -DestinationPath $archive -CompressionLevel Optimal
 $verificationDir = Join-Path $env:TEMP ("ParkerLabel-verify-" + [guid]::NewGuid().ToString("N"))
 try {
     Expand-Archive -LiteralPath $archive -DestinationPath $verificationDir
-    if (-not (Test-Path -LiteralPath (Join-Path $verificationDir "ParkerLabel.exe") -PathType Leaf)) {
-        throw "The archive does not contain ParkerLabel.exe."
+    if (-not (Test-Path -LiteralPath (Join-Path $verificationDir "$archiveDirectoryName\ParkerLabel.exe") -PathType Leaf)) {
+        throw "The archive does not contain $archiveDirectoryName/ParkerLabel.exe."
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $verificationDir "$archiveDirectoryName\configs") -PathType Container)) {
+        throw "The archive does not contain $archiveDirectoryName/configs/."
     }
 } finally {
     if (Test-Path -LiteralPath $verificationDir) { Remove-Item -LiteralPath $verificationDir -Recurse -Force }
