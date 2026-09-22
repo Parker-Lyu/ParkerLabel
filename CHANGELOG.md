@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Embed the project icon as a multi-resolution Windows EXE resource and verify it during packaging.
+
 - Remove the white canvas around the application icon and preserve its shadow with transparency.
 
 - Add the ParkerLabel application icon for source launches and portable builds.

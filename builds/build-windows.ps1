@@ -77,6 +77,8 @@ $env:PARKER_LABEL_VERSION = $version
 & $pyinstaller --noconfirm --clean --distpath $stageDir --workpath (Join-Path $workDir "build") (Join-Path $projectRoot "builds\ParkerLabel.spec")
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed." }
 Move-Item -LiteralPath (Join-Path $stageDir "ParkerLabel.exe") -Destination $executable
+& $python (Join-Path $projectRoot "builds\verify_windows_icon.py") --executable $executable --icon (Join-Path $projectRoot "parker_label_app\assets\app-icon.ico")
+if ($LASTEXITCODE -ne 0) { throw "Packaged executable icon verification failed." }
 New-Item -ItemType Directory -Force -Path $configsDir | Out-Null
 $probe = Start-Process -FilePath $executable -ArgumentList "--runtime-self-test" -PassThru -Wait
 if ($probe.ExitCode -ne 0) { throw "Packaged Qt/OpenCV/NumPy/ONNX Runtime self-test failed." }

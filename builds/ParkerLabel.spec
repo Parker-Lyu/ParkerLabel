@@ -6,7 +6,8 @@ from pathlib import Path
 project_root = Path(SPECPATH).parent
 generated_dir = project_root / "builds" / ".generated"
 app_version = os.environ.get("PARKER_LABEL_VERSION", "dev")
-app_icon = project_root / "parker_label_app" / "assets" / "app-icon.png"
+app_icon_png = project_root / "parker_label_app" / "assets" / "app-icon.png"
+app_icon_ico = project_root / "parker_label_app" / "assets" / "app-icon.ico"
 
 datas = [
     (str(project_root / "config" / "default-coco.json"), "config"),
@@ -100,7 +101,7 @@ if sys.platform == "darwin":
     app = BUNDLE(
         coll,
         name="ParkerLabel.app",
-        icon=str(app_icon),
+        icon=str(app_icon_png),
         bundle_identifier="com.parkerlyu.parkerlabel",
         info_plist={
             "CFBundleDisplayName": "ParkerLabel",
@@ -125,5 +126,5 @@ else:
         strip=False,
         upx=False,
         console=False,
-        icon=str(app_icon),
+        icon=str(app_icon_ico),
     )
