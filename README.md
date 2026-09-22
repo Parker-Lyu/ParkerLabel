@@ -1,6 +1,6 @@
 # Parker Label
 
-Parker Label is a lightweight, interactive annotation tool powered by MobileSAM. It is designed for creating object-detection bounding boxes and instance-segmentation masks without requiring a discrete GPU. On an Apple M5 Pro, an interactive mask-decoder inference takes approximately 20 ms; initial image embedding is measured separately.
+Parker Label is a lightweight, interactive annotation tool. It is designed for creating object-detection bounding boxes and instance-segmentation masks without requiring a discrete GPU. On an Apple M5 Pro CPU and i9-14900KF CPU an interactive mask-decoder inference takes approximately 20 ms.
 
 ## Run
 
