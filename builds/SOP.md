@@ -50,6 +50,10 @@ The output directory contains:
 - `size-report.json`
 - `SHA256SUMS`
 
+The ZIP contains a top-level `ParkerLabel-<version>/` directory with
+`ParkerLabel.app` inside it. Runtime-created `configs/` data therefore stays
+inside this directory after extraction.
+
 The runtime models are not bundled. On first launch they are downloaded into
 `configs/pretrain/` beside `ParkerLabel.app`. Re-run the size report after the
 first successful launch:
@@ -119,7 +123,9 @@ Outputs are written under `builds/output/<version>/windows-x64/`:
 - `size-report.json`
 - `SHA256SUMS`
 
-Users extract the ZIP and run the single `ParkerLabel.exe`; its packaged
+The ZIP contains `ParkerLabel-<version>/ParkerLabel.exe` and an empty
+`ParkerLabel-<version>/configs/` directory. Users extract the ZIP and run the
+single `ParkerLabel.exe`; its packaged
 dependencies are extracted to a temporary runtime directory automatically.
 Python, Conda and project dependencies are not required. Models and user
 configuration are stored in `configs/` beside the executable. Preserve that
