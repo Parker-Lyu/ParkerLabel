@@ -233,7 +233,7 @@
   "shortcut.action.erode": "収縮",
   "shortcut.action.dilate": "膨張",
   "shortcut.action.category_config": "カテゴリ設定",
-  "about.description": "MobileSAM を利用した軽量な対話型インスタンスセグメンテーション注釈ツール。",
+  "about.description": "ParkerLabel は、物体検出とインスタンスセグメンテーション向けに設計された、軽量で洗練された対話型アノテーションツールです。",
   "about.development_build": "開発版",
   "log.shortcut_recovered": "無効なショートカット設定を初期値に戻すか無効化しました：{actions}"
 }

@@ -233,7 +233,7 @@
   "shortcut.action.erode": "侵蝕",
   "shortcut.action.dilate": "膨脹",
   "shortcut.action.category_config": "類別設定",
-  "about.description": "以 MobileSAM 為基礎的輕量級互動式實例分割標註工具。",
+  "about.description": "ParkerLabel 是一款輕巧精緻的互動式標註工具，專注於物件偵測與實例分割。",
   "about.development_build": "開發版",
   "log.shortcut_recovered": "以下快捷鍵設定無效，已還原預設或停用：{actions}"
 }

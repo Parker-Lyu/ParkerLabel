@@ -233,7 +233,7 @@
   "shortcut.action.erode": "Erosionar",
   "shortcut.action.dilate": "Dilatar",
   "shortcut.action.category_config": "Categorías",
-  "about.description": "Una herramienta ligera de anotación interactiva de segmentación de instancias basada en MobileSAM.",
+  "about.description": "ParkerLabel es una herramienta de anotación interactiva, ligera y cuidada, diseñada para la detección de objetos y la segmentación de instancias.",
   "about.development_build": "Versión de desarrollo",
   "log.shortcut_recovered": "Los atajos no válidos se restauraron o desactivaron: {actions}"
 }

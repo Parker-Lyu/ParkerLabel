@@ -233,7 +233,7 @@
   "shortcut.action.erode": "Verkleinern",
   "shortcut.action.dilate": "Erweitern",
   "shortcut.action.category_config": "Kategorien",
-  "about.description": "Ein leichtgewichtiges interaktives Annotationswerkzeug für Instanzsegmentierung mit MobileSAM.",
+  "about.description": "ParkerLabel ist ein leichtgewichtiges, ausgereiftes interaktives Annotationswerkzeug für Objekterkennung und Instanzsegmentierung.",
   "about.development_build": "Entwicklungsversion",
   "log.shortcut_recovered": "Ungültige Tastenkürzel wurden auf Standardwerte zurückgesetzt oder deaktiviert: {actions}"
 }
