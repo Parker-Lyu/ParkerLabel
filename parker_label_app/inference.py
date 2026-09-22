@@ -76,6 +76,14 @@ class SegmentationEngine:
             "orig_im_size": np.asarray(image_shape, dtype=np.float32),
         }
         started_at = perf_counter()
-        masks, _, logits = self.decoder_session.run(None, inputs)
+        masks, scores, logits = self.decoder_session.run(None, inputs)
         elapsed_ms = (perf_counter() - started_at) * 1000
-        return (masks[0, 0] > 0).astype(np.uint8), logits, elapsed_ms
+        score_reweight = np.zeros_like(scores)
+        score_reweight[:, 0] = (coordinates.shape[1] - 2.5) * 1000
+        best_index = int(np.argmax(scores[0] + score_reweight[0]))
+        selected_logits = logits[:, best_index : best_index + 1]
+        return (
+            (masks[0, best_index] > 0).astype(np.uint8),
+            selected_logits,
+            elapsed_ms,
+        )

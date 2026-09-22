@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fix repeated smart-click segmentation by feeding only the selected
+  single-channel low-resolution mask back into MobileSAM.
+
 - Add an explicit clean-checkout candidate build mode that does not require a
   release tag and marks candidate artifacts and build metadata.
 
