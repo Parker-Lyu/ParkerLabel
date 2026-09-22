@@ -233,7 +233,11 @@
   "shortcut.action.erode": "침식",
   "shortcut.action.dilate": "팽창",
   "shortcut.action.category_config": "범주 설정",
-  "about.description": "ParkerLabel은 객체 탐지와 인스턴스 분할을 위해 설계된 가볍고 세련된 대화형 주석 도구입니다.",
+  "about.description": "ParkerLabel은 객체 탐지와 인스턴스 분할을 위해 설계된 가볍고 세련된 AI 지원 주석 도구입니다.",
+  "about.performance": "대화형 마스크 디코더 추론은 Apple M5 Pro 및 Intel Core i9-14900KF CPU에서 1회당 약 20ms가 소요됩니다.",
+  "about.model": "AI 지원 대화형 분할에는 현재 MobileSAM이 사용됩니다. MobileSAM은 경량 TinyViT 이미지 인코더와 SAM의 기존 프롬프트 인코더 및 마스크 디코더를 결합합니다.",
+  "about.project_links": "프로젝트 링크:",
+  "about.model_references": "모델 참조:",
   "about.development_build": "개발 버전",
   "log.shortcut_recovered": "잘못된 단축키 설정을 기본값으로 복원하거나 사용 중지했습니다: {actions}"
 }

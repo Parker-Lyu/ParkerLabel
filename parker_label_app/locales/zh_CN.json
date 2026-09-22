@@ -233,7 +233,11 @@
   "shortcut.action.erode": "腐蚀",
   "shortcut.action.dilate": "膨胀",
   "shortcut.action.category_config": "类别配置",
-  "about.description": "ParkerLabel 是一款轻巧精致的交互式标注工具，专注于目标检测与实例分割。",
+  "about.description": "ParkerLabel 是一款轻巧精致的 AI 辅助标注工具，专注于目标检测与实例分割。",
+  "about.performance": "每次交互式掩码解码器推理在 Apple M5 Pro 和 Intel Core i9-14900KF CPU 上均约需 20 毫秒。",
+  "about.model": "AI 辅助交互式分割目前使用 MobileSAM；它将轻量级 TinyViT 图像编码器与 SAM 原有的提示编码器和掩码解码器相结合。",
+  "about.project_links": "项目链接：",
+  "about.model_references": "模型参考：",
   "about.development_build": "开发版",
   "log.shortcut_recovered": "以下快捷键设置无效，已恢复默认或停用：{actions}"
 }

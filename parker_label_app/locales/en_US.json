@@ -233,7 +233,11 @@
   "shortcut.action.erode": "Erode",
   "shortcut.action.dilate": "Dilate",
   "shortcut.action.category_config": "Categories",
-  "about.description": "ParkerLabel is a lightweight, polished interactive annotation tool designed for object detection and instance segmentation.",
+  "about.description": "ParkerLabel is a lightweight, polished, AI-assisted annotation tool designed for object detection and instance segmentation.",
+  "about.performance": "Each interactive mask-decoder inference takes approximately 20 ms on Apple M5 Pro and Intel Core i9-14900KF CPUs.",
+  "about.model": "AI-assisted interactive segmentation currently uses MobileSAM, which pairs a lightweight TinyViT image encoder with SAM’s original prompt encoder and mask decoder.",
+  "about.project_links": "Project Links:",
+  "about.model_references": "Model References:",
   "about.development_build": "Development build",
   "log.shortcut_recovered": "Invalid shortcut settings were restored to defaults or disabled: {actions}"
 }

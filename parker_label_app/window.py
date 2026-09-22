@@ -48,7 +48,9 @@ from .app_info import (
     APP_VERSION,
     CHANGELOG_URL,
     GITEE_REPOSITORY_URL,
+    MOBILE_SAM_REPOSITORY_URL,
     REPOSITORY_URL,
+    SAM_REPOSITORY_URL,
     source_code_url,
 )
 from .canvas import AnnotationCanvas
@@ -823,8 +825,14 @@ class MainWindow(QWidget):
         dialog.setWindowTitle(self.t("menu.about"))
         layout = QVBoxLayout(dialog)
         title = QLabel(f"<b>{APP_NAME}</b>")
-        description = QLabel(self.t("about.description"))
-        description.setWordWrap(True)
+        descriptions = [
+            QLabel(self.t("about.description")),
+            QLabel(self.t("about.performance")),
+            QLabel(self.t("about.model")),
+        ]
+        for description in descriptions:
+            description.setWordWrap(True)
+            description.setMaximumWidth(620)
         details = QLabel(
             self.t(
                 "about.details",
@@ -832,17 +840,29 @@ class MainWindow(QWidget):
                 developer=APP_DEVELOPER,
             )
         )
-        links = QLabel(
+        project_links_title = QLabel(self.t("about.project_links"))
+        project_links = QLabel(
             f'<a href="{REPOSITORY_URL}">{self.t("menu.github")}</a>'
             f'&nbsp;&nbsp;·&nbsp;&nbsp;'
             f'<a href="{GITEE_REPOSITORY_URL}">{self.t("menu.gitee")}</a>'
             f'&nbsp;&nbsp;·&nbsp;&nbsp;'
             f'<a href="{CHANGELOG_URL}">{self.t("menu.changelog")}</a>'
         )
-        links.setTextFormat(Qt.RichText)
-        links.setTextInteractionFlags(Qt.TextBrowserInteraction)
-        links.setOpenExternalLinks(False)
-        links.linkActivated.connect(self.open_external_url)
+        model_references_title = QLabel(self.t("about.model_references"))
+        model_references = QLabel(
+            f'<a href="{MOBILE_SAM_REPOSITORY_URL}">MobileSAM</a>'
+            f'&nbsp;&nbsp;·&nbsp;&nbsp;'
+            f'<a href="{SAM_REPOSITORY_URL}">Segment Anything (SAM)</a>'
+        )
+        for links in (project_links, model_references):
+            links.setTextFormat(Qt.RichText)
+            links.setTextInteractionFlags(Qt.TextBrowserInteraction)
+            links.setOpenExternalLinks(False)
+            links.linkActivated.connect(self.open_external_url)
+        for heading in (project_links_title, model_references_title):
+            font = heading.font()
+            font.setBold(True)
+            heading.setFont(font)
         update_button = QPushButton(self.t("menu.check_updates"))
         update_button.clicked.connect(dialog.accept)
         update_button.clicked.connect(lambda: QTimer.singleShot(0, self.open_update_check))
@@ -852,9 +872,13 @@ class MainWindow(QWidget):
         close_button = QPushButton(self.t("common.close"))
         close_button.clicked.connect(dialog.accept)
         layout.addWidget(title)
-        layout.addWidget(description)
+        for description in descriptions:
+            layout.addWidget(description)
         layout.addWidget(details)
-        layout.addWidget(links)
+        layout.addWidget(project_links_title)
+        layout.addWidget(project_links)
+        layout.addWidget(model_references_title)
+        layout.addWidget(model_references)
         button_layout = QHBoxLayout()
         button_layout.addWidget(update_button)
         button_layout.addWidget(licenses_button)

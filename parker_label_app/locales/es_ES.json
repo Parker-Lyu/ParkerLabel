@@ -233,7 +233,11 @@
   "shortcut.action.erode": "Erosionar",
   "shortcut.action.dilate": "Dilatar",
   "shortcut.action.category_config": "Categorías",
-  "about.description": "ParkerLabel es una herramienta de anotación interactiva, ligera y cuidada, diseñada para la detección de objetos y la segmentación de instancias.",
+  "about.description": "ParkerLabel es una herramienta de anotación ligera, cuidada y asistida por IA, diseñada para la detección de objetos y la segmentación de instancias.",
+  "about.performance": "Cada inferencia interactiva del decodificador de máscaras tarda aproximadamente 20 ms en las CPU Apple M5 Pro e Intel Core i9-14900KF.",
+  "about.model": "La segmentación interactiva asistida por IA utiliza actualmente MobileSAM, que combina un codificador de imágenes TinyViT ligero con el codificador de indicaciones y el decodificador de máscaras originales de SAM.",
+  "about.project_links": "Enlaces del proyecto:",
+  "about.model_references": "Referencias de modelos:",
   "about.development_build": "Versión de desarrollo",
   "log.shortcut_recovered": "Los atajos no válidos se restauraron o desactivaron: {actions}"
 }

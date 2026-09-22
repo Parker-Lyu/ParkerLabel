@@ -131,10 +131,14 @@ class ShortcutWindowTests(unittest.TestCase):
             self.assertIn("menu.gitee", _TEXT[code])
             self.assertIn("menu.check_updates", _TEXT[code])
             self.assertIn("menu.licenses", _TEXT[code])
+            self.assertIn("about.performance", _TEXT[code])
+            self.assertIn("about.model", _TEXT[code])
+            self.assertIn("about.project_links", _TEXT[code])
+            self.assertIn("about.model_references", _TEXT[code])
             self.assertIn("update.open_github", _TEXT[code])
             self.assertIn(code, [a.data() for a in self.window.language_actions.actions()])
 
-    def test_about_dialog_contains_gitee_repository_link(self):
+    def test_about_dialog_contains_project_and_model_links(self):
         dialog_text = []
         button_text = []
 
@@ -150,6 +154,16 @@ class ShortcutWindowTests(unittest.TestCase):
         self.assertTrue(
             any(GITEE_REPOSITORY_URL in text for text in dialog_text), dialog_text
         )
+        self.assertTrue(
+            any(window_module.MOBILE_SAM_REPOSITORY_URL in text for text in dialog_text),
+            dialog_text,
+        )
+        self.assertTrue(
+            any(window_module.SAM_REPOSITORY_URL in text for text in dialog_text),
+            dialog_text,
+        )
+        self.assertIn(self.window.t("about.project_links"), dialog_text)
+        self.assertIn(self.window.t("about.model_references"), dialog_text)
         self.assertIn(self.window.t("menu.check_updates"), button_text)
         self.assertIn(self.window.t("menu.licenses"), button_text)
 
