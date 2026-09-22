@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add the ParkerLabel application icon for source launches and portable builds.
+
 - Fix mask preview saving for image paths containing Chinese or other Unicode characters on Windows.
 
 - 修复 Windows 包中 Qt 旧版 MSVC 运行库导致 ONNX Runtime 初始化失败的问题，并改为单 EXE 便携构建。

@@ -21,6 +21,10 @@ class PortablePathTests(unittest.TestCase):
                 self.assertEqual(runtime_paths.config_directory(), root / "configs")
                 self.assertEqual(runtime_paths.model_directory(), root / "pretrain")
                 self.assertEqual(runtime_paths.model_manifest_path(), root / "model-bundle.json")
+                self.assertEqual(
+                    runtime_paths.application_icon_path(),
+                    root / "parker_label_app" / "assets" / "app-icon.png",
+                )
             with patch.object(runtime_paths.sys, "frozen", True, create=True), patch.object(
                 runtime_paths.sys, "_MEIPASS", str(root / "internal"), create=True
             ), patch.object(runtime_paths.sys, "executable", str(root / "ParkerLabel.exe")):
@@ -29,6 +33,10 @@ class PortablePathTests(unittest.TestCase):
                 self.assertEqual(runtime_paths.model_directory(), root / "configs" / "pretrain")
                 self.assertEqual(
                     runtime_paths.model_manifest_path(), root / "internal" / "model-bundle.json"
+                )
+                self.assertEqual(
+                    runtime_paths.application_icon_path(),
+                    root / "internal" / "parker_label_app" / "assets" / "app-icon.png",
                 )
             executable = root / "ParkerLabel.app" / "Contents" / "MacOS" / "ParkerLabel"
             with patch.object(runtime_paths.sys, "frozen", True, create=True), patch.object(

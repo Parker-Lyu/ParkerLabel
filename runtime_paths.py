@@ -38,6 +38,10 @@ def model_manifest_path():
     return resource_root() / "model-bundle.json"
 
 
+def application_icon_path():
+    return resource_root() / "parker_label_app" / "assets" / "app-icon.png"
+
+
 def portable_settings():
     return QSettings(str(config_directory() / "settings.ini"), QSettings.IniFormat)
 

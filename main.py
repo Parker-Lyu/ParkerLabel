@@ -1,15 +1,17 @@
 import logging
 import sys
 
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
-from runtime_paths import prepare_runtime
+from runtime_paths import application_icon_path, prepare_runtime
 
 
 def main():
     """Start the desktop annotation application."""
     app = QApplication(sys.argv)
     app.setApplicationName("ParkerLabel")
+    app.setWindowIcon(QIcon(str(application_icon_path())))
     if "--runtime-self-test" in sys.argv:
         import cv2
         import numpy
