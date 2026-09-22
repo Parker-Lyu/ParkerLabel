@@ -265,6 +265,22 @@ class ShortcutWindowTests(unittest.TestCase):
             finally:
                 language_manager.set_language(original_language)
 
+    def test_windows_category_labels_have_native_style_headroom(self):
+        with patch.object(window_module.sys, "platform", "win32"):
+            self.window.resize_primary_buttons()
+            expected_label = self.window.t(
+                "category.current", name=self.window.category_config_display_name()
+            )
+            self.assertEqual(self.window.category_config_label.text(), expected_label)
+
+            probe = QComboBox()
+            probe.addItems([category.name for category in self.window.categories])
+            self.window.resize_segment_table_columns()
+            self.assertGreaterEqual(
+                self.window.table.columnWidth(self.window.COL_CATEGORY),
+                probe.sizeHint().width() + self.window.WINDOWS_TABLE_CELL_PADDING,
+            )
+
     def test_dialog_cancel_save_restore_and_conflict(self):
         dialog = ShortcutSettingsDialog(self.window, self.window.shortcut_manager)
         original = dialog.draft["add_target"]

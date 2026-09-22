@@ -176,6 +176,9 @@ class MainWindow(QWidget):
     COL_COLOR = 4
     COL_DELETE = 5
     PRIMARY_COLUMN_SPACING = 8
+    WINDOWS_CATEGORY_NAME_CHARACTERS = 24
+    WINDOWS_LABEL_PADDING = 16
+    WINDOWS_TABLE_CELL_PADDING = 8
     QUALITY_SETTING_KEY = "interface/quality_check_enabled"
     TOOLTIPS_SETTING_KEY = "interface/tooltips_enabled"
 
@@ -533,12 +536,24 @@ class MainWindow(QWidget):
 
     def update_category_config_label(self):
         """Show the active configuration on one line."""
-        label = self.t("category.current", name=self.category_config_display_name())
+        name = self.category_config_display_name()
+        label = self.t("category.current", name=name)
+        self.category_config_label.setToolTip(label)
         width = self.category_config_label.width() - 4
         if width > 0:
-            label = self.category_config_label.fontMetrics().elidedText(
-                label, Qt.ElideRight, width
-            )
+            prefix, separator, suffix = label.partition(name)
+            if sys.platform == "win32" and separator:
+                fixed_width = self.category_config_label.fontMetrics().horizontalAdvance(
+                    prefix + suffix
+                )
+                name = self.category_config_label.fontMetrics().elidedText(
+                    name, Qt.ElideRight, max(0, width - fixed_width)
+                )
+                label = prefix + name + suffix
+            else:
+                label = self.category_config_label.fontMetrics().elidedText(
+                    label, Qt.ElideRight, width
+                )
         self.category_config_label.setText(label)
 
     def resize_primary_buttons(self):
@@ -563,9 +578,26 @@ class MainWindow(QWidget):
         )
         for button in buttons:
             button.setFixedSize(width, height)
-        self.category_config_label.setFixedWidth(
-            width * 2 + self.PRIMARY_COLUMN_SPACING
-        )
+        label_width = width * 2 + self.PRIMARY_COLUMN_SPACING
+        if sys.platform == "win32":
+            name = self.category_config_display_name()
+            label = self.t("category.current", name=name)
+            prefix, separator, suffix = label.partition(name)
+            if separator:
+                metrics = self.category_config_label.fontMetrics()
+                name_width = min(
+                    metrics.horizontalAdvance(name),
+                    metrics.horizontalAdvance(
+                        "M" * self.WINDOWS_CATEGORY_NAME_CHARACTERS
+                    ),
+                )
+                label_width = max(
+                    label_width,
+                    metrics.horizontalAdvance(prefix + suffix)
+                    + name_width
+                    + self.WINDOWS_LABEL_PADDING,
+                )
+        self.category_config_label.setFixedWidth(label_width)
         self.update_category_config_label()
 
     def update_tool_control_text(self):
@@ -1152,8 +1184,17 @@ class MainWindow(QWidget):
             if self.document is not None
             else []
         )
-        category_probe.addItems(selected_categories or [self.t("table.category")])
-        self.table.setColumnWidth(self.COL_CATEGORY, category_probe.sizeHint().width())
+        probe_categories = selected_categories
+        if sys.platform == "win32":
+            probe_categories = [category.name for category in self.categories]
+            probe_categories += selected_categories
+        category_probe.addItems(
+            list(dict.fromkeys(probe_categories)) or [self.t("table.category")]
+        )
+        category_width = category_probe.sizeHint().width()
+        if sys.platform == "win32":
+            category_width += self.WINDOWS_TABLE_CELL_PADDING
+        self.table.setColumnWidth(self.COL_CATEGORY, category_width)
         self.table.horizontalHeader().update_checkbox_geometry()
         if not hasattr(self, "control_panel"):
             return
