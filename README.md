@@ -9,7 +9,7 @@ Install a Conda distribution if you do not already have one. [Miniforge](https:/
 ```bash
 git clone https://github.com/Parker-Lyu/ParkerLabel.git
 cd ParkerLabel
-conda create -n parker-label -c conda-forge python=3.11 onnxruntime=1.29.1 -y
+conda create -n parker-label -c conda-forge python=3.11 onnxruntime=1.29.0 -y
 conda activate parker-label
 python -m pip install -r requirements.txt
 python fetch_models.py

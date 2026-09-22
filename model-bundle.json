@@ -1,6 +1,6 @@
 {
   "version": "models-v2",
-  "minimum_github_speed_bytes_per_second": 512000,
+  "minimum_github_speed_bytes_per_second": 200000,
   "files": [
     {
       "path": "pretrain/encoder.onnx",
