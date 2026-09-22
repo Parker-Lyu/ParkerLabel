@@ -234,10 +234,11 @@
   "shortcut.action.dilate": "膨張",
   "shortcut.action.category_config": "カテゴリ設定",
   "about.description": "ParkerLabel は、物体検出とインスタンスセグメンテーション向けに設計された、軽量で洗練された AI 支援アノテーションツールです。",
-  "about.performance": "対話型マスクデコーダーの推論は、Apple M5 Pro および Intel Core i9-14900KF CPU で 1 回あたり約 20 ミリ秒です。",
+  "about.performance": "<b>CPU のみで動作し、GPU は不要です。</b><br>対話型マスクデコーダーの推論は、Apple M5 Pro および Intel Core i9-14900KF CPU で 1 回あたり約 <b>20 ミリ秒</b>です。",
   "about.model": "AI 支援による対話型セグメンテーションには現在 MobileSAM を使用しています。MobileSAM は、軽量な TinyViT 画像エンコーダーと、SAM オリジナルのプロンプトエンコーダーおよびマスクデコーダーを組み合わせています。",
   "about.project_links": "プロジェクトリンク：",
   "about.model_references": "モデル参照：",
+  "about.legal": "法的情報：",
   "about.development_build": "開発版",
   "log.shortcut_recovered": "無効なショートカット設定を初期値に戻すか無効化しました：{actions}"
 }

@@ -135,6 +135,7 @@ class ShortcutWindowTests(unittest.TestCase):
             self.assertIn("about.model", _TEXT[code])
             self.assertIn("about.project_links", _TEXT[code])
             self.assertIn("about.model_references", _TEXT[code])
+            self.assertIn("about.legal", _TEXT[code])
             self.assertIn("update.open_github", _TEXT[code])
             self.assertIn(code, [a.data() for a in self.window.language_actions.actions()])
 
@@ -164,8 +165,13 @@ class ShortcutWindowTests(unittest.TestCase):
         )
         self.assertIn(self.window.t("about.project_links"), dialog_text)
         self.assertIn(self.window.t("about.model_references"), dialog_text)
+        self.assertIn(self.window.t("about.legal"), dialog_text)
+        self.assertTrue(
+            any(self.window.t("menu.licenses") in text for text in dialog_text),
+            dialog_text,
+        )
         self.assertIn(self.window.t("menu.check_updates"), button_text)
-        self.assertIn(self.window.t("menu.licenses"), button_text)
+        self.assertNotIn(self.window.t("menu.licenses"), button_text)
 
     @patch.object(window_module.QDesktopServices, "openUrl", return_value=True)
     def test_open_source_licenses_uses_local_bundled_notice(self, open_url):

@@ -234,10 +234,11 @@
   "shortcut.action.dilate": "膨脹",
   "shortcut.action.category_config": "類別設定",
   "about.description": "ParkerLabel 是一款輕巧精緻的 AI 輔助標註工具，專注於物件偵測與實例分割。",
-  "about.performance": "每次互動式遮罩解碼器推論在 Apple M5 Pro 和 Intel Core i9-14900KF CPU 上均約需 20 毫秒。",
+  "about.performance": "<b>完全在 CPU 上執行，無需 GPU。</b><br>每次互動式遮罩解碼器推論在 Apple M5 Pro 和 Intel Core i9-14900KF CPU 上均約需 <b>20 毫秒</b>。",
   "about.model": "AI 輔助互動式分割目前使用 MobileSAM；它將輕量級 TinyViT 影像編碼器與 SAM 原有的提示編碼器和遮罩解碼器相結合。",
   "about.project_links": "專案連結：",
   "about.model_references": "模型參考：",
+  "about.legal": "法律資訊：",
   "about.development_build": "開發版",
   "log.shortcut_recovered": "以下快捷鍵設定無效，已還原預設或停用：{actions}"
 }

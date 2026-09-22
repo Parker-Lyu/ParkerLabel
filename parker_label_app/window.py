@@ -825,14 +825,15 @@ class MainWindow(QWidget):
         dialog.setWindowTitle(self.t("menu.about"))
         layout = QVBoxLayout(dialog)
         title = QLabel(f"<b>{APP_NAME}</b>")
-        descriptions = [
-            QLabel(self.t("about.description")),
-            QLabel(self.t("about.performance")),
-            QLabel(self.t("about.model")),
-        ]
+        description = QLabel(self.t("about.description"))
+        performance = QLabel(self.t("about.performance"))
+        performance.setTextFormat(Qt.RichText)
+        model = QLabel(self.t("about.model"))
+        descriptions = (description, performance, model)
         for description in descriptions:
             description.setWordWrap(True)
-            description.setMaximumWidth(620)
+            description.setFixedWidth(620)
+            description.setMinimumHeight(description.sizeHint().height())
         details = QLabel(
             self.t(
                 "about.details",
@@ -854,21 +855,24 @@ class MainWindow(QWidget):
             f'&nbsp;&nbsp;·&nbsp;&nbsp;'
             f'<a href="{SAM_REPOSITORY_URL}">Segment Anything (SAM)</a>'
         )
+        legal_title = QLabel(self.t("about.legal"))
+        licenses_link = QLabel(f'<a href="licenses">{self.t("menu.licenses")}</a>')
         for links in (project_links, model_references):
             links.setTextFormat(Qt.RichText)
             links.setTextInteractionFlags(Qt.TextBrowserInteraction)
             links.setOpenExternalLinks(False)
             links.linkActivated.connect(self.open_external_url)
-        for heading in (project_links_title, model_references_title):
+        licenses_link.setTextFormat(Qt.RichText)
+        licenses_link.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        licenses_link.setOpenExternalLinks(False)
+        licenses_link.linkActivated.connect(lambda _url: self.open_source_licenses())
+        for heading in (project_links_title, model_references_title, legal_title):
             font = heading.font()
             font.setBold(True)
             heading.setFont(font)
         update_button = QPushButton(self.t("menu.check_updates"))
         update_button.clicked.connect(dialog.accept)
         update_button.clicked.connect(lambda: QTimer.singleShot(0, self.open_update_check))
-        licenses_button = QPushButton(self.t("menu.licenses"))
-        licenses_button.clicked.connect(dialog.accept)
-        licenses_button.clicked.connect(lambda: QTimer.singleShot(0, self.open_source_licenses))
         close_button = QPushButton(self.t("common.close"))
         close_button.clicked.connect(dialog.accept)
         layout.addWidget(title)
@@ -879,9 +883,10 @@ class MainWindow(QWidget):
         layout.addWidget(project_links)
         layout.addWidget(model_references_title)
         layout.addWidget(model_references)
+        layout.addWidget(legal_title)
+        layout.addWidget(licenses_link)
         button_layout = QHBoxLayout()
         button_layout.addWidget(update_button)
-        button_layout.addWidget(licenses_button)
         button_layout.addStretch(1)
         button_layout.addWidget(close_button)
         layout.addLayout(button_layout)

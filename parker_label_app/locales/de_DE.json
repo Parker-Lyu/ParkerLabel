@@ -234,10 +234,11 @@
   "shortcut.action.dilate": "Erweitern",
   "shortcut.action.category_config": "Kategorien",
   "about.description": "ParkerLabel ist ein leichtgewichtiges, ausgereiftes, KI-gestütztes Annotationswerkzeug für Objekterkennung und Instanzsegmentierung.",
-  "about.performance": "Jede interaktive Inferenz des Maskendecoders dauert auf Apple-M5-Pro- und Intel-Core-i9-14900KF-CPUs etwa 20 ms.",
+  "about.performance": "<b>Läuft vollständig auf der CPU – keine GPU erforderlich.</b><br>Jede interaktive Inferenz des Maskendecoders dauert auf Apple-M5-Pro- und Intel-Core-i9-14900KF-CPUs etwa <b>20 ms</b>.",
   "about.model": "Die KI-gestützte interaktive Segmentierung verwendet derzeit MobileSAM, das einen leichtgewichtigen TinyViT-Bildencoder mit dem ursprünglichen Prompt-Encoder und Maskendecoder von SAM kombiniert.",
   "about.project_links": "Projektlinks:",
   "about.model_references": "Modellreferenzen:",
+  "about.legal": "Rechtliches:",
   "about.development_build": "Entwicklungsversion",
   "log.shortcut_recovered": "Ungültige Tastenkürzel wurden auf Standardwerte zurückgesetzt oder deaktiviert: {actions}"
 }

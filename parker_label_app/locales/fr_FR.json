@@ -234,10 +234,11 @@
   "shortcut.action.dilate": "Dilater",
   "shortcut.action.category_config": "Catégories",
   "about.description": "ParkerLabel est un outil d’annotation léger, soigné et assisté par l’IA, conçu pour la détection d’objets et la segmentation d’instances.",
-  "about.performance": "Chaque inférence interactive du décodeur de masque prend environ 20 ms sur les processeurs Apple M5 Pro et Intel Core i9-14900KF.",
+  "about.performance": "<b>Fonctionne entièrement sur le processeur, sans GPU.</b><br>Chaque inférence interactive du décodeur de masque prend environ <b>20 ms</b> sur les processeurs Apple M5 Pro et Intel Core i9-14900KF.",
   "about.model": "La segmentation interactive assistée par l’IA utilise actuellement MobileSAM, qui associe un encodeur d’image TinyViT léger aux encodeurs de prompts et décodeur de masque d’origine de SAM.",
   "about.project_links": "Liens du projet :",
   "about.model_references": "Références des modèles :",
+  "about.legal": "Informations juridiques :",
   "about.development_build": "Version de développement",
   "log.shortcut_recovered": "Les raccourcis invalides ont été rétablis ou désactivés : {actions}"
 }
