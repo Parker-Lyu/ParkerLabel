@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Remove the white canvas around the application icon and preserve its shadow with transparency.
+
 - Add the ParkerLabel application icon for source launches and portable builds.
 
 - Fix mask preview saving for image paths containing Chinese or other Unicode characters on Windows.

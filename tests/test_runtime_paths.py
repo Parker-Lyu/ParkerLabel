@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from PyQt5.QtCore import QSettings
+from PyQt5.QtGui import QImage
 from PyQt5.QtWidgets import QApplication
 
 import runtime_paths
@@ -13,6 +14,13 @@ import parker_label_app.window as window_module
 
 
 class PortablePathTests(unittest.TestCase):
+    def test_application_icon_has_transparent_background(self):
+        image = QImage(str(runtime_paths.application_icon_path()))
+        self.assertFalse(image.isNull())
+        self.assertTrue(image.hasAlphaChannel())
+        self.assertEqual(image.pixelColor(0, 0).alpha(), 0)
+        self.assertEqual(image.pixelColor(image.width() // 2, image.height() // 2).alpha(), 255)
+
     def test_source_and_frozen_paths(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
