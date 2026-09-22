@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix mask preview saving for image paths containing Chinese or other Unicode characters on Windows.
+
 - 修复 Windows 包中 Qt 旧版 MSVC 运行库导致 ONNX Runtime 初始化失败的问题，并改为单 EXE 便携构建。
 
 - Add the Windows x64 portable build, minimal OpenCV source build, locked

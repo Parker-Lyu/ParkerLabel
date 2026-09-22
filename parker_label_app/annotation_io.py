@@ -126,8 +126,15 @@ class AnnotationRepository:
         )
         preview_rgb = id_mask_to_rgb(preview_mask)
         preview_path = preview_mask_path(document.image_path)
-        if not cv2.imwrite(str(preview_path), cv2.cvtColor(preview_rgb, cv2.COLOR_RGB2BGR)):
+        encoded, preview_bytes = cv2.imencode(
+            ".png", cv2.cvtColor(preview_rgb, cv2.COLOR_RGB2BGR)
+        )
+        if not encoded:
             raise OSError(f"Unable to write mask preview: {preview_path}")
+        try:
+            preview_path.write_bytes(preview_bytes.tobytes())
+        except OSError as error:
+            raise OSError(f"Unable to write mask preview: {preview_path}") from error
         annotations = []
         for index, segment in enumerate(document.segments, start=1):
             working_mask = segment.mask if segment.mask is not None else np.zeros(document.image_rgb.shape[:2], dtype=np.uint8)

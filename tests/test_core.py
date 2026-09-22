@@ -307,5 +307,26 @@ class DocumentTests(unittest.TestCase):
             preview = cv2.imread(str(image_path.parent / "large.mask.png"), cv2.IMREAD_COLOR)
             self.assertEqual(preview.shape[:2], (16, 20))
 
+    def test_repository_saves_preview_to_unicode_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            image_directory = Path(directory) / "测试应用" / "测试img"
+            image_directory.mkdir(parents=True)
+            image_path = image_directory / "1.jpg"
+            image_path.write_bytes(
+                cv2.imencode(".jpg", np.zeros((8, 10, 3), dtype=np.uint8))[1].tobytes()
+            )
+            document = self.make_document(image_path)
+            document.category_config_uuid = "11111111-1111-4111-8111-111111111111"
+            document.category_config_sha256 = "a" * 64
+
+            AnnotationRepository(target_size=10).save(document)
+
+            preview_path = image_directory / "1.mask.png"
+            preview = cv2.imdecode(
+                np.frombuffer(preview_path.read_bytes(), dtype=np.uint8), cv2.IMREAD_COLOR
+            )
+            self.assertEqual(preview.shape[:2], (8, 10))
+            self.assertTrue((image_directory / "1.json").is_file())
+
 if __name__ == "__main__":
     unittest.main()
