@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Use English as the default interface language on first launch.
+
 - Fix repeated smart-click segmentation by feeding only the selected
   single-channel low-resolution mask back into MobileSAM.
 

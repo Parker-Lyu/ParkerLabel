@@ -17,6 +17,7 @@ LANGUAGE_NAMES = {
     "it_IT": "Italiano",
     "es_ES": "Español",
 }
+DEFAULT_LANGUAGE = "en_US"
 
 
 _TEXT = {}
@@ -51,8 +52,8 @@ class LanguageManager(QObject):
         """Load and persist the selected interface language."""
         super().__init__()
         self.settings = settings if settings is not None else portable_settings()
-        language = self.settings.value("interface/language", "zh_CN", type=str)
-        self._language = language if language in _TEXT else "zh_CN"
+        language = self.settings.value("interface/language", DEFAULT_LANGUAGE, type=str)
+        self._language = language if language in _TEXT else DEFAULT_LANGUAGE
 
     @property
     def language(self):
