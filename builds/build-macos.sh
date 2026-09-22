@@ -5,6 +5,28 @@ project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 env_prefix="${project_root}/builds/.env-macos-arm64"
 generated_dir="${project_root}/builds/.generated"
 work_dir="${project_root}/builds/.pyinstaller-work"
+candidate_build=false
+
+case "${1:-}" in
+  "")
+    ;;
+  --candidate)
+    candidate_build=true
+    ;;
+  -h|--help)
+    echo "Usage: $0 [--candidate]"
+    exit 0
+    ;;
+  *)
+    echo "Usage: $0 [--candidate]" >&2
+    exit 2
+    ;;
+esac
+
+if [[ "$#" -gt 1 ]]; then
+  echo "Usage: $0 [--candidate]" >&2
+  exit 2
+fi
 
 if [[ "$(uname -s)" != "Darwin" || "$(uname -m)" != "arm64" ]]; then
   echo "This build requires macOS arm64." >&2
@@ -36,7 +58,20 @@ fi
   --pattern "test_*.py"
 
 version="$("${env_prefix}/bin/python" -c "from parker_label_app.app_info import APP_VERSION; print(APP_VERSION or 'dev')")"
-if [[ "${version}" != "dev" ]]; then
+build_type="development"
+artifact_version="${version}"
+if [[ "${candidate_build}" == true ]]; then
+  if [[ "${version}" == "dev" ]]; then
+    echo "Candidate builds require APP_VERSION to be set." >&2
+    exit 1
+  fi
+  if [[ -n "$(git -C "${project_root}" status --short)" ]]; then
+    echo "Candidate builds require a clean worktree." >&2
+    exit 1
+  fi
+  build_type="candidate"
+  artifact_version="${version}-candidate"
+elif [[ "${version}" != "dev" ]]; then
   if [[ -n "$(git -C "${project_root}" status --short)" ]]; then
     echo "Release builds require a clean worktree." >&2
     exit 1
@@ -45,10 +80,11 @@ if [[ "${version}" != "dev" ]]; then
     echo "Release builds require HEAD to have tag v${version}." >&2
     exit 1
   fi
+  build_type="release"
 fi
-output_dir="${project_root}/builds/output/${version}/macos-arm64"
+output_dir="${project_root}/builds/output/${artifact_version}/macos-arm64"
 stage_dir="${work_dir}/dist"
-archive="${output_dir}/ParkerLabel-${version}-macos-arm64.zip"
+archive="${output_dir}/ParkerLabel-${artifact_version}-macos-arm64.zip"
 
 rm -rf "${generated_dir}" "${work_dir}"
 mkdir -p "${generated_dir}" "${work_dir}" "${output_dir}"
@@ -64,6 +100,7 @@ rm -f \
 
 "${env_prefix}/bin/python" "${project_root}/builds/write_build_info.py" \
   --project-root "${project_root}" \
+  --build-type "${build_type}" \
   --output "${generated_dir}/build-info.json"
 
 PARKER_LABEL_VERSION="${version}" "${env_prefix}/bin/pyinstaller" \

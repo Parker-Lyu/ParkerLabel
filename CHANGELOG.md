@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add an explicit clean-checkout candidate build mode that does not require a
+  release tag and marks candidate artifacts and build metadata.
+
 - Add the bundled open-source license page to both the Help menu and About
   dialog, including source and complete local license-file links.
 

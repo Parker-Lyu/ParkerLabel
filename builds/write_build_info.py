@@ -25,6 +25,11 @@ def git_output(root, *args):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--project-root", type=Path, required=True)
+    parser.add_argument(
+        "--build-type",
+        choices=("development", "candidate", "release"),
+        required=True,
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     root = args.project_root.resolve()
@@ -36,6 +41,7 @@ def main():
     info = {
         "application": namespace["APP_NAME"],
         "version": namespace["APP_VERSION"] or "dev",
+        "build_type": args.build_type,
         "tag": tag,
         "commit": git_output(root, "rev-parse", "HEAD"),
         "dirty": dirty,

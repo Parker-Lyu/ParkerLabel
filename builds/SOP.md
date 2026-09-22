@@ -10,6 +10,18 @@ Run from an Apple Silicon Mac:
 ./builds/build-macos.sh
 ```
 
+To validate a versioned candidate before creating the release tag, set
+`APP_VERSION`, commit the release changes, and run from a clean checkout:
+
+```bash
+./builds/build-macos.sh --candidate
+```
+
+Candidate artifacts are written under
+`builds/output/<version>-candidate/macos-arm64/`, use `-candidate` in the ZIP
+name, and record `"build_type": "candidate"` in `build-info.json`. The
+application version remains `<version>`.
+
 The script creates a dedicated Miniforge environment at
 `builds/.env-macos-arm64/`, builds only the arm64 application, strips eligible
 binaries, applies an ad-hoc signature, and writes outputs under
@@ -51,12 +63,11 @@ builds/.env-macos-arm64/bin/python builds/measure_bundle.py \
   --output builds/output/dev/macos-arm64/size-report.json
 ```
 
-Before a release build, set `APP_VERSION` in
-`parker_label_app/app_info.py`, move the changelog entries from `Unreleased` to
-the matching version and date, commit all release changes, create the
-`v<version>` tag, and build from a clean checkout at that tag. The script
-rejects release builds whose checkout is dirty or whose tag does not match the
-application version.
+After validating the candidate, create the `v<version>` tag on the same commit
+and run `./builds/build-macos.sh` without `--candidate` for the release build.
+The release mode rejects a dirty checkout or a tag that does not exactly match
+the application version. Development, candidate, and release builds record
+their mode in `build-info.json`.
 
 The application is locally ad-hoc signed. This verifies bundle integrity but
 does not identify an Apple developer and is not notarization. Gatekeeper may
