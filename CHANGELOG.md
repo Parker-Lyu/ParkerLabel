@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add the Windows x64 portable build, minimal OpenCV source build, locked
+  dependencies, platform-specific native binary/license audit, and Qt DLL
+  replacement documentation.
+
 - Use English as the default interface language on first launch.
 
 - Fix repeated smart-click segmentation by feeding only the selected

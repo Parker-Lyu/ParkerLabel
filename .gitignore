@@ -33,8 +33,11 @@ config/category-configs/
 configs/
 builds/.env-macos-arm64/
 builds/.env-opencv-macos-arm64/
+builds/.env-windows-x64/
+builds/.env-opencv-windows-x64/
 builds/.generated/
 builds/.opencv-python-src/
+builds/.qtbase-*/
 builds/.opencv-wheelhouse/
 builds/.pyinstaller-work/
 builds/output/

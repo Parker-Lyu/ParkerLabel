@@ -100,6 +100,10 @@ The third-party code in `mobile_sam/` retains its own licenses: [MobileSAM](http
 
 The GUI uses PyQt5 and Qt under their own licenses. Exact final-package notices, corresponding-source instructions, and Qt replacement instructions are maintained in [`third_party_licenses/`](third_party_licenses/). Model source and export provenance are recorded in [`docs/model-provenance.md`](docs/model-provenance.md), and the release audit procedure is in [`docs/release-licenses.md`](docs/release-licenses.md).
 
+Portable macOS arm64 and Windows x64 build commands, prerequisites, artifact
+layouts, OpenCV minimization and verification steps are maintained in
+[`builds/SOP.md`](builds/SOP.md).
+
 ## Planned improvements
 
 - Validate `.npy` embedding caches against the encoder SHA-256, preprocessing version, and source-image fingerprint. Currently only the embedding shape is checked, so a cache from a different encoder or image may be reused incorrectly. A future implementation will recompute mismatched or unverifiable caches while preserving annotations; reuse after a decoder-only update will depend on interface compatibility. This is deferred and is not implemented yet.

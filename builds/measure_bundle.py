@@ -25,16 +25,24 @@ def measurement(byte_count):
 
 
 def component_sizes(app):
-    roots = {
-        "python_runtime": (
-            app / "Contents" / "Frameworks" / "libpython3.11.dylib",
-            app / "Contents" / "Frameworks" / "python3__dot__11",
-        ),
-        "qt": (app / "Contents" / "Frameworks" / "PyQt5",),
-        "opencv": (app / "Contents" / "Frameworks" / "cv2",),
-        "onnxruntime": (app / "Contents" / "Frameworks" / "onnxruntime",),
-        "numpy": (app / "Contents" / "Frameworks" / "numpy",),
-    }
+    if (app / "Contents" / "Frameworks").is_dir():
+        runtime_root = app / "Contents" / "Frameworks"
+        roots = {
+            "python_runtime": (runtime_root / "libpython3.11.dylib", runtime_root / "python3__dot__11"),
+            "qt": (runtime_root / "PyQt5",),
+            "opencv": (runtime_root / "cv2",),
+            "onnxruntime": (runtime_root / "onnxruntime",),
+            "numpy": (runtime_root / "numpy",),
+        }
+    else:
+        runtime_root = app / "_internal"
+        roots = {
+            "python_runtime": (runtime_root / "python311.dll", runtime_root / "base_library.zip"),
+            "qt": (runtime_root / "PyQt5",),
+            "opencv": (runtime_root / "cv2",),
+            "onnxruntime": (runtime_root / "onnxruntime",),
+            "numpy": (runtime_root / "numpy", runtime_root / "numpy.libs"),
+        }
     measured = {name: sum(tree_size(path) for path in paths) for name, paths in roots.items()}
     components = {
         name: measurement(size)

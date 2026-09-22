@@ -37,7 +37,7 @@ REQUIRED_LICENSE_FILES = {
     "Qt": [
         "LICENSE.LGPL3",
         "SOURCE.md",
-        "REPLACEMENT.md",
+        "REPLACEMENT-macos-arm64.md",
         "attributions/src/plugins/platforms/cocoa/qt_attribution.json",
     ],
     "Readline": ["COPYING"],

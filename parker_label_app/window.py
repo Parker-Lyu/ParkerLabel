@@ -1,4 +1,5 @@
 import logging
+import platform
 import random
 import sys
 import traceback
@@ -774,6 +775,11 @@ class MainWindow(QWidget):
         url = QUrl.fromLocalFile(str(path))
         query = QUrlQuery()
         query.addQueryItem("version", APP_VERSION or self.t("about.development_build"))
+        if sys.platform == "darwin":
+            query.addQueryItem("platform", f"macos-{platform.machine().lower()}")
+        elif sys.platform == "win32":
+            machine = platform.machine().lower()
+            query.addQueryItem("platform", "windows-x64" if machine in {"amd64", "x86_64"} else f"windows-{machine}")
         query.addQueryItem("source", source_code_url())
         url.setQuery(query)
         if not QDesktopServices.openUrl(url):

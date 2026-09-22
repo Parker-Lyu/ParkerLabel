@@ -1,0 +1,193 @@
+{
+  "components": [
+    {
+      "name": "BZip2",
+      "version": "1.0.8"
+    },
+    {
+      "name": "Expat",
+      "version": "2.8.1"
+    },
+    {
+      "name": "LibFFI",
+      "version": "3.7.0"
+    },
+    {
+      "name": "MicrosoftDirect3DCompiler",
+      "version": "6.3.9600.16384"
+    },
+    {
+      "name": "MicrosoftUniversalCRT",
+      "version": "10.0.26100.4654"
+    },
+    {
+      "name": "MicrosoftVisualCRuntime",
+      "version": "14.51.36247; Qt-bundled 14.26.28720.3"
+    },
+    {
+      "name": "NumPy",
+      "version": "2.4.6"
+    },
+    {
+      "name": "ONNXRuntime",
+      "version": "1.29.0"
+    },
+    {
+      "name": "OpenCV",
+      "version": "5.0.0.93"
+    },
+    {
+      "name": "OpenSSL",
+      "version": "3.6.4"
+    },
+    {
+      "name": "PyQt5",
+      "version": "5.15.11"
+    },
+    {
+      "name": "PyQt5_sip",
+      "version": "12.17.1"
+    },
+    {
+      "name": "Python",
+      "version": "3.11.16"
+    },
+    {
+      "name": "Qt",
+      "version": "5.15.2"
+    },
+    {
+      "name": "XZ",
+      "version": "5.8.3"
+    },
+    {
+      "name": "zlib",
+      "version": "1.3.2"
+    }
+  ],
+  "dynamic_binaries": [
+    "_asyncio.pyd",
+    "_bz2.pyd",
+    "_ctypes.pyd",
+    "_decimal.pyd",
+    "_hashlib.pyd",
+    "_lzma.pyd",
+    "_multiprocessing.pyd",
+    "_overlapped.pyd",
+    "_queue.pyd",
+    "_socket.pyd",
+    "_ssl.pyd",
+    "_uuid.pyd",
+    "api-ms-win-core-console-l1-1-0.dll",
+    "api-ms-win-core-datetime-l1-1-0.dll",
+    "api-ms-win-core-debug-l1-1-0.dll",
+    "api-ms-win-core-errorhandling-l1-1-0.dll",
+    "api-ms-win-core-fibers-l1-1-0.dll",
+    "api-ms-win-core-fibers-l1-1-1.dll",
+    "api-ms-win-core-file-l1-1-0.dll",
+    "api-ms-win-core-file-l1-2-0.dll",
+    "api-ms-win-core-file-l2-1-0.dll",
+    "api-ms-win-core-handle-l1-1-0.dll",
+    "api-ms-win-core-heap-l1-1-0.dll",
+    "api-ms-win-core-interlocked-l1-1-0.dll",
+    "api-ms-win-core-kernel32-legacy-l1-1-1.dll",
+    "api-ms-win-core-libraryloader-l1-1-0.dll",
+    "api-ms-win-core-localization-l1-2-0.dll",
+    "api-ms-win-core-memory-l1-1-0.dll",
+    "api-ms-win-core-namedpipe-l1-1-0.dll",
+    "api-ms-win-core-processenvironment-l1-1-0.dll",
+    "api-ms-win-core-processthreads-l1-1-0.dll",
+    "api-ms-win-core-processthreads-l1-1-1.dll",
+    "api-ms-win-core-profile-l1-1-0.dll",
+    "api-ms-win-core-rtlsupport-l1-1-0.dll",
+    "api-ms-win-core-string-l1-1-0.dll",
+    "api-ms-win-core-synch-l1-1-0.dll",
+    "api-ms-win-core-synch-l1-2-0.dll",
+    "api-ms-win-core-sysinfo-l1-1-0.dll",
+    "api-ms-win-core-sysinfo-l1-2-0.dll",
+    "api-ms-win-core-timezone-l1-1-0.dll",
+    "api-ms-win-core-util-l1-1-0.dll",
+    "api-ms-win-crt-conio-l1-1-0.dll",
+    "api-ms-win-crt-convert-l1-1-0.dll",
+    "api-ms-win-crt-environment-l1-1-0.dll",
+    "api-ms-win-crt-filesystem-l1-1-0.dll",
+    "api-ms-win-crt-heap-l1-1-0.dll",
+    "api-ms-win-crt-locale-l1-1-0.dll",
+    "api-ms-win-crt-math-l1-1-0.dll",
+    "api-ms-win-crt-private-l1-1-0.dll",
+    "api-ms-win-crt-process-l1-1-0.dll",
+    "api-ms-win-crt-runtime-l1-1-0.dll",
+    "api-ms-win-crt-stdio-l1-1-0.dll",
+    "api-ms-win-crt-string-l1-1-0.dll",
+    "api-ms-win-crt-time-l1-1-0.dll",
+    "api-ms-win-crt-utility-l1-1-0.dll",
+    "cv2/cv2.pyd",
+    "ffi-8.dll",
+    "libbz2.dll",
+    "libcrypto-3-x64.dll",
+    "libexpat.dll",
+    "liblzma.dll",
+    "libssl-3-x64.dll",
+    "msvcp140.dll",
+    "MSVCP140_1.dll",
+    "numpy/_core/_multiarray_tests.cp311-win_amd64.pyd",
+    "numpy/_core/_multiarray_umath.cp311-win_amd64.pyd",
+    "numpy/fft/_pocketfft_umath.cp311-win_amd64.pyd",
+    "numpy/linalg/_umath_linalg.cp311-win_amd64.pyd",
+    "numpy/random/_bounded_integers.cp311-win_amd64.pyd",
+    "numpy/random/_common.cp311-win_amd64.pyd",
+    "numpy/random/_generator.cp311-win_amd64.pyd",
+    "numpy/random/_mt19937.cp311-win_amd64.pyd",
+    "numpy/random/_pcg64.cp311-win_amd64.pyd",
+    "numpy/random/_philox.cp311-win_amd64.pyd",
+    "numpy/random/_sfc64.cp311-win_amd64.pyd",
+    "numpy/random/bit_generator.cp311-win_amd64.pyd",
+    "numpy/random/mtrand.cp311-win_amd64.pyd",
+    "numpy.libs/libscipy_openblas64_-63c857e738469261263c764a36be9436.dll",
+    "numpy.libs/msvcp140-a4c2229bdc2a2a630acdc095b4d86008.dll",
+    "onnxruntime/capi/onnxruntime.dll",
+    "onnxruntime/capi/onnxruntime_providers_shared.dll",
+    "onnxruntime/capi/onnxruntime_pybind11_state.pyd",
+    "pyexpat.pyd",
+    "PyQt5/Qt5/bin/d3dcompiler_47.dll",
+    "PyQt5/Qt5/bin/libEGL.dll",
+    "PyQt5/Qt5/bin/libGLESv2.dll",
+    "PyQt5/Qt5/bin/MSVCP140.dll",
+    "PyQt5/Qt5/bin/MSVCP140_1.dll",
+    "PyQt5/Qt5/bin/opengl32sw.dll",
+    "PyQt5/Qt5/bin/Qt5Core.dll",
+    "PyQt5/Qt5/bin/Qt5DBus.dll",
+    "PyQt5/Qt5/bin/Qt5Gui.dll",
+    "PyQt5/Qt5/bin/Qt5Network.dll",
+    "PyQt5/Qt5/bin/Qt5Widgets.dll",
+    "PyQt5/Qt5/bin/VCRUNTIME140.dll",
+    "PyQt5/Qt5/bin/VCRUNTIME140_1.dll",
+    "PyQt5/Qt5/plugins/platforms/qwindows.dll",
+    "PyQt5/Qt5/plugins/styles/qwindowsvistastyle.dll",
+    "PyQt5/QtCore.pyd",
+    "PyQt5/QtGui.pyd",
+    "PyQt5/QtWidgets.pyd",
+    "PyQt5/sip.cp311-win_amd64.pyd",
+    "python3.dll",
+    "python311.dll",
+    "select.pyd",
+    "ucrtbase.dll",
+    "unicodedata.pyd",
+    "vcruntime140.dll",
+    "vcruntime140_1.dll",
+    "zlib.dll"
+  ],
+  "platform": "windows-x64",
+  "qt_dlls": [
+    "Qt5Core.dll",
+    "Qt5DBus.dll",
+    "Qt5Gui.dll",
+    "Qt5Network.dll",
+    "Qt5Widgets.dll"
+  ],
+  "qt_plugins": [
+    "PyQt5/Qt5/plugins/platforms/qwindows.dll",
+    "PyQt5/Qt5/plugins/styles/qwindowsvistastyle.dll"
+  ],
+  "unknown_dynamic_binaries": []
+}

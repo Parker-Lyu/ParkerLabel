@@ -60,7 +60,7 @@ class MacOSLicenseAuditTests(unittest.TestCase):
                 path.touch()
 
         self.assertEqual(validate_licenses(licenses, {"PyQt5", "Qt"}), [])
-        (licenses / "Qt" / "REPLACEMENT.md").unlink()
+        (licenses / "Qt" / "REPLACEMENT-macos-arm64.md").unlink()
         self.assertEqual(len(validate_licenses(licenses, {"PyQt5", "Qt"})), 1)
 
 

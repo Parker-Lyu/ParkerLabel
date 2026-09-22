@@ -1,7 +1,16 @@
 diff --git a/setup.py b/setup.py
-index 36681fa..49b7e52 100755
+index 36681fa..9d479d7 100755
 --- a/setup.py
 +++ b/setup.py
+@@ -104,7 +104,7 @@ def main():
+     rearrange_cmake_output_data = {
+         "cv2": (
+             [r"bin/opencv_videoio_ffmpeg\d{3}%s\.dll" % ("_64" if is64 else "")]
+-            if os.name == "nt"
++            if os.name == "nt" and not os.getenv("OPENCV_MINIMAL")
+             else []
+         )
+         +
 @@ -126,9 +126,7 @@ def main():
          +
          [
@@ -23,3 +32,12 @@ index 36681fa..49b7e52 100755
      # Files in sourcetree outside package dir that should be copied to package.
      # Raw paths relative to sourcetree root.
      files_outside_package_dir = {"cv2": ["LICENSE.txt", "LICENSE-3RD-PARTY.txt"]}
+@@ -188,7 +183,7 @@ def main():
+              "-DCMAKE_SYSTEM_PROCESSOR=ARM64"]
+             if platform.machine() == "ARM64" and sys.platform == "win32"
+             # If it is not defined 'linker flags: /machine:X86' on Windows x64
+-            else ["-DCMAKE_GENERATOR_PLATFORM=x64"] if is64 and sys.platform == "win32"
++            else ["-DCMAKE_GENERATOR_PLATFORM=x64"] if is64 and sys.platform == "win32" and not os.getenv("OPENCV_MINGW")
+             else []
+           )
+         + (

@@ -36,7 +36,8 @@
     <tbody>
       <tr><td>PyQt5</td><td>GPL v3 or commercial</td><td><a href="PyQt5/LICENSE.GPLv3">License</a> · <a href="PyQt5/SOURCE.md">Source</a></td></tr>
       <tr><td>PyQt5-sip</td><td>BSD-2-Clause</td><td><a href="PyQt5_sip/LICENSE">License</a></td></tr>
-      <tr><td>Qt</td><td>LGPL v3 / GPL v3 with exceptions</td><td><a href="Qt/LICENSE.LGPL3">LGPL</a> · <a href="Qt/LICENSE.GPL3">GPL</a> · <a href="Qt/SOURCE.md">Source</a></td></tr>
+      <tr data-platform="macos-arm64"><td>Qt 5.15.18</td><td>LGPL v3 / GPL v3 with exceptions</td><td><a href="Qt/LICENSE.LGPL3">LGPL</a> · <a href="Qt/LICENSE.GPL3">GPL</a> · <a href="Qt/SOURCE.md">Source</a> · <a href="Qt/REPLACEMENT-macos-arm64.md">Replacement</a></td></tr>
+      <tr data-platform="windows-x64"><td>Qt 5.15.2</td><td>LGPL v3 / GPL v3 with exceptions</td><td><a href="Qt/LICENSE.LGPL3">LGPL</a> · <a href="Qt/LICENSE.GPL3">GPL</a> · <a href="Qt/SOURCE-windows-x64.md">Source</a> · <a href="Qt/REPLACEMENT-windows-x64.md">Replacement</a></td></tr>
       <tr><td>NumPy</td><td>BSD-3-Clause and bundled notices</td><td><a href="NumPy/LICENSE.txt">License</a></td></tr>
       <tr><td>OpenCV</td><td>Apache-2.0 and bundled notices</td><td><a href="OpenCV/LICENSE.txt">License</a> · <a href="OpenCV/LICENSE-3RD-PARTY.txt">Third-party notices</a></td></tr>
       <tr><td>ONNX Runtime</td><td>MIT and bundled notices</td><td><a href="ONNXRuntime/LICENSE">License</a> · <a href="ONNXRuntime/ThirdPartyNotices.txt">Third-party notices</a></td></tr>
@@ -46,9 +47,11 @@
       <tr><td>libffi</td><td>MIT</td><td><a href="LibFFI/LICENSE">License</a></td></tr>
       <tr><td>Expat</td><td>MIT</td><td><a href="Expat/COPYING">License</a></td></tr>
       <tr><td>XZ Utils / liblzma</td><td>0BSD</td><td><a href="XZ/COPYING">License summary</a> · <a href="XZ/COPYING.0BSD">0BSD text</a></td></tr>
-      <tr><td>ncurses</td><td>MIT-style ncurses license</td><td><a href="NCurses/COPYING">License</a></td></tr>
-      <tr><td>GNU Readline</td><td>GPL-3.0-or-later</td><td><a href="Readline/COPYING">License</a></td></tr>
+      <tr data-platform="macos-arm64"><td>ncurses</td><td>MIT-style ncurses license</td><td><a href="NCurses/COPYING">License</a></td></tr>
+      <tr data-platform="macos-arm64"><td>GNU Readline</td><td>GPL-3.0-or-later</td><td><a href="Readline/COPYING">License</a></td></tr>
       <tr><td>zlib</td><td>Zlib</td><td><a href="zlib/LICENSE">License</a></td></tr>
+      <tr data-platform="windows-x64"><td>Microsoft Visual C++ Runtime</td><td>Microsoft Software License Terms</td><td><a href="MicrosoftVisualCRuntime/LICENSE.txt">License</a></td></tr>
+      <tr data-platform="windows-x64"><td>Microsoft Universal CRT and Direct3D Compiler</td><td>Microsoft Windows SDK License Terms</td><td><a href="MicrosoftWindowsSDK/LICENSE.txt">License</a></td></tr>
     </tbody>
   </table>
 
@@ -64,7 +67,7 @@
   <h2>Complete license files</h2>
   <ul>
     <li><a href="../LICENSE">ParkerLabel GPL-3.0-only license text</a></li>
-    <li><a href="THIRD_PARTY_NOTICES.md">Complete packaged component inventory and license directory index</a></li>
+    <li><a id="inventory" href="THIRD_PARTY_NOTICES.md">Current package component inventory</a></li>
     <li><a href="Qt/attributions/">Qt bundled third-party attribution files</a></li>
   </ul>
 
@@ -72,8 +75,15 @@
     const params = new URLSearchParams(window.location.search);
     const version = params.get("version");
     const source = params.get("source");
+    const currentPlatform = params.get("platform");
     if (version) document.getElementById("version").textContent = version;
     if (source) document.getElementById("source").href = source;
+    if (currentPlatform) {
+      document.querySelectorAll("[data-platform]").forEach((row) => {
+        row.hidden = row.dataset.platform !== currentPlatform;
+      });
+      document.getElementById("inventory").href = `${currentPlatform}-inventory.json`;
+    }
   </script>
 </body>
 </html>

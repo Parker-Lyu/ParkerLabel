@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 
 
@@ -11,7 +12,7 @@ datas = [
     (str(project_root / "LICENSE"), "."),
     (str(project_root / "model-bundle.json"), "."),
     (str(project_root / "parker_label_app" / "locales"), "parker_label_app/locales"),
-    (str(project_root / "third_party_licenses"), "third_party_licenses"),
+    (str(generated_dir / "third_party_licenses"), "third_party_licenses"),
     (str(generated_dir / "build-info.json"), "."),
 ]
 
@@ -80,28 +81,29 @@ exe = EXE(
     name="ParkerLabel",
     debug=False,
     bootloader_ignore_signals=False,
-    strip=True,
+    strip=sys.platform == "darwin",
     upx=False,
     console=False,
-    target_arch="arm64",
+    target_arch="arm64" if sys.platform == "darwin" else None,
 )
 coll = COLLECT(
     exe,
     a.binaries,
     a.datas,
-    strip=True,
+    strip=sys.platform == "darwin",
     upx=False,
     name="ParkerLabel",
 )
-app = BUNDLE(
-    coll,
-    name="ParkerLabel.app",
-    bundle_identifier="com.parkerlyu.parkerlabel",
-    info_plist={
-        "CFBundleDisplayName": "ParkerLabel",
-        "CFBundleShortVersionString": app_version,
-        "CFBundleVersion": app_version,
-        "LSMinimumSystemVersion": "11.0",
-        "NSHighResolutionCapable": True,
-    },
-)
+if sys.platform == "darwin":
+    app = BUNDLE(
+        coll,
+        name="ParkerLabel.app",
+        bundle_identifier="com.parkerlyu.parkerlabel",
+        info_plist={
+            "CFBundleDisplayName": "ParkerLabel",
+            "CFBundleShortVersionString": app_version,
+            "CFBundleVersion": app_version,
+            "LSMinimumSystemVersion": "11.0",
+            "NSHighResolutionCapable": True,
+        },
+    )

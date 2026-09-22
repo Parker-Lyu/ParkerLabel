@@ -4,12 +4,13 @@ Parker Label's root `LICENSE` remains GPL-3.0-only. Third-party components keep
 their own licenses and notices under `third_party_licenses/`.
 
 The macOS build scans the finished, pruned `.app` with
-`builds/audit_macos_licenses.py`. It compares every bundled `.so` and `.dylib`,
-the Qt frameworks, and the Qt plugins with
-`third_party_licenses/macos-arm64-inventory.json`. A build fails when a binary
-is unknown, the inventory changes, or required license material is missing.
+`builds/audit_macos_licenses.py`; the Windows build scans the finished portable
+directory with `builds/audit_windows_licenses.py`. Each compares every bundled
+native binary and Qt plugin with its own committed platform inventory. A build
+fails when a binary is unknown, the inventory changes, or required license
+material is missing.
 
-The application bundle contains:
+Each application bundle contains:
 
 ```text
 Contents/Resources/LICENSE
@@ -32,8 +33,12 @@ For every release:
    license material accordingly.
 4. Keep `license-inventory.json`, `build-info.json`, `size-report.json`, the
    archive, and `SHA256SUMS` with the release artifacts.
-5. Repeat the same final-package inventory work independently for Windows. The
-   macOS inventory is not evidence for the Windows portable package.
+5. Audit macOS and Windows independently. One platform's successful inventory
+   is not evidence for the other platform.
+
+The two packages share ParkerLabel's root GPL-3.0-only license and byte-identical
+third-party license texts. Platform-specific inventories, Qt source and dynamic
+library replacement instructions, and Microsoft runtime terms remain separate.
 
 Model source, checkpoint identity, exporter commits, commands, tool versions,
 and converted hashes are maintained in `docs/model-provenance.md`.

@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt5.QtCore import QSettings, Qt, QTimer
+from PyQt5.QtCore import QSettings, Qt, QTimer, QUrlQuery
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QAction, QApplication, QComboBox, QLabel, QLineEdit, QPushButton
 
@@ -159,11 +159,14 @@ class ShortcutWindowTests(unittest.TestCase):
         url = open_url.call_args.args[0]
         self.assertTrue(url.isLocalFile())
         self.assertTrue(url.toLocalFile().endswith("third_party_licenses/OPEN_SOURCE_LICENSES.html"))
-        self.assertEqual(
-            url.query(),
-            f"version={APP_VERSION or self.window.t('about.development_build')}"
-            f"&source={source_code_url()}",
-        )
+        query = QUrlQuery(url)
+        self.assertEqual(query.queryItemValue("version"), APP_VERSION or self.window.t("about.development_build"))
+        self.assertEqual(query.queryItemValue("source"), source_code_url())
+        platform_value = query.queryItemValue("platform")
+        if window_module.sys.platform in {"darwin", "win32"}:
+            self.assertTrue(platform_value.startswith(("macos-", "windows-")))
+        else:
+            self.assertEqual(platform_value, "")
 
     def test_offline_license_page_has_required_entries(self):
         page = (

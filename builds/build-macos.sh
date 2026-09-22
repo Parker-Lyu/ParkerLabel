@@ -102,6 +102,10 @@ rm -f \
   --project-root "${project_root}" \
   --build-type "${build_type}" \
   --output "${generated_dir}/build-info.json"
+"${env_prefix}/bin/python" "${project_root}/builds/stage_licenses.py" \
+  --source "${project_root}/third_party_licenses" \
+  --inventory "${project_root}/third_party_licenses/macos-arm64-inventory.json" \
+  --output "${generated_dir}/third_party_licenses"
 
 PARKER_LABEL_VERSION="${version}" "${env_prefix}/bin/pyinstaller" \
   --noconfirm \
