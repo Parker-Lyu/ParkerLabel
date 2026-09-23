@@ -1226,7 +1226,12 @@ class MainWindow(QWidget):
             category.setEnabled(
                 self.document_is_editable() and index == self.current_index
             )
-            category.currentTextChanged.connect(lambda name, row=index: self.set_segment_category(row, name))
+            category.activated[str].connect(
+                lambda name, row=index: self.set_segment_category(row, name)
+            )
+            category.lineEdit().returnPressed.connect(
+                lambda row=index, combo=category: self.submit_segment_category(row, combo)
+            )
             self.table.setCellWidget(index, self.COL_CATEGORY, category)
             color = QPushButton(self.color_button_text(segment.color_id))
             color.setStyleSheet(self.color_button_style(segment.color_id))
@@ -1331,6 +1336,7 @@ class MainWindow(QWidget):
         """Create a category selector that preserves unavailable current values."""
         combo = QComboBox(self)
         combo.setEditable(True)
+        combo.setInsertPolicy(QComboBox.NoInsert)
         names = [category.name for category in self.categories]
         if current_name and current_name not in names:
             names.insert(0, current_name)
@@ -1342,6 +1348,24 @@ class MainWindow(QWidget):
                 description = category.description or self.t("category.no_description")
                 combo.setItemData(index, f"{category.supercategory}\n{description}", Qt.ToolTipRole)
         return combo
+
+    def submit_segment_category(self, index, combo):
+        if getattr(combo, "category_submit_pending", False):
+            return
+        combo.category_submit_pending = True
+        QTimer.singleShot(0, lambda: self.finish_segment_category(index, combo))
+
+    def finish_segment_category(self, index, combo):
+        combo.category_submit_pending = False
+        name = combo.currentText()
+        if combo.findText(name, Qt.MatchExactly) < 0:
+            self.show_warning(
+                self.t("table.category_missing_title"),
+                self.t("table.category_missing", name=name),
+            )
+            return
+        self.set_segment_category(index, name)
+        self.table.setFocus()
 
     def configure_categories(self):
         """Open the category manager and apply the selected configuration."""

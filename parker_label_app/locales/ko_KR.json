@@ -96,6 +96,8 @@
   "manual.dilate": "팽창",
   "manual.erode": "침식",
   "table.category": "범주",
+  "table.category_missing_title": "범주를 찾을 수 없음",
+  "table.category_missing": "“{name}”은(는) 현재 범주 목록에 없습니다.",
   "table.color": "색상",
   "table.delete": "삭제",
   "table.edit": "편집",

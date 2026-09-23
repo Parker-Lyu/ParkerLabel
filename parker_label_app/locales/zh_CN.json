@@ -96,6 +96,8 @@
   "manual.dilate": "膨胀",
   "manual.erode": "腐蚀",
   "table.category": "类别",
+  "table.category_missing_title": "类别不存在",
+  "table.category_missing": "类别“{name}”不在当前列表中。",
   "table.color": "颜色",
   "table.delete": "删除",
   "table.edit": "编辑",

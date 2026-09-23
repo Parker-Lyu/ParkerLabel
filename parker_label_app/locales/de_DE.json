@@ -96,6 +96,8 @@
   "manual.dilate": "Erweitern",
   "manual.erode": "Verkleinern",
   "table.category": "Kategorie",
+  "table.category_missing_title": "Kategorie nicht gefunden",
+  "table.category_missing": "„{name}“ ist nicht in der aktuellen Kategorienliste enthalten.",
   "table.color": "Farbe",
   "table.delete": "Löschen",
   "table.edit": "Bearbeiten",

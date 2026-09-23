@@ -96,6 +96,8 @@
   "manual.dilate": "膨張",
   "manual.erode": "収縮",
   "table.category": "カテゴリ",
+  "table.category_missing_title": "カテゴリが見つかりません",
+  "table.category_missing": "「{name}」は現在のカテゴリ一覧にありません。",
   "table.color": "色",
   "table.delete": "削除",
   "table.edit": "編集",

@@ -96,6 +96,8 @@
   "manual.dilate": "膨脹",
   "manual.erode": "侵蝕",
   "table.category": "類別",
+  "table.category_missing_title": "類別不存在",
+  "table.category_missing": "類別「{name}」不在目前清單中。",
   "table.color": "顏色",
   "table.delete": "刪除",
   "table.edit": "編輯",

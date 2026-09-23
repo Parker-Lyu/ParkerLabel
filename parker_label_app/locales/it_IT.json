@@ -96,6 +96,8 @@
   "manual.dilate": "Dilata",
   "manual.erode": "Erodi",
   "table.category": "Categoria",
+  "table.category_missing_title": "Categoria non trovata",
+  "table.category_missing": "“{name}” non è nell'elenco attuale delle categorie.",
   "table.color": "Colore",
   "table.delete": "Elimina",
   "table.edit": "Modifica",

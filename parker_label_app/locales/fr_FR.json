@@ -96,6 +96,8 @@
   "manual.dilate": "Dilater",
   "manual.erode": "Éroder",
   "table.category": "Catégorie",
+  "table.category_missing_title": "Catégorie introuvable",
+  "table.category_missing": "« {name} » ne figure pas dans la liste actuelle des catégories.",
   "table.color": "Couleur",
   "table.delete": "Supprimer",
   "table.edit": "Modifier",
