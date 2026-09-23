@@ -10,6 +10,8 @@ ParkerLabel is a lightweight, polished **AI-assisted** interactive annotation to
 
 Each interactive mask-decoder inference takes approximately **20 ms** on Apple M5 Pro and Intel Core i9-14900KF CPUs.
 
+![ParkerLabel interactive annotation demo](docs/images/interactive-mask-demo.gif)
+
 ## Run
 
 ### Download a portable release
