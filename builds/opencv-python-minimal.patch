@@ -37,7 +37,7 @@ index 36681fa..9d479d7 100755
              if platform.machine() == "ARM64" and sys.platform == "win32"
              # If it is not defined 'linker flags: /machine:X86' on Windows x64
 -            else ["-DCMAKE_GENERATOR_PLATFORM=x64"] if is64 and sys.platform == "win32"
-+            else ["-DCMAKE_GENERATOR_PLATFORM=x64"] if is64 and sys.platform == "win32" and not os.getenv("OPENCV_MINGW")
++            else ["-DCMAKE_GENERATOR_PLATFORM=x64"] if is64 and sys.platform == "win32" and os.getenv("CMAKE_GENERATOR", "").startswith("Visual Studio")
              else []
            )
          + (
