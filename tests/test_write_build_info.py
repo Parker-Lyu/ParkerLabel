@@ -50,9 +50,15 @@ class WriteBuildInfoTests(unittest.TestCase):
                     return_value="test-version",
                 ),
             ):
-                write_build_info.main()
+                with patch.object(write_build_info.platform, "system", return_value="Windows"):
+                    write_build_info.main()
+                self.assertEqual(json.loads(output.read_text())["platform"], "Windows")
+
+                with patch.object(write_build_info.platform, "system", return_value="Darwin"):
+                    write_build_info.main()
 
             info = json.loads(output.read_text())
+            self.assertEqual(info["platform"], "macOS")
             self.assertEqual(info["version"], "1.0.0")
             self.assertEqual(info["build_type"], "candidate")
             self.assertIsNone(info["tag"])

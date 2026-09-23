@@ -38,6 +38,7 @@ def main():
     manifest = json.loads((root / "model-bundle.json").read_text())
     tag = git_output(root, "tag", "--points-at", "HEAD") or None
     dirty = bool(git_output(root, "status", "--short"))
+    system = platform.system()
     info = {
         "application": namespace["APP_NAME"],
         "version": namespace["APP_VERSION"] or "dev",
@@ -45,7 +46,7 @@ def main():
         "tag": tag,
         "commit": git_output(root, "rev-parse", "HEAD"),
         "dirty": dirty,
-        "platform": "macOS",
+        "platform": "macOS" if system == "Darwin" else system,
         "architecture": platform.machine(),
         "python": platform.python_version(),
         "dependencies": {
