@@ -31,6 +31,8 @@ QT_PRIVATE_MSVC_RUNTIMES = (
 def should_exclude(relative_path):
     path = Path(relative_path)
     normalized = path.as_posix().lower()
+    if normalized == "dbghelp.dll":
+        return True
     if normalized.startswith("pyqt5/qt5/bin/"):
         return path.name.lower() in {
             name.lower() for name in (*QT_MODULES, *QT_PRIVATE_MSVC_RUNTIMES)
