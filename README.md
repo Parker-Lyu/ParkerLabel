@@ -1,22 +1,26 @@
-# ParkerLabel
-
-<p align="center">
+<div align="center">
   <img src="parker_label_app/assets/app-icon.png" width="144" alt="ParkerLabel icon">
-</p>
-
-ParkerLabel is a lightweight, polished **AI-assisted** interactive annotation tool designed for object detection and instance segmentation.
-
-**Runs entirely on the CPU—no GPU required.**
-
-Each interactive mask-decoder inference takes approximately **20 ms** on Apple M5 Pro and Intel Core i9-14900KF CPUs.
-
-![ParkerLabel interactive annotation demo](docs/images/interactive-mask-demo.gif)
+  <h1>ParkerLabel</h1>
+  <p>A lightweight, polished <strong>AI-assisted</strong> interactive annotation tool for object detection and instance segmentation.</p>
+  <p><strong>Runs entirely on the CPU—no GPU required.</strong></p>
+  <p>Each interactive mask-decoder inference takes approximately <strong>20 ms</strong> on Apple M5 Pro and Intel Core i9-14900KF CPUs.</p>
+  <p>
+    <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-v1.0.0-blue?style=flat-square" alt="Application version v1.0.0"></a>
+    <a href="https://github.com/Parker-Lyu/ParkerLabel/releases"><img src="https://img.shields.io/badge/app%20release-preparing-orange?style=flat-square" alt="Application release in preparation"></a>
+    <a href="builds/SOP.md"><img src="https://img.shields.io/badge/macOS-arm64-black?style=flat-square&amp;logo=apple" alt="macOS arm64 build target"></a>
+    <a href="builds/SOP.md"><img src="https://img.shields.io/badge/Windows-x64-0078D4?style=flat-square&amp;logo=windows" alt="Windows x64 build target"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--only-green?style=flat-square" alt="GPL-3.0-only license"></a>
+  </p>
+  <img src="docs/images/interactive-mask-demo.gif" width="960" alt="ParkerLabel interactive annotation demo">
+</div>
 
 ## Run
 
 ### Download a portable release
 
-Download the portable package for your platform from [GitHub Releases](https://github.com/Parker-Lyu/ParkerLabel/releases) or [Gitee Releases](https://gitee.com/Parker-Lyu/ParkerLabel/releases). Extract the complete archive, then run `ParkerLabel.app` on macOS or `ParkerLabel.exe` on Windows. Python, Conda, and project dependencies are not required.
+The v1.0.0 application packages for macOS arm64 and Windows x64 are being prepared. Existing GitHub Releases contain model bundles; they are not application downloads.
+
+When the application packages are published, download the portable package for your platform from [GitHub Releases](https://github.com/Parker-Lyu/ParkerLabel/releases) or [Gitee Releases](https://gitee.com/Parker-Lyu/ParkerLabel/releases). Extract the complete archive, then run `ParkerLabel.app` on macOS or `ParkerLabel.exe` on Windows. Python, Conda, and project dependencies are not required.
 
 Keep the extracted program in a writable directory. On startup, ParkerLabel creates `configs/` beside the program. If the required ONNX models are missing or fail integrity verification, it downloads them into `configs/pretrain/`, trying GitHub first and falling back to Gitee. This normally happens only on the first launch; missing, damaged, or incompatible model files are downloaded again. 
 
