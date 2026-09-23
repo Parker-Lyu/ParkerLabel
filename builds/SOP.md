@@ -83,7 +83,7 @@ Do not instruct users to disable Gatekeeper globally.
 
 Run from 64-bit Windows with Miniforge. Visual Studio 2022 Build Tools with the
 **Desktop development with C++** workload is preferred; when it is unavailable,
-the script uses the pinned Miniforge GCC toolchain:
+the script uses the pinned Miniforge GCC toolchain. For a tagged release, run:
 
 ```powershell
 .\builds\build-windows.ps1
@@ -95,9 +95,21 @@ Git Bash users can run the equivalent shell entry:
 ./builds/build-windows.sh
 ```
 
-Use `-Candidate` in PowerShell or `--candidate` in Git Bash to validate a
-versioned clean commit before creating its release tag. Candidate and release
-validation follows the same version, clean-worktree, and tag rules as macOS.
+To validate a versioned clean commit before creating its release tag, use
+`-Candidate` in PowerShell:
+
+```powershell
+.\builds\build-windows.ps1 -Candidate
+```
+
+Or use `--candidate` in Git Bash:
+
+```bash
+./builds/build-windows.sh --candidate
+```
+
+As on macOS, candidate builds require `APP_VERSION` and a clean worktree but
+do not require a tag. Release builds require the matching `v<version>` tag.
 
 The script creates dedicated environments under `builds/.env-windows-x64/`
 and `builds/.env-opencv-windows-x64/`. It builds the pinned OpenCV source as a
