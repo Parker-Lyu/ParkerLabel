@@ -24,6 +24,7 @@
 
 ### Fixes
 
+- Prevent saved masks from drifting right and down across repeated save-and-reopen cycles at non-integer image scales.
 - Allow extra panning space around zoomed images so all four edges can move away from the viewport edges.
 - Hide Quality Check boxes for extra mask regions and holes when the selected target's Show setting is off.
 - Fix repeated smart-click segmentation by feeding only the selected single-channel low-resolution mask back into MobileSAM.

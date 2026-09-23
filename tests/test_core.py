@@ -307,6 +307,24 @@ class DocumentTests(unittest.TestCase):
             preview = cv2.imread(str(image_path.parent / "large.mask.png"), cv2.IMREAD_COLOR)
             self.assertEqual(preview.shape[:2], (16, 20))
 
+    def test_repeated_save_and_reopen_does_not_shift_masks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            image_path = Path(directory) / "sample.jpg"
+            cv2.imwrite(str(image_path), np.zeros((1500, 2250, 3), dtype=np.uint8))
+            repository = AnnotationRepository(target_size=1024)
+            document = repository.open(image_path)
+            document.category_config_uuid = "11111111-1111-4111-8111-111111111111"
+            document.category_config_sha256 = "a" * 64
+            document.add_segment(Category(1, "person", "person"), 100)
+            mask = np.zeros(document.image_rgb.shape[:2], dtype=np.uint8)
+            mask[180:470, 749:845] = 1
+            document.commit_mask(0, mask)
+
+            for _ in range(3):
+                repository.save(document)
+                document = repository.open(image_path)
+                np.testing.assert_array_equal(document.segments[0].mask, mask)
+
     def test_repository_saves_preview_to_unicode_path(self):
         with tempfile.TemporaryDirectory() as directory:
             image_directory = Path(directory) / "测试应用" / "测试img"

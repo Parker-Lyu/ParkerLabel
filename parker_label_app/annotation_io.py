@@ -93,7 +93,7 @@ class AnnotationRepository:
                     decoded = cv2.resize(
                         decoded,
                         (image_rgb.shape[1], image_rgb.shape[0]),
-                        interpolation=cv2.INTER_NEAREST,
+                        interpolation=cv2.INTER_NEAREST_EXACT,
                     )
                 segment.mask = decoded.astype(np.uint8)
         embedding = None
@@ -122,7 +122,7 @@ class AnnotationRepository:
         preview_mask = cv2.resize(
             document.composite_mask(),
             (source_width, source_height),
-            interpolation=cv2.INTER_NEAREST,
+            interpolation=cv2.INTER_NEAREST_EXACT,
         )
         preview_rgb = id_mask_to_rgb(preview_mask)
         preview_path = preview_mask_path(document.image_path)
@@ -141,7 +141,7 @@ class AnnotationRepository:
             mask = cv2.resize(
                 working_mask,
                 (source_width, source_height),
-                interpolation=cv2.INTER_NEAREST,
+                interpolation=cv2.INTER_NEAREST_EXACT,
             )
             bbox, area = mask_geometry(mask)
             annotation = segment.to_dict()
