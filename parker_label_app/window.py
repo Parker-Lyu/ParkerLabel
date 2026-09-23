@@ -182,6 +182,8 @@ class MainWindow(QWidget):
     WINDOWS_LABEL_PADDING = 16
     WINDOWS_TABLE_CELL_PADDING = 8
     QUALITY_SETTING_KEY = "interface/quality_check_enabled"
+    BRUSH_SIZE_SETTING_KEY = "interface/brush_size"
+    LAST_IMAGE_SETTING_KEY = "files/last_opened_image"
     CANVAS_PAN_MARGIN = 96
     TOOLTIPS_SETTING_KEY = "interface/tooltips_enabled"
 
@@ -468,13 +470,18 @@ class MainWindow(QWidget):
         self.brush_label = QLabel()
         self.brush_slider = QSlider(Qt.Horizontal)
         self.brush_slider.setRange(1, 50)
-        self.brush_slider.setValue(5)
+        try:
+            brush_size = int(self.settings.value(self.BRUSH_SIZE_SETTING_KEY, 3))
+        except (TypeError, ValueError):
+            brush_size = 3
+        self.brush_slider.setValue(max(1, min(50, brush_size)))
         self.brush_slider.valueChanged.connect(
             lambda value: self.brush_label.setText(
                 self.t("manual.brush_size", value=value)
             )
         )
         self.brush_slider.valueChanged.connect(lambda _value: self.canvas.update())
+        self.brush_slider.valueChanged.connect(self.save_brush_size)
         brush_layout.addWidget(self.brush_label)
         brush_layout.addWidget(self.brush_slider, 1)
 
@@ -1047,14 +1054,24 @@ class MainWindow(QWidget):
 
     def choose_image(self):
         """Open a file picker and load the selected image."""
+        last_image = self.settings.value(self.LAST_IMAGE_SETTING_KEY, "", type=str)
+        directory = Path(last_image).expanduser().parent if last_image else None
+        while directory is not None and not directory.is_dir():
+            parent = directory.parent
+            directory = parent if parent != directory else None
         path, _ = QFileDialog.getOpenFileName(
             self,
             self.t("main.open_image"),
-            "",
+            str(directory) if directory else "",
             self.t("dialog.image_filter"),
         )
         if path:
             self.open_image(path)
+
+    def save_brush_size(self, value):
+        """Remember the current brush size."""
+        self.settings.setValue(self.BRUSH_SIZE_SETTING_KEY, value)
+        self.settings.sync()
 
     def open_image(self, path):
         """Open an image and its existing annotation artifacts."""
@@ -1078,6 +1095,10 @@ class MainWindow(QWidget):
             self.refresh_table()
             self.refresh_canvas()
             self.update_editing_state()
+            self.settings.setValue(
+                self.LAST_IMAGE_SETTING_KEY, str(self.document.image_path.resolve())
+            )
+            self.settings.sync()
             self.log(self.t("log.image_opened", name=self.document.image_path.name))
             if self.document.read_only_reason:
                 self.show_warning(
