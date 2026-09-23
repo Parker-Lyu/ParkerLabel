@@ -25,9 +25,13 @@ class PrepareReleaseTests(unittest.TestCase):
             )
             subprocess.run(["git", "tag", "v1.0.0"], cwd=root, check=True)
             with patch.object(prepare_release, "ROOT", root):
+                self.assertEqual(prepare_release.verify_version(), "1.0.0")
                 self.assertEqual(len(prepare_release.verify_tag("v1.0.0")), 40)
                 with self.assertRaisesRegex(ValueError, "does not match APP_VERSION"):
                     prepare_release.verify_tag("v1.0.1")
+                (package / "app_info.py").write_text('APP_VERSION = "1.0.0-beta"\n')
+                with self.assertRaisesRegex(ValueError, "Invalid APP_VERSION"):
+                    prepare_release.verify_version()
 
     def make_platform(self, root, name, model_hash, commit):
         source = root / name / "nested"

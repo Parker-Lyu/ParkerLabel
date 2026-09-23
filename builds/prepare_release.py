@@ -31,8 +31,15 @@ def version():
     return namespace["APP_VERSION"]
 
 
+def verify_version():
+    current = version()
+    if not TAG_PATTERN.fullmatch(f"v{current}"):
+        raise ValueError(f"Invalid APP_VERSION: {current!r}")
+    return current
+
+
 def verify_tag(tag):
-    if not TAG_PATTERN.fullmatch(tag) or tag != f"v{version()}":
+    if not TAG_PATTERN.fullmatch(tag) or tag != f"v{verify_version()}":
         raise ValueError(f"Tag {tag!r} does not match APP_VERSION")
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     tagged_commit = subprocess.check_output(
@@ -118,6 +125,7 @@ def stage(tag, macos, windows, output):
 def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers.add_parser("verify-version")
     check = subparsers.add_parser("verify-tag")
     check.add_argument("--tag", required=True)
     prepare = subparsers.add_parser("stage")
@@ -126,7 +134,9 @@ def main():
     prepare.add_argument("--windows", type=Path, required=True)
     prepare.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    if args.command == "verify-tag":
+    if args.command == "verify-version":
+        verify_version()
+    elif args.command == "verify-tag":
         verify_tag(args.tag)
     else:
         stage(args.tag, args.macos, args.windows, args.output)

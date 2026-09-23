@@ -6,7 +6,10 @@ All reported sizes use `1 MB = 1,000,000 bytes`.
 
 Commit the release-ready source, set `APP_VERSION` to the intended version, and
 put that version's notes in `CHANGELOG.md`. Push the source commit to GitHub,
-then push its matching `v<version>` tag. The tag push runs
+then run **Build draft release** manually from the Actions tab on `main`.
+This builds candidate packages on both GitHub-hosted platforms without creating
+a Release. After checking those jobs and candidate packages, push the matching
+`v<version>` tag. The tag push runs
 `.github/workflows/release.yml` on GitHub-hosted macOS arm64 and Windows x64
 runners. The workflow requires both platform builds and their checks to pass
 before it creates a draft GitHub Release. It never publishes the draft.
