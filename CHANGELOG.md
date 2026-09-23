@@ -24,6 +24,7 @@
 
 ### Fixes
 
+- Allow extra horizontal panning space around zoomed images so their left and right edges can move away from the viewport edges.
 - Hide Quality Check boxes for extra mask regions and holes when the selected target's Show setting is off.
 - Fix repeated smart-click segmentation by feeding only the selected single-channel low-resolution mask back into MobileSAM.
 - Fix mask preview saving for image paths containing Chinese or other Unicode characters on Windows.

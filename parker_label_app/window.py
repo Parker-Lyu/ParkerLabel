@@ -182,6 +182,7 @@ class MainWindow(QWidget):
     WINDOWS_LABEL_PADDING = 16
     WINDOWS_TABLE_CELL_PADDING = 8
     QUALITY_SETTING_KEY = "interface/quality_check_enabled"
+    CANVAS_PAN_MARGIN = 96
     TOOLTIPS_SETTING_KEY = "interface/tooltips_enabled"
 
     def __init__(self):
@@ -333,8 +334,10 @@ class MainWindow(QWidget):
         self.resize(max(1100, screen.width() - 80), max(720, screen.height() - 80))
         self.canvas = AnnotationCanvas(self)
         self.canvas.setText(self.t("canvas.open_image"))
+        self.canvas_container = QWidget(self)
+        self.canvas.setParent(self.canvas_container)
         self.scroll_area = QScrollArea(self)
-        self.scroll_area.setWidget(self.canvas)
+        self.scroll_area.setWidget(self.canvas_container)
         self.scroll_area.setWidgetResizable(False)
         self.scroll_area.setAlignment(Qt.AlignCenter)
         self.quality_summary_label = QLabel(self.scroll_area.viewport())
@@ -993,6 +996,7 @@ class MainWindow(QWidget):
             and watched is self.scroll_area.viewport()
             and event.type() == QEvent.Resize
         ):
+            self.update_canvas_container()
             self.position_quality_overlay()
         return super().eventFilter(watched, event)
 
@@ -1037,6 +1041,7 @@ class MainWindow(QWidget):
         self.table.setRowCount(0)
         self.canvas.setText(self.t("canvas.open_image"))
         self.canvas.setFixedSize(640, 480)
+        self.update_canvas_container()
         self.update_editing_state()
         self.update_quality_overlay()
 
@@ -1156,6 +1161,20 @@ class MainWindow(QWidget):
         height = max(1, int(round(self.base_canvas_size[1] * self.zoom_factor)))
         self.canvas_size = (width, height)
         self.canvas.setFixedSize(width, height)
+        self.update_canvas_container()
+
+    def update_canvas_container(self):
+        """Keep horizontal panning space around the canvas."""
+        margin = (
+            self.CANVAS_PAN_MARGIN
+            if self.canvas.width() > self.scroll_area.viewport().width()
+            else 0
+        )
+        self.canvas.move(margin, 0)
+        self.canvas_container.resize(
+            self.canvas.width() + 2 * margin,
+            self.canvas.height(),
+        )
 
     def refresh_table(self):
         """Rebuild table widgets from the annotation document."""
@@ -2123,12 +2142,15 @@ class MainWindow(QWidget):
         )
         self.apply_canvas_size()
         self.refresh_canvas()
-        self.scroll_area.horizontalScrollBar().setValue(
-            int(round(x_ratio * self.canvas_size[0] - viewport_point.x()))
+        new_anchor = QPoint(
+            int(round(x_ratio * self.canvas_size[0])),
+            int(round(y_ratio * self.canvas_size[1])),
         )
-        self.scroll_area.verticalScrollBar().setValue(
-            int(round(y_ratio * self.canvas_size[1] - viewport_point.y()))
-        )
+        new_viewport_point = self.canvas.mapTo(self.scroll_area.viewport(), new_anchor)
+        horizontal = self.scroll_area.horizontalScrollBar()
+        vertical = self.scroll_area.verticalScrollBar()
+        horizontal.setValue(horizontal.value() + new_viewport_point.x() - viewport_point.x())
+        vertical.setValue(vertical.value() + new_viewport_point.y() - viewport_point.y())
         event.accept()
 
     def image_position(self, canvas_position):
