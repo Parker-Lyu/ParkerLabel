@@ -2188,7 +2188,12 @@ class MainWindow(QWidget):
         if self.painting is None:
             if self.view_mode == "overlay":
                 self.draw_segment_labels(pixmap, identifier_mask)
-            if self.quality_check_enabled and self.mask_quality.boxes:
+            if (
+                self.quality_check_enabled
+                and self.mask_quality.boxes
+                and self.current_index is not None
+                and self.document.segments[self.current_index].visible
+            ):
                 self.draw_quality_boxes(pixmap)
             if self.view_mode == "overlay":
                 self.draw_prompt_points(pixmap)
