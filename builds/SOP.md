@@ -2,6 +2,31 @@
 
 All reported sizes use `1 MB = 1,000,000 bytes`.
 
+## GitHub draft release
+
+Commit the release-ready source, set `APP_VERSION` to the intended version, and
+put that version's notes in `CHANGELOG.md`. Push the source commit to GitHub,
+then push its matching `v<version>` tag. The tag push runs
+`.github/workflows/release.yml` on GitHub-hosted macOS arm64 and Windows x64
+runners. The workflow requires both platform builds and their checks to pass
+before it creates a draft GitHub Release. It never publishes the draft.
+
+The draft contains the two platform ZIPs, separate `build-info-<platform>.json`,
+`license-inventory-<platform>.json`, and `size-report-<platform>.json` files,
+and one `SHA256SUMS` covering all eight other assets. Each ZIP retains its
+embedded `build-info.json`. The workflow verifies the platform checksums,
+version, tag, commit, build type, and model manifest SHA-256 before upload.
+Rerunning the workflow updates an existing draft; it refuses to modify an
+already published Release. The release notes come from the matching
+`CHANGELOG.md` section.
+
+Download and test the draft packages on their native platforms, including real
+inference, saving and reopening annotations, model download and offline use,
+Chinese paths, native UI, and preservation of `configs/` during upgrade. After
+acceptance, publish the GitHub draft manually. Upload the same assets to Gitee
+separately and verify their checksums there. A pushed tag is public even while
+the application Release remains a draft.
+
 ## macOS arm64
 
 Run from an Apple Silicon Mac:

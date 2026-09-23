@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
 import importlib.metadata
 import json
 import platform
@@ -35,7 +36,8 @@ def main():
     root = args.project_root.resolve()
     namespace = {}
     exec((root / "parker_label_app" / "app_info.py").read_text(), namespace)
-    manifest = json.loads((root / "model-bundle.json").read_text())
+    manifest_bytes = (root / "model-bundle.json").read_bytes()
+    manifest = json.loads(manifest_bytes)
     tag = git_output(root, "tag", "--points-at", "HEAD") or None
     dirty = bool(git_output(root, "status", "--short"))
     system = platform.system()
@@ -53,6 +55,7 @@ def main():
             name: importlib.metadata.version(name) for name in DEPENDENCIES
         },
         "model_bundle": manifest,
+        "model_bundle_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
         "built_at": datetime.now(timezone.utc).isoformat(),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)

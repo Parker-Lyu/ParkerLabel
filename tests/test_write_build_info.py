@@ -1,3 +1,4 @@
+import hashlib
 import json
 import sys
 import tempfile
@@ -63,6 +64,10 @@ class WriteBuildInfoTests(unittest.TestCase):
             self.assertEqual(info["build_type"], "candidate")
             self.assertIsNone(info["tag"])
             self.assertFalse(info["dirty"])
+            self.assertEqual(
+                info["model_bundle_sha256"],
+                hashlib.sha256((root / "model-bundle.json").read_bytes()).hexdigest(),
+            )
 
 
 if __name__ == "__main__":

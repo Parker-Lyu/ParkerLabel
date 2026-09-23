@@ -1,0 +1,121 @@
+name: Build draft release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify version tag
+        run: python3 builds/prepare_release.py verify-tag --tag "$GITHUB_REF_NAME"
+
+  macos:
+    needs: verify
+    runs-on: macos-15
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: conda-incubator/setup-miniconda@v4
+        with:
+          miniforge-version: latest
+          activate-environment: ''
+      - name: Build macOS arm64
+        shell: bash -el {0}
+        run: ./builds/build-macos.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            builds/output/*/macos-arm64/*.zip
+            builds/output/*/macos-arm64/build-info.json
+            builds/output/*/macos-arm64/license-inventory.json
+            builds/output/*/macos-arm64/size-report.json
+            builds/output/*/macos-arm64/SHA256SUMS
+
+  windows:
+    needs: verify
+    runs-on: windows-2022
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: conda-incubator/setup-miniconda@v4
+        with:
+          miniforge-version: latest
+          activate-environment: ''
+      - name: Build Windows x64
+        shell: pwsh
+        run: .\builds\build-windows.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            builds/output/*/windows-x64/*.zip
+            builds/output/*/windows-x64/build-info.json
+            builds/output/*/windows-x64/license-inventory.json
+            builds/output/*/windows-x64/size-report.json
+            builds/output/*/windows-x64/SHA256SUMS
+
+  draft:
+    needs: [macos, windows]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-arm64
+          path: collected/macos-arm64
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-x64
+          path: collected/windows-x64
+      - name: Verify and stage release assets
+        run: |
+          python3 builds/prepare_release.py stage \
+            --tag "$GITHUB_REF_NAME" \
+            --macos collected/macos-arm64 \
+            --windows collected/windows-x64 \
+            --output release-assets
+          cd release-assets
+          sha256sum --check SHA256SUMS
+      - name: Create or update draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft > draft-state.txt 2>/dev/null; then
+            test "$(cat draft-state.txt)" = true
+            gh release edit "$GITHUB_REF_NAME" --title "ParkerLabel $GITHUB_REF_NAME" --notes-file release-assets/release-notes.md
+            gh release upload "$GITHUB_REF_NAME" release-assets/*.zip release-assets/*.json release-assets/SHA256SUMS --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              release-assets/*.zip release-assets/*.json release-assets/SHA256SUMS \
+              --draft --verify-tag \
+              --title "ParkerLabel $GITHUB_REF_NAME" \
+              --notes-file release-assets/release-notes.md
+          fi
+          test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft)" = true

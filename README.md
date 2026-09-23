@@ -5,8 +5,8 @@
   <p><strong>Runs entirely on the CPU—no GPU required.</strong></p>
   <p>Each interactive mask-decoder inference takes approximately <strong>20 ms</strong> on Apple M5 Pro and Intel Core i9-14900KF CPUs.</p>
   <p>
-    <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-v1.0.0-blue?style=flat-square" alt="Application version v1.0.0"></a>
-    <a href="https://github.com/Parker-Lyu/ParkerLabel/releases"><img src="https://img.shields.io/badge/app%20release-preparing-orange?style=flat-square" alt="Application release in preparation"></a>
+    <a href="https://github.com/Parker-Lyu/ParkerLabel/releases"><img src="https://img.shields.io/badge/download-GitHub-blue?style=flat-square" alt="GitHub Releases"></a>
+    <a href="https://gitee.com/Parker-Lyu/ParkerLabel/releases"><img src="https://img.shields.io/badge/download-Gitee-C71D23?style=flat-square" alt="Gitee Releases"></a>
     <a href="builds/SOP.md"><img src="https://img.shields.io/badge/macOS-arm64-black?style=flat-square&amp;logo=apple" alt="macOS arm64 build target"></a>
     <a href="builds/SOP.md"><img src="https://img.shields.io/badge/Windows-x64-0078D4?style=flat-square&amp;logo=windows" alt="Windows x64 build target"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--only-green?style=flat-square" alt="GPL-3.0-only license"></a>
@@ -18,9 +18,7 @@
 
 ### Download a portable release
 
-The v1.0.0 application packages for macOS arm64 and Windows x64 are being prepared. Existing GitHub Releases contain model bundles; they are not application downloads.
-
-When the application packages are published, download the portable package for your platform from [GitHub Releases](https://github.com/Parker-Lyu/ParkerLabel/releases) or [Gitee Releases](https://gitee.com/Parker-Lyu/ParkerLabel/releases). Extract the complete archive, then run `ParkerLabel.app` on macOS or `ParkerLabel.exe` on Windows. Python, Conda, and project dependencies are not required.
+Download a published application package for your platform from [GitHub Releases](https://github.com/Parker-Lyu/ParkerLabel/releases) or [Gitee Releases](https://gitee.com/Parker-Lyu/ParkerLabel/releases). Releases named `models-*` contain ONNX models, not application packages. Gitee application packages are uploaded separately and may appear later. Check the package against the release's `SHA256SUMS`, extract the complete archive, then run `ParkerLabel.app` on macOS or `ParkerLabel.exe` on Windows. Python, Conda, and project dependencies are not required.
 
 Keep the extracted program in a writable directory. On startup, ParkerLabel creates `configs/` beside the program. If the required ONNX models are missing or fail integrity verification, it downloads them into `configs/pretrain/`, trying GitHub first and falling back to Gitee. This normally happens only on the first launch; missing, damaged, or incompatible model files are downloaded again. 
 
@@ -30,10 +28,21 @@ Portable macOS arm64 and Windows x64 build commands, prerequisites, artifact lay
 
 ### Run from source
 
-Install a Conda distribution if you do not already have one. [Miniforge](https://github.com/conda-forge/miniforge) is recommended, but other Conda distributions also work. Open a terminal, then clone the repository, create a Python 3.11 environment, install the dependencies, and start ParkerLabel:
+Install a Conda distribution if you do not already have one. [Miniforge](https://github.com/conda-forge/miniforge) is recommended, but other Conda distributions also work. Clone the project from [GitHub](https://github.com/Parker-Lyu/ParkerLabel) or [Gitee](https://gitee.com/Parker-Lyu/ParkerLabel):
 
 ```bash
 git clone https://github.com/Parker-Lyu/ParkerLabel.git
+```
+
+Or:
+
+```bash
+git clone https://gitee.com/Parker-Lyu/ParkerLabel.git
+```
+
+Then create a Python 3.11 environment, install the dependencies, and start ParkerLabel:
+
+```bash
 cd ParkerLabel
 conda create -n parker-label -c conda-forge python=3.11 -y
 conda activate parker-label
