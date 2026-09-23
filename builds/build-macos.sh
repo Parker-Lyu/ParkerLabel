@@ -38,26 +38,8 @@ if ! command -v conda >/dev/null 2>&1; then
   exit 1
 fi
 
-if [[ ! -x "${env_prefix}/bin/python" ]]; then
-  conda create --yes --prefix "${env_prefix}" \
-    python=3.11.16 \
-    pip=26.0.1 \
-    packaging=26.3 \
-    setuptools=84.0.0 \
-    wheel=0.48.0
-fi
-
-"${env_prefix}/bin/python" -m pip install \
-  --disable-pip-version-check \
-  --requirement "${project_root}/builds/requirements-macos-arm64.lock"
-
-"${project_root}/builds/build-opencv-macos.sh" "${env_prefix}/bin/python"
-"${env_prefix}/bin/python" "${project_root}/builds/verify_opencv_runtime.py"
-"${env_prefix}/bin/python" -m unittest discover \
-  --start-directory "${project_root}/tests" \
-  --pattern "test_*.py"
-
-version="$("${env_prefix}/bin/python" -c "from parker_label_app.app_info import APP_VERSION; print(APP_VERSION or 'dev')")"
+conda_base="$(conda info --base)"
+version="$("${conda_base}/bin/python" -c 'import runpy, sys; print(runpy.run_path(sys.argv[1])["APP_VERSION"] or "dev")' "${project_root}/parker_label_app/app_info.py")"
 build_type="development"
 artifact_version="${version}"
 if [[ "${candidate_build}" == true ]]; then
@@ -82,6 +64,26 @@ elif [[ "${version}" != "dev" ]]; then
   fi
   build_type="release"
 fi
+
+if [[ ! -x "${env_prefix}/bin/python" ]]; then
+  conda create --yes --prefix "${env_prefix}" \
+    python=3.11.16 \
+    pip=26.0.1 \
+    packaging=26.3 \
+    setuptools=84.0.0 \
+    wheel=0.48.0
+fi
+
+"${env_prefix}/bin/python" -m pip install \
+  --disable-pip-version-check \
+  --requirement "${project_root}/builds/requirements-macos-arm64.lock"
+
+"${project_root}/builds/build-opencv-macos.sh" "${env_prefix}/bin/python"
+"${env_prefix}/bin/python" "${project_root}/builds/verify_opencv_runtime.py"
+"${env_prefix}/bin/python" -m unittest discover \
+  --start-directory "${project_root}/tests" \
+  --pattern "test_*.py"
+
 output_dir="${project_root}/builds/output/${artifact_version}/macos-arm64"
 stage_dir="${work_dir}/dist"
 package_dir="${work_dir}/package"

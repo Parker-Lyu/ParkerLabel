@@ -17,19 +17,13 @@ if (-not [Environment]::Is64BitOperatingSystem -or -not [Environment]::Is64BitPr
 if (-not (Get-Command conda -ErrorAction SilentlyContinue)) {
     throw "Miniforge/Conda is required."
 }
-if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
-    & conda create --yes --prefix $envPrefix python=3.11.16 pip=26.0.1 packaging=26.3 setuptools=84.0.0 wheel=0.48.0
-    if ($LASTEXITCODE -ne 0) { throw "Unable to create the Windows build environment." }
-}
-& $python -m pip install --disable-pip-version-check --requirement (Join-Path $projectRoot "builds\requirements-windows-x64.lock")
-if ($LASTEXITCODE -ne 0) { throw "Unable to install the Windows build dependencies." }
-& (Join-Path $projectRoot "builds\build-opencv-windows.ps1") -TargetPython $python
-& $python (Join-Path $projectRoot "builds\verify_opencv_runtime.py")
-if ($LASTEXITCODE -ne 0) { throw "Minimal OpenCV verification failed." }
-& $python -m unittest discover --start-directory (Join-Path $projectRoot "tests") --pattern "test_*.py"
-if ($LASTEXITCODE -ne 0) { throw "Project tests failed." }
-
-$version = (& $python -c "from parker_label_app.app_info import APP_VERSION; print(APP_VERSION or 'dev')").Trim()
+$condaBase = & conda info --base
+if ($LASTEXITCODE -ne 0) { throw "Unable to locate the Conda base environment." }
+$condaBase = $condaBase.Trim()
+$basePython = Join-Path $condaBase "python.exe"
+$version = & $basePython -c "import runpy, sys; print(runpy.run_path(sys.argv[1])['APP_VERSION'] or 'dev')" (Join-Path $projectRoot "parker_label_app\app_info.py")
+if ($LASTEXITCODE -ne 0) { throw "Unable to read APP_VERSION." }
+$version = $version.Trim()
 $buildType = "development"
 $artifactVersion = $version
 $status = (& git -C $projectRoot status --short) -join "`n"
@@ -46,6 +40,18 @@ if ($Candidate) {
     }
     $buildType = "release"
 }
+
+if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
+    & conda create --yes --prefix $envPrefix python=3.11.16 pip=26.0.1 packaging=26.3 setuptools=84.0.0 wheel=0.48.0
+    if ($LASTEXITCODE -ne 0) { throw "Unable to create the Windows build environment." }
+}
+& $python -m pip install --disable-pip-version-check --requirement (Join-Path $projectRoot "builds\requirements-windows-x64.lock")
+if ($LASTEXITCODE -ne 0) { throw "Unable to install the Windows build dependencies." }
+& (Join-Path $projectRoot "builds\build-opencv-windows.ps1") -TargetPython $python
+& $python (Join-Path $projectRoot "builds\verify_opencv_runtime.py")
+if ($LASTEXITCODE -ne 0) { throw "Minimal OpenCV verification failed." }
+& $python -m unittest discover --start-directory (Join-Path $projectRoot "tests") --pattern "test_*.py"
+if ($LASTEXITCODE -ne 0) { throw "Project tests failed." }
 
 $outputDir = Join-Path $projectRoot "builds\output\$artifactVersion\windows-x64"
 $stageDir = Join-Path $workDir "dist"
