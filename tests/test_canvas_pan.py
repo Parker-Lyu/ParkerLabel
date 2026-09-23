@@ -50,22 +50,29 @@ class CanvasPanTests(unittest.TestCase):
 
     def test_middle_button_pan_moves_image_edges_into_viewport(self):
         viewport = self.window.scroll_area.viewport()
-        scrollbar = self.window.scroll_area.horizontalScrollBar()
+        horizontal = self.window.scroll_area.horizontalScrollBar()
+        vertical = self.window.scroll_area.verticalScrollBar()
         margin = self.window.CANVAS_PAN_MARGIN
-        scrollbar.setValue(margin)
-        self.assertEqual(self.window.canvas.mapTo(viewport, QPoint(0, 0)).x(), 0)
+        horizontal.setValue(margin)
+        vertical.setValue(margin)
+        self.assertEqual(self.window.canvas.mapTo(viewport, QPoint(0, 0)), QPoint(0, 0))
 
         self.window.panning = True
         self.window.pan_origin = QPoint(0, 0)
-        self.window.canvas_mouse_move(SimpleNamespace(globalPos=lambda: QPoint(margin, 0)))
-        self.assertEqual(scrollbar.value(), 0)
-        self.assertEqual(self.window.canvas.mapTo(viewport, QPoint(0, 0)).x(), margin)
+        self.window.canvas_mouse_move(SimpleNamespace(globalPos=lambda: QPoint(margin, margin)))
+        self.assertEqual(horizontal.value(), 0)
+        self.assertEqual(vertical.value(), 0)
+        self.assertEqual(
+            self.window.canvas.mapTo(viewport, QPoint(0, 0)), QPoint(margin, margin)
+        )
 
-        scrollbar.setValue(scrollbar.maximum())
-        right = self.window.canvas.mapTo(
-            viewport, QPoint(self.window.canvas.width(), 0)
-        ).x()
-        self.assertEqual(viewport.width() - right, margin)
+        horizontal.setValue(horizontal.maximum())
+        vertical.setValue(vertical.maximum())
+        bottom_right = self.window.canvas.mapTo(
+            viewport, QPoint(self.window.canvas.width(), self.window.canvas.height())
+        )
+        self.assertEqual(viewport.width() - bottom_right.x(), margin)
+        self.assertEqual(viewport.height() - bottom_right.y(), margin)
 
     def test_wheel_zoom_keeps_image_anchor_in_place(self):
         viewport = self.window.scroll_area.viewport()
@@ -89,13 +96,14 @@ class CanvasPanTests(unittest.TestCase):
         self.assertLessEqual(abs(after.x() - before.x()), 1)
         self.assertLessEqual(abs(after.y() - before.y()), 1)
 
-    def test_fitting_image_has_no_extra_horizontal_scroll(self):
+    def test_fitting_image_has_no_extra_scroll(self):
         viewport = self.window.scroll_area.viewport()
         self.window.base_canvas_size = (viewport.width() // 2, viewport.height() // 2)
         self.window.apply_canvas_size()
         self.app.processEvents()
-        self.assertEqual(self.window.canvas.pos().x(), 0)
+        self.assertEqual(self.window.canvas.pos(), QPoint(0, 0))
         self.assertEqual(self.window.scroll_area.horizontalScrollBar().maximum(), 0)
+        self.assertEqual(self.window.scroll_area.verticalScrollBar().maximum(), 0)
 
     def test_zoom_into_overflow_preserves_cursor_anchor(self):
         viewport = self.window.scroll_area.viewport()
@@ -114,6 +122,24 @@ class CanvasPanTests(unittest.TestCase):
         after = self.window.canvas.mapTo(viewport, scaled_anchor)
         self.assertEqual(self.window.canvas.pos().x(), self.window.CANVAS_PAN_MARGIN)
         self.assertLessEqual(abs(after.x() - before.x()), 1)
+
+    def test_vertical_zoom_into_overflow_preserves_cursor_anchor(self):
+        viewport = self.window.scroll_area.viewport()
+        self.window.base_canvas_size = (viewport.width() + 200, viewport.height() - 20)
+        self.window.apply_canvas_size()
+        self.app.processEvents()
+        anchor = QPoint(100, self.window.canvas.height() // 2)
+        before = self.window.canvas.mapTo(viewport, anchor)
+        event = SimpleNamespace(
+            pos=lambda: anchor,
+            angleDelta=lambda: QPoint(0, 120),
+            accept=lambda: None,
+        )
+        self.window.canvas_wheel(event)
+        scaled_anchor = QPoint(100, round(anchor.y() * self.window.zoom_step))
+        after = self.window.canvas.mapTo(viewport, scaled_anchor)
+        self.assertEqual(self.window.canvas.pos().y(), self.window.CANVAS_PAN_MARGIN)
+        self.assertLessEqual(abs(after.y() - before.y()), 1)
 
 
 if __name__ == "__main__":

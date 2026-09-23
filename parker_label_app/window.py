@@ -1164,16 +1164,21 @@ class MainWindow(QWidget):
         self.update_canvas_container()
 
     def update_canvas_container(self):
-        """Keep horizontal panning space around the canvas."""
-        margin = (
+        """Keep panning space around canvas edges that exceed the viewport."""
+        horizontal_margin = (
             self.CANVAS_PAN_MARGIN
             if self.canvas.width() > self.scroll_area.viewport().width()
             else 0
         )
-        self.canvas.move(margin, 0)
+        vertical_margin = (
+            self.CANVAS_PAN_MARGIN
+            if self.canvas.height() > self.scroll_area.viewport().height()
+            else 0
+        )
+        self.canvas.move(horizontal_margin, vertical_margin)
         self.canvas_container.resize(
-            self.canvas.width() + 2 * margin,
-            self.canvas.height(),
+            self.canvas.width() + 2 * horizontal_margin,
+            self.canvas.height() + 2 * vertical_margin,
         )
 
     def refresh_table(self):
