@@ -5,10 +5,10 @@
   <p><strong>Runs entirely on the CPU—no GPU required.</strong></p>
   <p>Each interactive mask-decoder inference takes approximately <strong>20 ms</strong> on Apple M5 Pro and Intel Core i9-14900KF CPUs.</p>
   <p>
-    <a href="https://github.com/Parker-Lyu/ParkerLabel/releases"><img src="https://img.shields.io/badge/download-GitHub-blue?style=flat-square" alt="GitHub Releases"></a>
-    <a href="https://gitee.com/Parker-Lyu/ParkerLabel/releases"><img src="https://img.shields.io/badge/download-Gitee-C71D23?style=flat-square" alt="Gitee Releases"></a>
-    <a href="builds/SOP.md"><img src="https://img.shields.io/badge/macOS-arm64-black?style=flat-square&amp;logo=apple" alt="macOS arm64 build target"></a>
-    <a href="builds/SOP.md"><img src="https://img.shields.io/badge/Windows-x64-0078D4?style=flat-square&amp;logo=windows" alt="Windows x64 build target"></a>
+    <a href="https://github.com/Parker-Lyu/ParkerLabel/releases"><img src="https://img.shields.io/badge/Releases-GitHub-blue?style=flat-square" alt="GitHub Releases"></a>
+    <a href="https://gitee.com/Parker-Lyu/ParkerLabel/releases"><img src="https://img.shields.io/badge/Releases-Gitee-C71D23?style=flat-square" alt="Gitee Releases"></a>
+    <a href="builds/SOP.md"><img src="https://img.shields.io/badge/build%20target-macOS%20arm64-black?style=flat-square&amp;logo=apple" alt="macOS arm64 build target"></a>
+    <a href="builds/SOP.md"><img src="https://img.shields.io/badge/build%20target-Windows%20x64-0078D4?style=flat-square&amp;logo=windows" alt="Windows x64 build target"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--only-green?style=flat-square" alt="GPL-3.0-only license"></a>
   </p>
   <img src="docs/images/interactive-mask-demo.gif" width="960" alt="ParkerLabel interactive annotation demo">
