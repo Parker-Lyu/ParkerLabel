@@ -2282,6 +2282,7 @@ class MainWindow(QWidget):
             display = color_mask
         else:
             display = cv2.addWeighted(self.document.image_rgb, 0.5, color_mask, 0.5, 0)
+            display[identifier_mask == 0] = self.document.image_rgb[identifier_mask == 0]
         image_height, image_width = self.document.image_rgb.shape[:2]
         native_or_larger = (
             self.canvas_size[0] >= image_width and self.canvas_size[1] >= image_height

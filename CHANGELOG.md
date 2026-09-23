@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Application
+
+- Keep unlabeled image pixels at their original brightness in Overlay view.
+
 ## 1.0.0 - 2026-09-23
 
 ### Application
