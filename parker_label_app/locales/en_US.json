@@ -96,6 +96,7 @@
   "manual.dilate": "Dilate",
   "manual.erode": "Erode",
   "table.category": "Category",
+  "table.category_edit_hint": "Double-click or press F2 to type a category, or select one from the list.",
   "table.category_missing_title": "Category Not Found",
   "table.category_missing": "“{name}” is not in the current category list.",
   "table.color": "Color",

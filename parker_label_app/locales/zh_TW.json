@@ -96,6 +96,7 @@
   "manual.dilate": "膨脹",
   "manual.erode": "侵蝕",
   "table.category": "類別",
+  "table.category_edit_hint": "按兩下或按 F2 手動輸入類別；也可從下拉清單選擇。",
   "table.category_missing_title": "類別不存在",
   "table.category_missing": "類別「{name}」不在目前清單中。",
   "table.color": "顏色",

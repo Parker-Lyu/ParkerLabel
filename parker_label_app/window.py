@@ -23,6 +23,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QLineEdit,
     QMenu,
     QMenuBar,
     QMessageBox,
@@ -70,6 +71,32 @@ from .quality import MaskQuality, inspect_mask_quality
 from .shortcut_dialog import ShortcutSettingsDialog
 from .shortcuts import SPECS_BY_ID, ShortcutManager, ShortcutStore
 from .update_dialog import UpdateCheckDialog
+
+
+class CategoryLineEdit(QLineEdit):
+    def begin_edit(self):
+        self.setReadOnly(False)
+        self.setFocus()
+        self.selectAll()
+
+    def mouseDoubleClickEvent(self, event):
+        self.begin_edit()
+        event.accept()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_F2:
+            self.begin_edit()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+    def focusOutEvent(self, event):
+        if not self.isReadOnly():
+            combo = self.parentWidget()
+            if not getattr(combo, "category_submit_pending", False):
+                combo.setCurrentText(combo.committed_text)
+            self.setReadOnly(True)
+        super().focusOutEvent(event)
 
 
 class StateToggleButton(QPushButton):
@@ -1337,11 +1364,16 @@ class MainWindow(QWidget):
         combo = QComboBox(self)
         combo.setEditable(True)
         combo.setInsertPolicy(QComboBox.NoInsert)
+        combo.setLineEdit(CategoryLineEdit(combo))
+        combo.lineEdit().setReadOnly(True)
+        combo.setToolTip(self.t("table.category_edit_hint"))
+        combo.lineEdit().setToolTip(self.t("table.category_edit_hint"))
         names = [category.name for category in self.categories]
         if current_name and current_name not in names:
             names.insert(0, current_name)
         combo.addItems(names)
         combo.setCurrentText(current_name)
+        combo.committed_text = current_name
         for index, name in enumerate(names):
             category = self.categories_by_name.get(name)
             if category is not None:
@@ -1363,8 +1395,13 @@ class MainWindow(QWidget):
                 self.t("table.category_missing_title"),
                 self.t("table.category_missing", name=name),
             )
+            if self.document is not None and index < len(self.document.segments):
+                combo.setCurrentText(self.document.segments[index].category_name)
+            self.table.setFocus()
             return
         self.set_segment_category(index, name)
+        combo.committed_text = name
+        combo.lineEdit().setReadOnly(True)
         self.table.setFocus()
 
     def configure_categories(self):
@@ -1565,6 +1602,9 @@ class MainWindow(QWidget):
         snapshot = self.capture_edit_snapshot()
         self.begin_metadata_edit(index)
         self.document.change_segment_category(index, category)
+        combo = self.table.cellWidget(index, self.COL_CATEGORY)
+        if combo is not None:
+            combo.committed_text = category.name
         self.update_metadata_dirty(index)
         self.record_history(snapshot)
         self.resize_segment_table_columns()

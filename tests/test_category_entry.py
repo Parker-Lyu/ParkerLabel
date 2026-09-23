@@ -52,9 +52,33 @@ class CategoryEntryTests(unittest.TestCase):
 
     def type_category(self, name):
         self.editor.setFocus()
-        self.editor.selectAll()
+        QTest.keyClick(self.editor, Qt.Key_F2)
+        self.app.processEvents()
         QTest.keyClicks(self.editor, name)
         self.app.processEvents()
+
+    def test_click_and_typing_leave_category_unchanged(self):
+        original = self.window.document.segments[0].category_name
+        QTest.mouseClick(self.editor, Qt.LeftButton)
+        QTest.keyClicks(self.editor, "other")
+        self.assertTrue(self.editor.isReadOnly())
+        self.assertEqual(self.combo.currentText(), original)
+        self.assertEqual(self.window.document.segments[0].category_name, original)
+
+    def test_double_click_enters_manual_edit_mode(self):
+        QTest.mouseDClick(self.editor, Qt.LeftButton)
+        self.app.processEvents()
+        self.assertFalse(self.editor.isReadOnly())
+        QTest.keyClicks(self.editor, self.second.name)
+        self.assertEqual(self.combo.currentText(), self.second.name)
+
+    def test_leaving_manual_edit_without_enter_restores_category(self):
+        original = self.window.document.segments[0].category_name
+        self.type_category(self.second.name)
+        self.window.table.setFocus()
+        self.app.processEvents()
+        self.assertTrue(self.editor.isReadOnly())
+        self.assertEqual(self.combo.currentText(), original)
 
     def test_enter_accepts_existing_category_and_ends_editing(self):
         self.type_category(self.second.name)
@@ -79,8 +103,12 @@ class CategoryEntryTests(unittest.TestCase):
 
     def test_dropdown_selection_still_updates_category(self):
         position = self.combo.findText(self.second.name)
-        self.combo.setCurrentIndex(position)
-        self.combo.activated[str].emit(self.second.name)
+        self.combo.showPopup()
+        self.app.processEvents()
+        view = self.combo.view()
+        point = view.visualRect(view.model().index(position, 0)).center()
+        QTest.mouseClick(view.viewport(), Qt.LeftButton, pos=point)
+        self.app.processEvents()
         self.assertEqual(self.window.document.segments[0].category_name, self.second.name)
 
 
