@@ -16,9 +16,11 @@ Each interactive mask-decoder inference takes approximately **20 ms** on Apple M
 
 Download the portable package for your platform from [GitHub Releases](https://github.com/Parker-Lyu/ParkerLabel/releases) or [Gitee Releases](https://gitee.com/Parker-Lyu/ParkerLabel/releases). Extract the complete archive, then run `ParkerLabel.app` on macOS or `ParkerLabel.exe` on Windows. Python, Conda, and project dependencies are not required.
 
-Keep the extracted program in a writable directory. On startup, ParkerLabel creates `configs/` beside the program. If the required ONNX models are missing or fail integrity verification, it downloads them into `configs/pretrain/`, trying GitHub first and falling back to Gitee. This normally happens only on the first launch; missing, damaged, or incompatible model files are downloaded again. If both sources fail, the download dialog provides retry controls, direct GitHub and Gitee URLs, and the exact directory for manual installation.
+Keep the extracted program in a writable directory. On startup, ParkerLabel creates `configs/` beside the program. If the required ONNX models are missing or fail integrity verification, it downloads them into `configs/pretrain/`, trying GitHub first and falling back to Gitee. This normally happens only on the first launch; missing, damaged, or incompatible model files are downloaded again. 
 
-The macOS package is ad-hoc signed but is not notarized by Apple. The first launch may therefore be blocked by macOS. After attempting to open the app once, open **System Settings → Privacy & Security**, scroll to the security section, and choose **Open Anyway** only if you trust the downloaded package. Do not disable Gatekeeper globally. See [Apple's guidance for opening apps safely](https://support.apple.com/102445).
+The macOS package is ad-hoc signed but is not notarized by Apple. The first launch may therefore be blocked by macOS. After attempting to open the app once, open **System Settings → Privacy & Security**, scroll to the security section, and choose **Open Anyway**.
+
+Portable macOS arm64 and Windows x64 build commands, prerequisites, artifact layouts, OpenCV minimization, and verification steps are maintained in [`builds/SOP.md`](builds/SOP.md).
 
 ### Run from source
 
@@ -33,9 +35,7 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
-The runtime uses `onnxruntime==1.29.0`. When started from source, ParkerLabel automatically verifies and downloads missing ONNX models into `pretrain/`; `fetch_models.py` does not need to be run separately.
-
-Portable macOS arm64 and Windows x64 build commands, prerequisites, artifact layouts, OpenCV minimization, and verification steps are maintained in [`builds/SOP.md`](builds/SOP.md).
+ParkerLabel automatically verifies and downloads missing ONNX models into `pretrain/`.
 
 ## Overview
 
