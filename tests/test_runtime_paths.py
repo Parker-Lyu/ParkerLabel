@@ -47,7 +47,7 @@ class PortablePathTests(unittest.TestCase):
             ), patch.object(runtime_paths.sys, "executable", str(root / "ParkerLabel.exe")):
                 self.assertEqual(runtime_paths.resource_root(), root / "internal")
                 self.assertEqual(runtime_paths.config_directory(), root / "configs")
-                self.assertEqual(runtime_paths.model_directory(), root / "configs" / "pretrain")
+                self.assertEqual(runtime_paths.model_directory(), root / "internal" / "pretrain")
                 self.assertEqual(
                     runtime_paths.model_manifest_path(), root / "internal" / "model-bundle.json"
                 )
@@ -71,6 +71,7 @@ class PortablePathTests(unittest.TestCase):
             portable = executable.parents[3] / "configs"
             with patch.object(runtime_paths.sys, "platform", "darwin"), patch.object(
                 runtime_paths.sys, "frozen", True, create=True
+            ), patch.object(runtime_paths.sys, "_MEIPASS", str(root / "internal"), create=True
             ), patch.object(runtime_paths.sys, "executable", str(executable)), patch.object(
                 runtime_paths, "_original_app_bundle", return_value=None
             ):
@@ -90,19 +91,20 @@ class PortablePathTests(unittest.TestCase):
             executable = relocated / "Contents" / "MacOS" / "ParkerLabel"
             with patch.object(runtime_paths.sys, "platform", "darwin"), patch.object(
                 runtime_paths.sys, "frozen", True, create=True
+            ), patch.object(runtime_paths.sys, "_MEIPASS", str(root / "internal"), create=True
             ), patch.object(runtime_paths.sys, "executable", str(executable)), patch.object(
                 runtime_paths, "_original_app_bundle", return_value=bundle
             ):
                 configs = bundle.parent / "configs"
                 self.assertEqual(runtime_paths.prepare_runtime(), configs)
                 self.assertTrue((configs / "categories").is_dir())
-                self.assertTrue((configs / "pretrain").is_dir())
+                self.assertFalse((configs / "pretrain").exists())
                 self.assertTrue((configs / "app.log").is_file())
                 settings = runtime_paths.portable_settings()
                 settings.setValue("test/value", "中文")
                 settings.sync()
                 self.assertEqual(settings.status(), QSettings.NoError)
-                self.assertEqual(runtime_paths.model_directory(), configs / "pretrain")
+                self.assertEqual(runtime_paths.model_directory(), runtime_paths.resource_root() / "pretrain")
                 self.assertFalse((relocated.parent / "configs").exists())
                 runtime_paths.prepare_runtime()
                 self.assertEqual(runtime_paths.portable_settings().value("test/value"), "中文")
@@ -133,6 +135,7 @@ class PortablePathTests(unittest.TestCase):
             portable = root / "configs"
             with patch.object(runtime_paths.sys, "platform", "darwin"), patch.object(
                 runtime_paths.sys, "frozen", True, create=True
+            ), patch.object(runtime_paths.sys, "_MEIPASS", str(root / "internal"), create=True
             ), patch.object(runtime_paths.sys, "executable", str(root / "ParkerLabel.app" / "Contents" / "MacOS" / "ParkerLabel")), patch.object(
                 runtime_paths, "_prepare_config_directory", side_effect=OSError(errno.EROFS, "Read-only file system")
             ):
@@ -141,7 +144,50 @@ class PortablePathTests(unittest.TestCase):
                 self.assertFalse(caught.exception.translocated)
                 self.assertEqual(caught.exception.directory, portable)
                 self.assertEqual(Path(runtime_paths.portable_settings().fileName()), portable / "settings.ini")
-                self.assertEqual(runtime_paths.model_directory(), portable / "pretrain")
+                self.assertEqual(runtime_paths.model_directory(), runtime_paths.resource_root() / "pretrain")
+
+    def test_frozen_startup_preserves_portable_settings_and_categories(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            configs = root / "configs"
+            categories = configs / "categories"
+            categories.mkdir(parents=True)
+            (configs / "settings.ini").write_text("[interface]\nlanguage=zh_CN\n")
+            (categories / "custom.json").write_text("{}")
+            with patch.object(runtime_paths.sys, "frozen", True, create=True), patch.object(
+                runtime_paths.sys, "executable", str(root / "ParkerLabel.exe")
+            ):
+                self.assertEqual(runtime_paths.prepare_runtime(), configs)
+            self.assertEqual((configs / "settings.ini").read_text(), "[interface]\nlanguage=zh_CN\n")
+            self.assertEqual((categories / "custom.json").read_text(), "{}")
+            self.assertTrue((configs / "app.log").is_file())
+            self.assertFalse((configs / "pretrain").exists())
+
+    def test_bundled_model_check_uses_internal_files(self):
+        import hashlib
+        import json
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            models = root / "pretrain"
+            models.mkdir()
+            model = models / "encoder.onnx"
+            model.write_bytes(b"model")
+            manifest = root / "model-bundle.json"
+            entries = []
+            for name in ("encoder.onnx", "decoder.onnx"):
+                entries.append({
+                    "path": f"pretrain/{name}",
+                    "size": 5,
+                    "sha256": hashlib.sha256(b"model").hexdigest(),
+                })
+            manifest.write_text(json.dumps({"files": entries}))
+            with patch.object(main_module, "model_directory", return_value=models), patch.object(
+                main_module, "model_manifest_path", return_value=manifest
+            ):
+                self.assertEqual(main_module.bundled_model_errors(), ["decoder.onnx"])
+                (models / "decoder.onnx").write_bytes(b"model")
+                self.assertEqual(main_module.bundled_model_errors(), [])
 
     def test_translocation_error_shows_move_instruction(self):
         type(self)._app = QApplication.instance() or QApplication([])

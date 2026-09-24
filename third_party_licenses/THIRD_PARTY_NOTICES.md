@@ -27,8 +27,8 @@ platforms under the single root `LICENSE`.
 | GNU Readline | 8.3 | `libreadline.8.dylib` | `Readline/` |
 | zlib | 1.3.2 | `libz.1.dylib` | `zlib/` |
 
-The application downloads the separately versioned MobileSAM-derived ONNX
-models on first use. Their Apache 2.0 license, TinyViT notices, checkpoint
+The application includes the separately versioned MobileSAM-derived ONNX
+models. Their Apache 2.0 license, TinyViT notices, checkpoint
 source, and original checkpoint SHA-256 are included in `MobileSAM/`; complete
 conversion provenance is maintained in `docs/model-provenance.md`.
 

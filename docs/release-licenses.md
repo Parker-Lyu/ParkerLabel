@@ -40,5 +40,7 @@ The two packages share ParkerLabel's root GPL-3.0-only license and byte-identica
 third-party license texts. Platform-specific inventories, Qt source and dynamic
 library replacement instructions, and Microsoft runtime terms remain separate.
 
-Model source, checkpoint identity, exporter commits, commands, tool versions,
-and converted hashes are maintained in `docs/model-provenance.md`.
+Both packages include the MobileSAM-derived ONNX models. Their license and
+upstream notices are included offline; model source, checkpoint identity,
+exporter commits, commands, tool versions, and converted hashes are maintained
+in `docs/model-provenance.md`.

@@ -14,6 +14,7 @@
   "model.measuring": "Downloadgeschwindigkeit wird gemessen…",
   "model.verifying": "Modell-SHA-256 wird geprüft…",
   "model.failed": "Automatischer Download fehlgeschlagen",
+  "model.bundled_invalid": "Integrierte Modelldateien fehlen oder sind beschädigt: {files}. Laden Sie ParkerLabel erneut herunter und entpacken Sie es.",
   "model.manual": "Laden Sie die Modelle manuell von einer der unten stehenden Adressen herunter und legen Sie die Dateien hier ab:\n{directory}\n\nFehler: {error}",
   "model.cancel": "Abbrechen",
   "model.cancelling": "Download wird abgebrochen…",

@@ -14,6 +14,7 @@
   "model.measuring": "다운로드 속도를 측정하는 중…",
   "model.verifying": "모델 SHA-256을 확인하는 중…",
   "model.failed": "자동 다운로드 실패",
+  "model.bundled_invalid": "내장 모델 파일이 없거나 손상되었습니다: {files}. ParkerLabel을 다시 다운로드하고 압축을 풀어 주세요.",
   "model.manual": "아래 주소 중 하나에서 모델을 직접 다운로드한 후 다음 위치에 파일을 넣으십시오:\n{directory}\n\n오류: {error}",
   "model.cancel": "취소",
   "model.cancelling": "다운로드를 취소하는 중…",

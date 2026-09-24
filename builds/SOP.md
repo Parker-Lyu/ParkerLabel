@@ -27,7 +27,7 @@ already published Release. The release notes come from the matching
 
 Publish only after both platform packages are present and accepted. Download
 and test the draft packages on their native platforms, including real
-inference, saving and reopening annotations, model download and offline use,
+inference, saving and reopening annotations, bundled models and offline use,
 Chinese paths, native UI, and a fresh `configs/` directory for each extraction. After
 acceptance, publish the GitHub draft manually. Upload the same assets to Gitee
 separately and verify their checksums there. A pushed tag is public even while
@@ -98,15 +98,17 @@ is silently redirected to a user-global directory.
 
 Acceptance must use a fresh browser download with quarantine intact: extract,
 allow the app in Privacy & Security, and launch without moving the folder.
-Confirm an actual App Translocation launch, successful startup, and settings,
-categories, logs, and downloaded models in the original `configs/`. Restart to
+Confirm an actual App Translocation launch, successful offline startup, and settings,
+categories, and logs in the original `configs/`. Restart to
 verify persistence. Also test a moved folder and an unwritable original folder.
 Mocked path tests and native framework lookup tests alone do not establish this
 Gatekeeper acceptance.
 
-The runtime models are not bundled. On first launch they are downloaded into
-`configs/pretrain/` beside `ParkerLabel.app`. Re-run the size report after the
-first successful launch:
+Both ONNX files are downloaded from the fixed GitHub model Release during the
+build, verified against `model-bundle.json`, and placed inside `ParkerLabel.app`.
+The packaged self-test checks the models in the built app and in a fresh ZIP
+extraction. The application reads them from the bundle without creating
+`configs/pretrain/` or using the network. Run the size report with:
 
 ```bash
 builds/.env-macos-arm64/bin/python builds/measure_bundle.py \
@@ -189,8 +191,10 @@ The ZIP contains `ParkerLabel-<version>/ParkerLabel.exe` and an empty
 `ParkerLabel-<version>/configs/` directory. Users extract the ZIP and run the
 single `ParkerLabel.exe`; its packaged
 dependencies are extracted to a temporary runtime directory automatically.
-Python, Conda and project dependencies are not required. Models and user
-configuration are stored in `configs/` beside the executable. Each newly
+Python, Conda and project dependencies are not required. The ONNX models are
+embedded in the executable and extracted to PyInstaller's temporary runtime
+directory when it starts. User configuration stays in `configs/` beside the
+executable. Each newly
 extracted version starts with its own `configs/` directory. Windows SmartScreen
 or antivirus software may still show a security prompt for unsigned builds.
 This warning occurs before ParkerLabel starts and cannot be removed by runtime

@@ -89,7 +89,7 @@ def config_directory():
 
 def model_directory():
     if getattr(sys, "frozen", False):
-        return config_directory() / "pretrain"
+        return resource_root() / "pretrain"
     return _SOURCE_ROOT / "pretrain"
 
 
@@ -128,8 +128,6 @@ def prepare_runtime():
 
 def _prepare_config_directory(directory, logger):
     (directory / "categories").mkdir(parents=True, exist_ok=True)
-    if getattr(sys, "frozen", False):
-        (directory / "pretrain").mkdir(parents=True, exist_ok=True)
     log_path = directory / "app.log"
     for path in (log_path, directory / "app.log.1"):
         path.unlink(missing_ok=True)

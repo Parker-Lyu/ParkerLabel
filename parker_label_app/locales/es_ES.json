@@ -14,6 +14,7 @@
   "model.measuring": "Midiendo la velocidad de descarga…",
   "model.verifying": "Verificando el SHA-256 del modelo…",
   "model.failed": "Error de descarga automática",
+  "model.bundled_invalid": "Faltan los modelos integrados o están dañados: {files}. Descargue y extraiga ParkerLabel de nuevo.",
   "model.manual": "Descarga manualmente los modelos desde una de las direcciones siguientes y coloca los archivos en:\n{directory}\n\nError: {error}",
   "model.cancel": "Cancelar",
   "model.cancelling": "Cancelando la descarga…",

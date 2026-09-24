@@ -13,6 +13,8 @@ datas = [
     (str(project_root / "config" / "default-coco.json"), "config"),
     (str(project_root / "LICENSE"), "."),
     (str(project_root / "model-bundle.json"), "."),
+    (str(generated_dir / "pretrain" / "encoder.onnx"), "pretrain"),
+    (str(generated_dir / "pretrain" / "decoder.onnx"), "pretrain"),
     (str(project_root / "parker_label_app" / "assets"), "parker_label_app/assets"),
     (str(project_root / "parker_label_app" / "locales"), "parker_label_app/locales"),
     (str(generated_dir / "third_party_licenses"), "third_party_licenses"),

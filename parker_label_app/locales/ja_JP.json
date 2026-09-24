@@ -14,6 +14,7 @@
   "model.measuring": "ダウンロード速度を計測しています…",
   "model.verifying": "モデルの SHA-256 を確認しています…",
   "model.failed": "自動ダウンロードに失敗しました",
+  "model.bundled_invalid": "内蔵モデルが見つからないか破損しています: {files}。ParkerLabel を再度ダウンロードして展開してください。",
   "model.manual": "以下のいずれかのアドレスからモデルを手動でダウンロードし、ファイルを次の場所に配置してください：\n{directory}\n\nエラー：{error}",
   "model.cancel": "キャンセル",
   "model.cancelling": "ダウンロードをキャンセルしています…",

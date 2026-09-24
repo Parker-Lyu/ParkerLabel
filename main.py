@@ -4,14 +4,24 @@ import sys
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
-from runtime_paths import PortableLocationError, application_icon_path, prepare_runtime
+from runtime_paths import (
+    PortableLocationError,
+    application_icon_path,
+    model_directory,
+    model_manifest_path,
+    prepare_runtime,
+)
+
+
+def bundled_model_errors():
+    from parker_label_app.model_manager import load_manifest, missing_models
+
+    manifest = load_manifest(model_manifest_path())
+    return [entry["path"].split("/", 1)[-1] for entry in missing_models(manifest, model_directory())]
 
 
 def main():
     """Start the desktop annotation application."""
-    app = QApplication(sys.argv)
-    app.setApplicationName("ParkerLabel")
-    app.setWindowIcon(QIcon(str(application_icon_path())))
     if "--runtime-self-test" in sys.argv:
         import cv2
         import numpy
@@ -19,7 +29,19 @@ def main():
 
         if not cv2.__version__ or not numpy.__version__ or not onnxruntime.__version__:
             return 1
+        if getattr(sys, "frozen", False):
+            invalid = bundled_model_errors()
+            if invalid:
+                print(f"Missing or invalid bundled models: {', '.join(invalid)}", file=sys.stderr)
+                return 1
+            for filename in ("encoder.onnx", "decoder.onnx"):
+                onnxruntime.InferenceSession(
+                    str(model_directory() / filename), providers=["CPUExecutionProvider"]
+                )
         return 0
+    app = QApplication(sys.argv)
+    app.setApplicationName("ParkerLabel")
+    app.setWindowIcon(QIcon(str(application_icon_path())))
     try:
         prepare_runtime()
         from parker_label_app import MainWindow
@@ -28,7 +50,13 @@ def main():
         from parker_label_app.model_download_dialog import ensure_runtime_models
 
         app.setApplicationName(APP_NAME)
-        if not ensure_runtime_models():
+        if getattr(sys, "frozen", False):
+            invalid = bundled_model_errors()
+            if invalid:
+                raise RuntimeError(
+                    language_manager.text("model.bundled_invalid", files=", ".join(invalid))
+                )
+        elif not ensure_runtime_models():
             return 1
         window = MainWindow()
     except PortableLocationError as error:

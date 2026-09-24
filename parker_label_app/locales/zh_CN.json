@@ -14,6 +14,7 @@
   "model.measuring": "正在计算下载速度……",
   "model.verifying": "正在校验模型 SHA-256……",
   "model.failed": "自动下载失败",
+  "model.bundled_invalid": "程序内置模型缺失或损坏：{files}。请重新下载并解压 ParkerLabel。",
   "model.manual": "请从下方任一地址手动下载模型，并将文件放入：\n{directory}\n\n错误信息：{error}",
   "model.cancel": "取消",
   "model.cancelling": "正在取消下载……",

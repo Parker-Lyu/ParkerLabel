@@ -14,6 +14,7 @@
   "model.measuring": "Measuring download speed…",
   "model.verifying": "Verifying model SHA-256…",
   "model.failed": "Automatic Download Failed",
+  "model.bundled_invalid": "Bundled model files are missing or damaged: {files}. Download and extract ParkerLabel again.",
   "model.manual": "Download the models manually from either address below and place the files in:\n{directory}\n\nError: {error}",
   "model.cancel": "Cancel",
   "model.cancelling": "Cancelling download…",

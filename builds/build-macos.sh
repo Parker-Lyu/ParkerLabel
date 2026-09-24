@@ -107,6 +107,9 @@ rm -f \
   --project-root "${project_root}" \
   --build-type "${build_type}" \
   --output "${generated_dir}/build-info.json"
+"${env_prefix}/bin/python" "${project_root}/builds/fetch_bundle_models.py" \
+  --manifest "${project_root}/model-bundle.json" \
+  --output "${generated_dir}/pretrain"
 "${env_prefix}/bin/python" "${project_root}/builds/stage_licenses.py" \
   --source "${project_root}/third_party_licenses" \
   --inventory "${project_root}/third_party_licenses/macos-arm64-inventory.json" \
@@ -128,6 +131,7 @@ mv "${stage_dir}/ParkerLabel.app" "${output_dir}/ParkerLabel.app"
   --report "${output_dir}/license-inventory.json"
 codesign --force --deep --sign - "${output_dir}/ParkerLabel.app"
 codesign --verify --deep --strict --verbose=2 "${output_dir}/ParkerLabel.app"
+"${output_dir}/ParkerLabel.app/Contents/MacOS/ParkerLabel" --runtime-self-test
 mkdir -p "${archive_root}"
 ditto "${output_dir}/ParkerLabel.app" "${archive_root}/ParkerLabel.app"
 ditto -c -k --sequesterRsrc --keepParent "${archive_root}" "${archive}"
@@ -138,6 +142,8 @@ trap 'rm -rf "${verification_dir}"' EXIT
 ditto -x -k "${archive}" "${verification_dir}"
 codesign --verify --deep --strict --verbose=2 \
   "${verification_dir}/${archive_directory_name}/ParkerLabel.app"
+"${verification_dir}/${archive_directory_name}/ParkerLabel.app/Contents/MacOS/ParkerLabel" \
+  --runtime-self-test
 
 cp "${generated_dir}/build-info.json" "${output_dir}/build-info.json"
 (

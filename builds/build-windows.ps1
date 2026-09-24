@@ -79,6 +79,8 @@ foreach ($path in @($archive, (Join-Path $outputDir "build-info.json"), (Join-Pa
 
 & $python (Join-Path $projectRoot "builds\write_build_info.py") --project-root $projectRoot --build-type $buildType --output (Join-Path $generatedDir "build-info.json")
 if ($LASTEXITCODE -ne 0) { throw "Unable to write build metadata." }
+& $python (Join-Path $projectRoot "builds\fetch_bundle_models.py") --manifest (Join-Path $projectRoot "model-bundle.json") --output (Join-Path $generatedDir "pretrain")
+if ($LASTEXITCODE -ne 0) { throw "Unable to fetch and verify bundled models." }
 & $python (Join-Path $projectRoot "builds\stage_licenses.py") --source (Join-Path $projectRoot "third_party_licenses") --inventory (Join-Path $projectRoot "third_party_licenses\windows-x64-inventory.json") --output (Join-Path $generatedDir "third_party_licenses")
 if ($LASTEXITCODE -ne 0) { throw "Unable to stage Windows license material." }
 $env:PARKER_LABEL_VERSION = $version
@@ -105,6 +107,8 @@ try {
     if (-not (Test-Path -LiteralPath (Join-Path $verificationDir "$archiveDirectoryName\configs") -PathType Container)) {
         throw "The archive does not contain $archiveDirectoryName/configs/."
     }
+    $probe = Start-Process -FilePath (Join-Path $verificationDir "$archiveDirectoryName\ParkerLabel.exe") -ArgumentList "--runtime-self-test" -PassThru -Wait
+    if ($probe.ExitCode -ne 0) { throw "Extracted executable self-test failed." }
 } finally {
     if (Test-Path -LiteralPath $verificationDir) { Remove-Item -LiteralPath $verificationDir -Recurse -Force }
 }

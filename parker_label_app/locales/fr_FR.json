@@ -14,6 +14,7 @@
   "model.measuring": "Mesure de la vitesse de téléchargement…",
   "model.verifying": "Vérification du SHA-256 du modèle…",
   "model.failed": "Échec du téléchargement automatique",
+  "model.bundled_invalid": "Les modèles intégrés sont absents ou endommagés : {files}. Téléchargez et extrayez de nouveau ParkerLabel.",
   "model.manual": "Téléchargez manuellement les modèles depuis l'une des adresses ci-dessous et placez les fichiers dans :\n{directory}\n\nErreur : {error}",
   "model.cancel": "Annuler",
   "model.cancelling": "Annulation du téléchargement…",

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import json
-import os
 from pathlib import Path
 
 
@@ -84,18 +83,13 @@ def main():
     model_bytes = sum(item["size"] for item in manifest["files"])
     app_bytes = tree_size(args.app)
     configs_bytes = tree_size(args.configs)
-    model_paths = [args.configs / item["path"] for item in manifest["files"]]
-    first_launch_complete = all(path.is_file() for path in model_paths)
     report = {
         "unit": "MB = 1,000,000 bytes",
         "download_archive": measurement(args.archive.stat().st_size),
         "unpacked_application": measurement(app_bytes),
         "model_bundle": measurement(model_bytes),
-        "first_launch_complete": first_launch_complete,
-        "first_launch_total": (
-            measurement(app_bytes + configs_bytes) if first_launch_complete else None
-        ),
-        "projected_first_launch_total": measurement(app_bytes + model_bytes),
+        "model_delivery": "bundled",
+        "first_launch_total": measurement(app_bytes + configs_bytes),
         "first_launch_configs": measurement(configs_bytes),
         "components": component_sizes(args.app),
         "largest_files": largest_files(args.app),

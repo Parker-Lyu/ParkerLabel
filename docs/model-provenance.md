@@ -57,3 +57,7 @@ files were uploaded as immutable `models-v2` release assets to GitHub and
 Gitee, then downloaded without authentication and verified against the hashes
 above. `model-bundle.json` fixes these exact URLs, sizes, and hashes; clients
 must not follow a `latest` release alias.
+
+Portable builds download these exact ONNX assets from GitHub, verify both files,
+and embed them in the application. Source checkouts still use `fetch_models.py`
+to populate `pretrain/` when needed.
