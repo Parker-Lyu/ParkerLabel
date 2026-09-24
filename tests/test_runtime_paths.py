@@ -140,7 +140,7 @@ class PortablePathTests(unittest.TestCase):
                     runtime_paths.prepare_runtime()
                 self.assertFalse(caught.exception.translocated)
                 self.assertEqual(caught.exception.directory, portable)
-                self.assertEqual(runtime_paths.portable_settings().fileName(), str(portable / "settings.ini"))
+                self.assertEqual(Path(runtime_paths.portable_settings().fileName()), portable / "settings.ini")
                 self.assertEqual(runtime_paths.model_directory(), portable / "pretrain")
 
     def test_translocation_error_shows_move_instruction(self):
