@@ -147,21 +147,20 @@ class PortablePathTests(unittest.TestCase):
                 self.assertEqual(runtime_paths.model_directory(), runtime_paths.resource_root() / "pretrain")
 
     def test_frozen_startup_preserves_portable_settings_and_categories(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            configs = root / "configs"
-            categories = configs / "categories"
-            categories.mkdir(parents=True)
-            (configs / "settings.ini").write_text("[interface]\nlanguage=zh_CN\n")
-            (categories / "custom.json").write_text("{}")
-            with patch.object(runtime_paths.sys, "frozen", True, create=True), patch.object(
-                runtime_paths.sys, "executable", str(root / "ParkerLabel.exe")
-            ):
-                self.assertEqual(runtime_paths.prepare_runtime(), configs)
-            self.assertEqual((configs / "settings.ini").read_text(), "[interface]\nlanguage=zh_CN\n")
-            self.assertEqual((categories / "custom.json").read_text(), "{}")
-            self.assertTrue((configs / "app.log").is_file())
-            self.assertFalse((configs / "pretrain").exists())
+        root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        configs = root / "configs"
+        categories = configs / "categories"
+        categories.mkdir(parents=True)
+        (configs / "settings.ini").write_text("[interface]\nlanguage=zh_CN\n")
+        (categories / "custom.json").write_text("{}")
+        with patch.object(runtime_paths.sys, "frozen", True, create=True), patch.object(
+            runtime_paths.sys, "executable", str(root / "ParkerLabel.exe")
+        ):
+            self.assertEqual(runtime_paths.prepare_runtime(), configs)
+        self.assertEqual((configs / "settings.ini").read_text(), "[interface]\nlanguage=zh_CN\n")
+        self.assertEqual((categories / "custom.json").read_text(), "{}")
+        self.assertTrue((configs / "app.log").is_file())
+        self.assertFalse((configs / "pretrain").exists())
 
     def test_bundled_model_check_uses_internal_files(self):
         import hashlib
