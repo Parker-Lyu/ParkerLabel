@@ -2,8 +2,18 @@
 set -euo pipefail
 
 args=(--tag "$GITHUB_REF_NAME" --output release-assets)
-if [ -d collected/macos-arm64 ]; then args+=(--macos collected/macos-arm64); fi
-if [ -d collected/windows-x64 ]; then args+=(--windows collected/windows-x64); fi
+for platform in macos-arm64 windows-x64; do
+  source="collected/$platform"
+  if [ ! -d "$source" ]; then
+    if [ ! -f "collected/ParkerLabel-${GITHUB_REF_NAME#v}-${platform}.zip" ]; then continue; fi
+    source=collected
+  fi
+  if [ "$platform" = macos-arm64 ]; then
+    args+=(--macos "$source")
+  else
+    args+=(--windows "$source")
+  fi
+done
 python3 builds/prepare_release.py stage "${args[@]}"
 (cd release-assets && sha256sum --check SHA256SUMS)
 
