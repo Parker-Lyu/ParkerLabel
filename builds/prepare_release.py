@@ -97,10 +97,13 @@ def release_notes(tag):
 def stage(tag, macos, windows, output):
     commit = verify_tag(tag)
     model_hash = sha256(ROOT / "model-bundle.json")
-    sources = {
-        "macos-arm64": locate_source(macos),
-        "windows-x64": locate_source(windows),
-    }
+    sources = {}
+    if macos is not None:
+        sources["macos-arm64"] = locate_source(macos)
+    if windows is not None:
+        sources["windows-x64"] = locate_source(windows)
+    if not sources:
+        raise ValueError("At least one platform artifact is required")
     archives = {
         name: check_platform(source, name, tag, commit, model_hash)
         for name, source in sources.items()
@@ -130,8 +133,8 @@ def main():
     check.add_argument("--tag", required=True)
     prepare = subparsers.add_parser("stage")
     prepare.add_argument("--tag", required=True)
-    prepare.add_argument("--macos", type=Path, required=True)
-    prepare.add_argument("--windows", type=Path, required=True)
+    prepare.add_argument("--macos", type=Path)
+    prepare.add_argument("--windows", type=Path)
     prepare.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "verify-version":

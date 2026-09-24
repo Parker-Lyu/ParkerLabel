@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Create a draft GitHub Release when either platform build succeeds, with only verified assets from successful platforms.
 - Resolve the original macOS app location under App Translocation so portable settings, categories, logs, and models remain beside the extracted app; retain a clear startup error if the original location cannot be resolved or written.
 
 ## 1.0.0

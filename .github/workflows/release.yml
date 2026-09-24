@@ -92,47 +92,44 @@ jobs:
             builds/output/*/windows-x64/size-report.json
             builds/output/*/windows-x64/SHA256SUMS
 
-  draft:
-    needs: [macos, windows]
+  draft_macos:
+    needs: macos
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+    concurrency:
+      group: draft-${{ github.ref }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
-          name: macos-arm64
-          path: collected/macos-arm64
-      - uses: actions/download-artifact@v4
-        with:
-          name: windows-x64
-          path: collected/windows-x64
-      - name: Verify and stage release assets
-        run: |
-          python3 builds/prepare_release.py stage \
-            --tag "$GITHUB_REF_NAME" \
-            --macos collected/macos-arm64 \
-            --windows collected/windows-x64 \
-            --output release-assets
-          cd release-assets
-          sha256sum --check SHA256SUMS
-      - name: Create or update draft release
+          path: collected
+      - name: Update draft release
         env:
           GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          if gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft > draft-state.txt 2>/dev/null; then
-            test "$(cat draft-state.txt)" = true
-            gh release edit "$GITHUB_REF_NAME" --title "ParkerLabel $GITHUB_REF_NAME" --notes-file release-assets/release-notes.md
-            gh release upload "$GITHUB_REF_NAME" release-assets/*.zip release-assets/*.json release-assets/SHA256SUMS --clobber
-          else
-            gh release create "$GITHUB_REF_NAME" \
-              release-assets/*.zip release-assets/*.json release-assets/SHA256SUMS \
-              --draft --verify-tag \
-              --title "ParkerLabel $GITHUB_REF_NAME" \
-              --notes-file release-assets/release-notes.md
-          fi
-          test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft)" = true
+        run: bash builds/publish_draft.sh
+
+  draft_windows:
+    needs: windows
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    concurrency:
+      group: draft-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          path: collected
+      - name: Update draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash builds/publish_draft.sh

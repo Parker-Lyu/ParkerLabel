@@ -80,6 +80,33 @@ class PrepareReleaseTests(unittest.TestCase):
                 digest, filename = line.split("  ", 1)
                 self.assertEqual(digest, prepare_release.sha256(output / filename))
 
+    def test_stages_either_platform_without_the_other(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            model_hash = prepare_release.sha256(prepare_release.ROOT / "model-bundle.json")
+            macos = self.make_platform(root, "macos-arm64", model_hash, "a" * 40)
+            windows = self.make_platform(root, "windows-x64", model_hash, "a" * 40)
+            with patch.object(prepare_release, "verify_tag", return_value="a" * 40):
+                for platform_name, sources in (
+                    ("macos-arm64", (macos.parent, None)),
+                    ("windows-x64", (None, windows.parent)),
+                ):
+                    with self.subTest(platform=platform_name):
+                        output = root / f"assets-{platform_name}"
+                        prepare_release.stage("v1.0.0", *sources, output)
+                        self.assertEqual(len(list(output.glob("*.zip"))), 1)
+                        self.assertEqual(len(list(output.glob("*.json"))), 3)
+                        self.assertEqual(len((output / "SHA256SUMS").read_text().splitlines()), 4)
+                        self.assertTrue((output / f"ParkerLabel-1.0.0-{platform_name}.zip").exists())
+
+    def test_rejects_missing_platform_artifacts(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "assets"
+            with patch.object(prepare_release, "verify_tag", return_value="a" * 40):
+                with self.assertRaisesRegex(ValueError, "At least one platform"):
+                    prepare_release.stage("v1.0.0", None, None, output)
+            self.assertFalse(output.exists())
+
     def test_rejects_platform_checksum_mismatch(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

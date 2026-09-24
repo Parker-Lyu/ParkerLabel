@@ -11,19 +11,22 @@ This builds candidate packages on both GitHub-hosted platforms without creating
 a Release. After checking those jobs and candidate packages, push the matching
 `v<version>` tag. The tag push runs
 `.github/workflows/release.yml` on GitHub-hosted macOS arm64 and Windows x64
-runners. The workflow requires both platform builds and their checks to pass
-before it creates a draft GitHub Release. It never publishes the draft.
+runners. Each successful platform build creates or updates a draft GitHub
+Release immediately. The draft is updated again if the other platform succeeds.
+It never publishes the draft.
 
-The draft contains the two platform ZIPs, separate `build-info-<platform>.json`,
-`license-inventory-<platform>.json`, and `size-report-<platform>.json` files,
-and one `SHA256SUMS` covering all eight other assets. Each ZIP retains its
+The draft contains the ZIP and separate `build-info-<platform>.json`,
+`license-inventory-<platform>.json`, and `size-report-<platform>.json` for each
+successful platform, plus one `SHA256SUMS` covering those assets. Each ZIP retains its
 embedded `build-info.json`. The workflow verifies the platform checksums,
 version, tag, commit, build type, and model manifest SHA-256 before upload.
-Rerunning the workflow updates an existing draft; it refuses to modify an
+Rerunning the workflow replaces the managed assets in an existing draft, so
+failed-platform files from an earlier run are removed. It refuses to modify an
 already published Release. The release notes come from the matching
 `CHANGELOG.md` section.
 
-Download and test the draft packages on their native platforms, including real
+Publish only after both platform packages are present and accepted. Download
+and test the draft packages on their native platforms, including real
 inference, saving and reopening annotations, model download and offline use,
 Chinese paths, native UI, and a fresh `configs/` directory for each extraction. After
 acceptance, publish the GitHub draft manually. Upload the same assets to Gitee
