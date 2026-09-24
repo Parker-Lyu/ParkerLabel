@@ -17,7 +17,7 @@ jobs:
   verify:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Verify version or tag
@@ -33,13 +33,15 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 360
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - uses: conda-incubator/setup-miniconda@v4
         with:
           miniforge-version: latest
           activate-environment: ''
+          channels: conda-forge
+          conda-remove-defaults: 'true'
       - name: Build macOS arm64
         shell: bash -el {0}
         run: |
@@ -48,7 +50,7 @@ jobs:
           else
             ./builds/build-macos.sh --candidate
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: macos-arm64
           if-no-files-found: error
@@ -65,13 +67,15 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 360
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - uses: conda-incubator/setup-miniconda@v4
         with:
           miniforge-version: latest
           activate-environment: ''
+          channels: conda-forge
+          conda-remove-defaults: 'true'
       - name: Build Windows x64
         shell: pwsh
         run: |
@@ -80,7 +84,7 @@ jobs:
           } else {
             .\builds\build-windows.ps1 -Candidate
           }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: windows-x64
           if-no-files-found: error
@@ -102,10 +106,10 @@ jobs:
       group: draft-${{ github.ref }}
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           path: collected
       - name: Update draft release
@@ -123,10 +127,10 @@ jobs:
       group: draft-${{ github.ref }}
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           path: collected
       - name: Update draft release
