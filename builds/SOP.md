@@ -80,10 +80,15 @@ The output directory contains:
 
 The ZIP contains a top-level `ParkerLabel-<version>/` directory with
 `ParkerLabel.app` inside it. Runtime-created `configs/` data therefore stays
-inside this directory after extraction.
+inside this directory after extraction when the directory is writable. If
+macOS translocates the app or the directory is read-only, runtime data goes to
+`~/Library/Application Support/ParkerLabel/configs/`. The app continues using
+that location on later launches while no `configs/` directory exists beside it.
+Test a first launch directly from the downloaded ZIP extraction and a launch
+after moving the app to a writable directory.
 
 The runtime models are not bundled. On first launch they are downloaded into
-`configs/pretrain/` beside `ParkerLabel.app`. Re-run the size report after the
+the selected `configs/pretrain/`. Re-run the size report after the
 first successful launch:
 
 ```bash

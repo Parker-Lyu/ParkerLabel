@@ -20,7 +20,7 @@
 
 Download a published application package for your platform from [GitHub Releases](https://github.com/Parker-Lyu/ParkerLabel/releases) or [Gitee Releases](https://gitee.com/Parker-Lyu/ParkerLabel/releases). Releases named `models-*` contain ONNX models, not application packages. Gitee application packages are uploaded separately and may appear later. Check the package against the release's `SHA256SUMS`, extract the complete archive, then run `ParkerLabel.app` on macOS or `ParkerLabel.exe` on Windows. Python, Conda, and project dependencies are not required.
 
-Keep the extracted program in a writable directory. On startup, ParkerLabel creates `configs/` beside the program. If the required ONNX models are missing or fail integrity verification, it downloads them into `configs/pretrain/`, trying GitHub first and falling back to Gitee. This normally happens only on the first launch; missing, damaged, or incompatible model files are downloaded again. 
+Keep the extracted program in a writable directory. On startup, ParkerLabel creates `configs/` beside the program. On macOS, if Gatekeeper runs the app from a read-only translocated location or the program directory is not writable, ParkerLabel uses `~/Library/Application Support/ParkerLabel/configs/` instead. A later launch continues using that location while no `configs/` directory exists beside the app. If the required ONNX models are missing or fail integrity verification, ParkerLabel downloads them into the selected `configs/pretrain/`, trying GitHub first and falling back to Gitee. This normally happens only on the first launch; missing, damaged, or incompatible model files are downloaded again.
 
 The macOS package is ad-hoc signed but is not notarized by Apple. The first launch may therefore be blocked by macOS. After attempting to open the app once, open **System Settings → Privacy & Security**, scroll to the security section, and choose **Open Anyway**.
 
@@ -60,11 +60,11 @@ Use **Settings → Keyboard Shortcuts** to view, change, clear, or restore key b
 
 ### Category configurations
 
-ParkerLabel includes a read-only configuration containing the 80 standard COCO object-detection categories. Users can create an empty category configuration or copy any existing configuration—including the built-in COCO configuration—to create a new version. Saved configurations are immutable; further changes are made by copying a configuration into another version. User-created configurations are stored in `configs/categories/` beside the program.
+ParkerLabel includes a read-only configuration containing the 80 standard COCO object-detection categories. Users can create an empty category configuration or copy any existing configuration—including the built-in COCO configuration—to create a new version. Saved configurations are immutable; further changes are made by copying a configuration into another version. User-created configurations are stored in the selected `configs/categories/` directory.
 
 Each annotation is bound to an exact category configuration by its UUID and SHA-256 digest. If that configuration is missing, does not match, or has been modified outside ParkerLabel, the annotation opens read-only so that its category meanings cannot silently change.
 
-Portable settings, including the startup category selection, are stored in `configs/settings.ini`. The application log is `configs/app.log`; it is cleared on each launch and limited to two 1 MB files while the app runs. Keep the program in a writable directory so it can create `configs/`.
+Portable settings, including the startup category selection, are stored in `configs/settings.ini`. The application log is `configs/app.log`; it is cleared on each launch and limited to two 1 MB files while the app runs. On macOS, the selected `configs/` location may be in Application Support as described above.
 
 ### Annotation files
 

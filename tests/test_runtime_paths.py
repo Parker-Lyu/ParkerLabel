@@ -1,3 +1,4 @@
+import errno
 import logging
 import tempfile
 import unittest
@@ -14,6 +15,16 @@ import parker_label_app.window as window_module
 
 
 class PortablePathTests(unittest.TestCase):
+    def setUp(self):
+        runtime_paths._runtime_config_directory = None
+
+    def tearDown(self):
+        runtime_paths._runtime_config_directory = None
+        logger = logging.getLogger("parker_label")
+        for handler in logger.handlers[:]:
+            logger.removeHandler(handler)
+            handler.close()
+
     def test_application_icon_has_transparent_background(self):
         image = QImage(str(runtime_paths.application_icon_path()))
         self.assertFalse(image.isNull())
@@ -35,7 +46,9 @@ class PortablePathTests(unittest.TestCase):
                 )
             with patch.object(runtime_paths.sys, "frozen", True, create=True), patch.object(
                 runtime_paths.sys, "_MEIPASS", str(root / "internal"), create=True
-            ), patch.object(runtime_paths.sys, "executable", str(root / "ParkerLabel.exe")):
+            ), patch.object(runtime_paths.sys, "executable", str(root / "ParkerLabel.exe")), patch.object(
+                runtime_paths.Path, "home", return_value=root
+            ):
                 self.assertEqual(runtime_paths.resource_root(), root / "internal")
                 self.assertEqual(runtime_paths.config_directory(), root / "configs")
                 self.assertEqual(runtime_paths.model_directory(), root / "configs" / "pretrain")
@@ -49,8 +62,53 @@ class PortablePathTests(unittest.TestCase):
             executable = root / "ParkerLabel.app" / "Contents" / "MacOS" / "ParkerLabel"
             with patch.object(runtime_paths.sys, "frozen", True, create=True), patch.object(
                 runtime_paths.sys, "executable", str(executable)
-            ):
+            ), patch.object(runtime_paths.Path, "home", return_value=root):
                 self.assertEqual(runtime_paths.config_directory(), root / "configs")
+
+    def test_translocated_app_uses_stable_support_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            executable = (
+                root / "AppTranslocation" / "random" / "d" / "ParkerLabel.app"
+                / "Contents" / "MacOS" / "ParkerLabel"
+            )
+            support = root / "Library" / "Application Support" / "ParkerLabel" / "configs"
+            with patch.object(runtime_paths.sys, "platform", "darwin"), patch.object(
+                runtime_paths.sys, "frozen", True, create=True
+            ), patch.object(runtime_paths.sys, "executable", str(executable)), patch.object(
+                runtime_paths.Path, "home", return_value=root
+            ):
+                self.assertEqual(runtime_paths.prepare_runtime(), support)
+                self.assertEqual(runtime_paths.config_directory(), support)
+                self.assertEqual(runtime_paths.model_directory(), support / "pretrain")
+                self.assertTrue((support / "categories").is_dir())
+                self.assertTrue((support / "pretrain").is_dir())
+                self.assertTrue((support / "app.log").is_file())
+
+                with patch.object(runtime_paths.sys, "executable", str(root / "ParkerLabel.app" / "Contents" / "MacOS" / "ParkerLabel")):
+                    runtime_paths._runtime_config_directory = None
+                    self.assertEqual(runtime_paths.config_directory(), support)
+
+    def test_read_only_portable_directory_falls_back_on_macos(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            portable = root / "configs"
+            support = root / "Library" / "Application Support" / "ParkerLabel" / "configs"
+            original_prepare = runtime_paths._prepare_config_directory
+
+            def prepare(path, logger):
+                if path == portable:
+                    raise OSError(errno.EROFS, "Read-only file system")
+                return original_prepare(path, logger)
+
+            with patch.object(runtime_paths.sys, "platform", "darwin"), patch.object(
+                runtime_paths.sys, "frozen", True, create=True
+            ), patch.object(runtime_paths.sys, "executable", str(root / "ParkerLabel.app" / "Contents" / "MacOS" / "ParkerLabel")), patch.object(
+                runtime_paths.Path, "home", return_value=root
+            ), patch.object(runtime_paths, "_prepare_config_directory", side_effect=prepare):
+                self.assertEqual(runtime_paths.prepare_runtime(), support)
+                self.assertEqual(runtime_paths.portable_settings().fileName(), str(support / "settings.ini"))
+                self.assertEqual(runtime_paths.model_directory(), support / "pretrain")
 
     def test_startup_does_not_import_old_category_files(self):
         with tempfile.TemporaryDirectory() as directory:

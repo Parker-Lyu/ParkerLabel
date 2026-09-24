@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep macOS configuration and model downloads writable when Gatekeeper translocates the app or its directory is read-only.
+
 ## 1.0.0
 
 ### Initial release
