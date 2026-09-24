@@ -1,5 +1,6 @@
 import errno
 import logging
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -70,13 +71,61 @@ class PortablePathTests(unittest.TestCase):
             portable = executable.parents[3] / "configs"
             with patch.object(runtime_paths.sys, "platform", "darwin"), patch.object(
                 runtime_paths.sys, "frozen", True, create=True
-            ), patch.object(runtime_paths.sys, "executable", str(executable)):
+            ), patch.object(runtime_paths.sys, "executable", str(executable)), patch.object(
+                runtime_paths, "_original_app_bundle", return_value=None
+            ):
                 self.assertEqual(runtime_paths.config_directory(), portable)
                 with self.assertRaises(runtime_paths.PortableLocationError) as caught:
                     runtime_paths.prepare_runtime()
                 self.assertTrue(caught.exception.translocated)
                 self.assertEqual(caught.exception.directory, portable)
                 self.assertFalse(portable.exists())
+
+    def test_translocated_app_writes_to_original_portable_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bundle = root / "下载 便携包" / "ParkerLabel.app"
+            bundle.mkdir(parents=True)
+            relocated = root / "AppTranslocation" / "random" / "d" / bundle.name
+            executable = relocated / "Contents" / "MacOS" / "ParkerLabel"
+            with patch.object(runtime_paths.sys, "platform", "darwin"), patch.object(
+                runtime_paths.sys, "frozen", True, create=True
+            ), patch.object(runtime_paths.sys, "executable", str(executable)), patch.object(
+                runtime_paths, "_original_app_bundle", return_value=bundle
+            ):
+                configs = bundle.parent / "configs"
+                self.assertEqual(runtime_paths.prepare_runtime(), configs)
+                self.assertTrue((configs / "categories").is_dir())
+                self.assertTrue((configs / "pretrain").is_dir())
+                self.assertTrue((configs / "app.log").is_file())
+                settings = runtime_paths.portable_settings()
+                settings.setValue("test/value", "中文")
+                settings.sync()
+                self.assertEqual(settings.status(), QSettings.NoError)
+                self.assertEqual(runtime_paths.model_directory(), configs / "pretrain")
+                self.assertFalse((relocated.parent / "configs").exists())
+                runtime_paths.prepare_runtime()
+                self.assertEqual(runtime_paths.portable_settings().value("test/value"), "中文")
+                with patch.object(runtime_paths, "_prepare_config_directory", side_effect=PermissionError(errno.EACCES, "Denied")):
+                    with self.assertRaises(runtime_paths.PortableLocationError) as caught:
+                        runtime_paths.prepare_runtime()
+                self.assertEqual(caught.exception.directory, configs)
+                self.assertFalse(caught.exception.translocated)
+
+    def test_original_path_lookup_handles_unavailable_framework(self):
+        runtime_paths._original_app_bundle.cache_clear()
+        with patch.object(runtime_paths.ctypes, "CDLL", side_effect=OSError("Unavailable")):
+            self.assertIsNone(runtime_paths._original_app_bundle(Path("/Missing/ParkerLabel.app")))
+        runtime_paths._original_app_bundle.cache_clear()
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS system framework")
+    def test_native_original_path_lookup_supports_unicode_and_missing_paths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bundle = Path(directory).resolve() / "中文 空格" / "ParkerLabel.app"
+            bundle.mkdir(parents=True)
+            self.assertEqual(runtime_paths._original_app_bundle(bundle), bundle)
+            self.assertIsNone(runtime_paths._original_app_bundle(bundle.parent / "Missing.app"))
+        runtime_paths._original_app_bundle.cache_clear()
 
     def test_read_only_portable_directory_reports_its_path(self):
         with tempfile.TemporaryDirectory() as directory:

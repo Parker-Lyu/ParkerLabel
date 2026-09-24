@@ -80,11 +80,26 @@ The output directory contains:
 
 The ZIP contains a top-level `ParkerLabel-<version>/` directory with
 `ParkerLabel.app` inside it. Runtime-created `configs/` data therefore stays
-inside this directory after extraction. Move the entire extracted directory
-from Downloads to a writable location with Finder before opening the app. If
-macOS translocates the app or the directory is read-only, startup explains how
-to move it and does not create `configs/` elsewhere. Test both the blocked
-launch and a successful launch after moving the directory.
+inside this directory after extraction. After allowing the app in Privacy &
+Security, macOS may still run it from a read-only App Translocation copy.
+ParkerLabel asks the system for the original app location and writes `configs/`
+beside that original app; bundled resources continue to load from the running
+copy. The original extracted directory must be writable.
+
+Original-path lookup uses the system Security framework's
+`SecTranslocateCreateOriginalPathForURL` entry point, which is not a public SDK
+contract. If it is unavailable, lookup fails, or the original directory is
+read-only, startup retains the move-folder instruction. Move the entire
+extracted folder with Finder to a writable location and retry. No configuration
+is silently redirected to a user-global directory.
+
+Acceptance must use a fresh browser download with quarantine intact: extract,
+allow the app in Privacy & Security, and launch without moving the folder.
+Confirm an actual App Translocation launch, successful startup, and settings,
+categories, logs, and downloaded models in the original `configs/`. Restart to
+verify persistence. Also test a moved folder and an unwritable original folder.
+Mocked path tests and native framework lookup tests alone do not establish this
+Gatekeeper acceptance.
 
 The runtime models are not bundled. On first launch they are downloaded into
 `configs/pretrain/` beside `ParkerLabel.app`. Re-run the size report after the
@@ -175,3 +190,17 @@ Python, Conda and project dependencies are not required. Models and user
 configuration are stored in `configs/` beside the executable. Each newly
 extracted version starts with its own `configs/` directory. Windows SmartScreen
 or antivirus software may still show a security prompt for unsigned builds.
+This warning occurs before ParkerLabel starts and cannot be removed by runtime
+code or by switching to a different ZIP layout. Trusted Authenticode signing
+identifies the publisher and helps establish reputation, but new signed builds
+(including EV-signed builds) can still show the warning. Self-signed certificates
+do not provide public publisher trust. See Microsoft's
+[SmartScreen reputation guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation).
+
+For direct portable distribution, treat trusted signing as a separate release
+setup requiring a publisher identity and signing service/certificate. Verify
+the signature on the final EXE before archiving and generating checksums; do not
+claim SmartScreen acceptance until testing a fresh browser download on Windows.
+For the current unsigned package, users who have verified its source can select
+More info > Run anyway when that option is offered. Do not disable SmartScreen
+globally. Organization policies may prevent this override.

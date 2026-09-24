@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Stop startup with a clear message when macOS translocates the app or its directory is read-only; keep all runtime data beside the app for portable builds.
+- Resolve the original macOS app location under App Translocation so portable settings, categories, logs, and models remain beside the extracted app; retain a clear startup error if the original location cannot be resolved or written.
 
 ## 1.0.0
 

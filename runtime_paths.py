@@ -1,6 +1,9 @@
+import ctypes
 import errno
+import os
 import logging
 import sys
+from functools import lru_cache
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -29,7 +32,55 @@ def program_directory():
         return _SOURCE_ROOT
     executable = Path(sys.executable).absolute()
     app_bundle = next((parent for parent in executable.parents if parent.suffix == ".app"), None)
+    if app_bundle and sys.platform == "darwin" and "AppTranslocation" in app_bundle.parts:
+        app_bundle = _original_app_bundle(app_bundle) or app_bundle
     return app_bundle.parent if app_bundle else executable.parent
+
+
+@lru_cache(maxsize=8)
+def _original_app_bundle(bundle):
+    try:
+        core = ctypes.CDLL("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")
+        security = ctypes.CDLL("/System/Library/Frameworks/Security.framework/Security")
+        core.CFURLCreateFromFileSystemRepresentation.argtypes = [
+            ctypes.c_void_p, ctypes.c_char_p, ctypes.c_long, ctypes.c_bool,
+        ]
+        core.CFURLCreateFromFileSystemRepresentation.restype = ctypes.c_void_p
+        core.CFURLGetFileSystemRepresentation.argtypes = [
+            ctypes.c_void_p, ctypes.c_bool, ctypes.c_void_p, ctypes.c_long,
+        ]
+        core.CFURLGetFileSystemRepresentation.restype = ctypes.c_bool
+        core.CFRelease.argtypes = [ctypes.c_void_p]
+        core.CFRelease.restype = None
+        original_path = security.SecTranslocateCreateOriginalPathForURL
+        original_path.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+        original_path.restype = ctypes.c_void_p
+        encoded = os.fsencode(bundle)
+        source = core.CFURLCreateFromFileSystemRepresentation(None, encoded, len(encoded), True)
+        if not source:
+            return None
+        original = None
+        error = ctypes.c_void_p()
+        try:
+            original = original_path(source, ctypes.byref(error))
+            if not original:
+                return None
+            buffer = ctypes.create_string_buffer(4096)
+            if not core.CFURLGetFileSystemRepresentation(original, True, buffer, len(buffer)):
+                return None
+            path = Path(os.fsdecode(buffer.value))
+            if (path.is_absolute() and path.name == bundle.name and path.is_dir()
+                    and "AppTranslocation" not in path.parts):
+                return path
+        finally:
+            if error.value:
+                core.CFRelease(error)
+            if original:
+                core.CFRelease(original)
+            core.CFRelease(source)
+    except (OSError, AttributeError):
+        return None
+    return None
 
 
 def config_directory():
@@ -59,7 +110,7 @@ def prepare_runtime():
     if (
         sys.platform == "darwin"
         and getattr(sys, "frozen", False)
-        and "AppTranslocation" in Path(sys.executable).parts
+        and "AppTranslocation" in directory.parts
     ):
         raise PortableLocationError(directory, translocated=True)
     logger = logging.getLogger(_LOGGER_NAME)
