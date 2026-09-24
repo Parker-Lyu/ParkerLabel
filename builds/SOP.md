@@ -25,7 +25,7 @@ already published Release. The release notes come from the matching
 
 Download and test the draft packages on their native platforms, including real
 inference, saving and reopening annotations, model download and offline use,
-Chinese paths, native UI, and preservation of `configs/` during upgrade. After
+Chinese paths, native UI, and a fresh `configs/` directory for each extraction. After
 acceptance, publish the GitHub draft manually. Upload the same assets to Gitee
 separately and verify their checksums there. A pushed tag is public even while
 the application Release remains a draft.
@@ -80,15 +80,14 @@ The output directory contains:
 
 The ZIP contains a top-level `ParkerLabel-<version>/` directory with
 `ParkerLabel.app` inside it. Runtime-created `configs/` data therefore stays
-inside this directory after extraction when the directory is writable. If
-macOS translocates the app or the directory is read-only, runtime data goes to
-`~/Library/Application Support/ParkerLabel/configs/`. The app continues using
-that location on later launches while no `configs/` directory exists beside it.
-Test a first launch directly from the downloaded ZIP extraction and a launch
-after moving the app to a writable directory.
+inside this directory after extraction. Move the entire extracted directory
+from Downloads to a writable location with Finder before opening the app. If
+macOS translocates the app or the directory is read-only, startup explains how
+to move it and does not create `configs/` elsewhere. Test both the blocked
+launch and a successful launch after moving the directory.
 
 The runtime models are not bundled. On first launch they are downloaded into
-the selected `configs/pretrain/`. Re-run the size report after the
+`configs/pretrain/` beside `ParkerLabel.app`. Re-run the size report after the
 first successful launch:
 
 ```bash
@@ -173,6 +172,6 @@ The ZIP contains `ParkerLabel-<version>/ParkerLabel.exe` and an empty
 single `ParkerLabel.exe`; its packaged
 dependencies are extracted to a temporary runtime directory automatically.
 Python, Conda and project dependencies are not required. Models and user
-configuration are stored in `configs/` beside the executable. Preserve that
-directory when replacing the executable during an upgrade. Windows SmartScreen
+configuration are stored in `configs/` beside the executable. Each newly
+extracted version starts with its own `configs/` directory. Windows SmartScreen
 or antivirus software may still show a security prompt for unsigned builds.

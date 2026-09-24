@@ -4,7 +4,7 @@ import sys
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
-from runtime_paths import application_icon_path, prepare_runtime
+from runtime_paths import PortableLocationError, application_icon_path, prepare_runtime
 
 
 def main():
@@ -31,6 +31,16 @@ def main():
         if not ensure_runtime_models():
             return 1
         window = MainWindow()
+    except PortableLocationError as error:
+        from parker_label_app.i18n import startup_text
+
+        key = "error.app_translocated" if error.translocated else "error.portable_directory_unavailable"
+        QMessageBox.critical(
+            None,
+            startup_text("app.start_failed"),
+            startup_text(key, path=str(error.directory)),
+        )
+        return 1
     except Exception as error:
         logging.getLogger("parker_label").exception("Startup failed")
         title = (

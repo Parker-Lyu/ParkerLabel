@@ -1,5 +1,7 @@
 {
   "app.start_failed": "Start fehlgeschlagen",
+  "error.app_translocated": "macOS startet ParkerLabel von einem schreibgeschützten temporären Ort. Verschieben Sie im Finder den gesamten entpackten ParkerLabel-Ordner aus „Downloads“ an einen beschreibbaren Ort und öffnen Sie die App erneut. configs wird neben der App gespeichert.",
+  "error.portable_directory_unavailable": "ParkerLabel kann nicht in {path} schreiben. Verschieben Sie den gesamten entpackten ParkerLabel-Ordner an einen beschreibbaren Ort und öffnen Sie die App erneut. configs wird neben der App gespeichert.",
   "model.title": "Modellvorbereitung",
   "model.checking": "Modelldateien und SHA-256 werden geprüft…",
   "model.downloading": "Modellgewichte werden heruntergeladen…",

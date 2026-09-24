@@ -1,5 +1,7 @@
 {
   "app.start_failed": "启动失败",
+  "error.app_translocated": "macOS 正在只读的临时位置运行 ParkerLabel。请用访达将解压后的整个 ParkerLabel 文件夹移出“下载”文件夹，放到可写的位置，然后重新打开。ParkerLabel 会在 APP 旁保存 configs。",
+  "error.portable_directory_unavailable": "ParkerLabel 无法写入 {path}。请将解压后的整个 ParkerLabel 文件夹移到可写的位置，然后重新打开。ParkerLabel 会在 APP 旁保存 configs。",
   "model.title": "模型准备",
   "model.checking": "正在检查模型文件和 SHA-256……",
   "model.downloading": "正在下载模型权重……",

@@ -1,5 +1,7 @@
 {
   "app.start_failed": "Échec du démarrage",
+  "error.app_translocated": "macOS exécute ParkerLabel depuis un emplacement temporaire en lecture seule. Dans le Finder, déplacez tout le dossier ParkerLabel extrait hors de Téléchargements vers un emplacement accessible en écriture, puis rouvrez l’application. configs est conservé à côté de l’application.",
+  "error.portable_directory_unavailable": "ParkerLabel ne peut pas écrire dans {path}. Déplacez tout le dossier ParkerLabel extrait vers un emplacement accessible en écriture, puis rouvrez l’application. configs est conservé à côté de l’application.",
   "model.title": "Préparation des modèles",
   "model.checking": "Vérification des fichiers de modèle et des SHA-256…",
   "model.downloading": "Téléchargement des poids des modèles…",

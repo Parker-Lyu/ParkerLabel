@@ -1,5 +1,7 @@
 {
   "app.start_failed": "시작 실패",
+  "error.app_translocated": "macOS가 읽기 전용 임시 위치에서 ParkerLabel을 실행하고 있습니다. Finder에서 압축을 푼 ParkerLabel 폴더 전체를 다운로드 폴더 밖의 쓰기 가능한 위치로 옮긴 뒤 앱을 다시 여세요. configs는 앱 옆에 저장됩니다.",
+  "error.portable_directory_unavailable": "ParkerLabel이 {path}에 쓸 수 없습니다. 압축을 푼 ParkerLabel 폴더 전체를 쓰기 가능한 위치로 옮긴 뒤 앱을 다시 여세요. configs는 앱 옆에 저장됩니다.",
   "model.title": "모델 준비",
   "model.checking": "모델 파일과 SHA-256을 확인하는 중…",
   "model.downloading": "모델 가중치를 다운로드하는 중…",

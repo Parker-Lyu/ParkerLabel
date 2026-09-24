@@ -10,16 +10,13 @@ from PyQt5.QtGui import QImage
 from PyQt5.QtWidgets import QApplication
 
 import runtime_paths
+import main as main_module
 from parker_label_app.category_store import CategoryStore
 import parker_label_app.window as window_module
 
 
 class PortablePathTests(unittest.TestCase):
-    def setUp(self):
-        runtime_paths._runtime_config_directory = None
-
     def tearDown(self):
-        runtime_paths._runtime_config_directory = None
         logger = logging.getLogger("parker_label")
         for handler in logger.handlers[:]:
             logger.removeHandler(handler)
@@ -46,9 +43,7 @@ class PortablePathTests(unittest.TestCase):
                 )
             with patch.object(runtime_paths.sys, "frozen", True, create=True), patch.object(
                 runtime_paths.sys, "_MEIPASS", str(root / "internal"), create=True
-            ), patch.object(runtime_paths.sys, "executable", str(root / "ParkerLabel.exe")), patch.object(
-                runtime_paths.Path, "home", return_value=root
-            ):
+            ), patch.object(runtime_paths.sys, "executable", str(root / "ParkerLabel.exe")):
                 self.assertEqual(runtime_paths.resource_root(), root / "internal")
                 self.assertEqual(runtime_paths.config_directory(), root / "configs")
                 self.assertEqual(runtime_paths.model_directory(), root / "configs" / "pretrain")
@@ -62,53 +57,53 @@ class PortablePathTests(unittest.TestCase):
             executable = root / "ParkerLabel.app" / "Contents" / "MacOS" / "ParkerLabel"
             with patch.object(runtime_paths.sys, "frozen", True, create=True), patch.object(
                 runtime_paths.sys, "executable", str(executable)
-            ), patch.object(runtime_paths.Path, "home", return_value=root):
+            ):
                 self.assertEqual(runtime_paths.config_directory(), root / "configs")
 
-    def test_translocated_app_uses_stable_support_directory(self):
+    def test_translocated_app_stops_before_writing_portable_data(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             executable = (
                 root / "AppTranslocation" / "random" / "d" / "ParkerLabel.app"
                 / "Contents" / "MacOS" / "ParkerLabel"
             )
-            support = root / "Library" / "Application Support" / "ParkerLabel" / "configs"
+            portable = executable.parents[3] / "configs"
             with patch.object(runtime_paths.sys, "platform", "darwin"), patch.object(
                 runtime_paths.sys, "frozen", True, create=True
-            ), patch.object(runtime_paths.sys, "executable", str(executable)), patch.object(
-                runtime_paths.Path, "home", return_value=root
-            ):
-                self.assertEqual(runtime_paths.prepare_runtime(), support)
-                self.assertEqual(runtime_paths.config_directory(), support)
-                self.assertEqual(runtime_paths.model_directory(), support / "pretrain")
-                self.assertTrue((support / "categories").is_dir())
-                self.assertTrue((support / "pretrain").is_dir())
-                self.assertTrue((support / "app.log").is_file())
+            ), patch.object(runtime_paths.sys, "executable", str(executable)):
+                self.assertEqual(runtime_paths.config_directory(), portable)
+                with self.assertRaises(runtime_paths.PortableLocationError) as caught:
+                    runtime_paths.prepare_runtime()
+                self.assertTrue(caught.exception.translocated)
+                self.assertEqual(caught.exception.directory, portable)
+                self.assertFalse(portable.exists())
 
-                with patch.object(runtime_paths.sys, "executable", str(root / "ParkerLabel.app" / "Contents" / "MacOS" / "ParkerLabel")):
-                    runtime_paths._runtime_config_directory = None
-                    self.assertEqual(runtime_paths.config_directory(), support)
-
-    def test_read_only_portable_directory_falls_back_on_macos(self):
+    def test_read_only_portable_directory_reports_its_path(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             portable = root / "configs"
-            support = root / "Library" / "Application Support" / "ParkerLabel" / "configs"
-            original_prepare = runtime_paths._prepare_config_directory
-
-            def prepare(path, logger):
-                if path == portable:
-                    raise OSError(errno.EROFS, "Read-only file system")
-                return original_prepare(path, logger)
-
             with patch.object(runtime_paths.sys, "platform", "darwin"), patch.object(
                 runtime_paths.sys, "frozen", True, create=True
             ), patch.object(runtime_paths.sys, "executable", str(root / "ParkerLabel.app" / "Contents" / "MacOS" / "ParkerLabel")), patch.object(
-                runtime_paths.Path, "home", return_value=root
-            ), patch.object(runtime_paths, "_prepare_config_directory", side_effect=prepare):
-                self.assertEqual(runtime_paths.prepare_runtime(), support)
-                self.assertEqual(runtime_paths.portable_settings().fileName(), str(support / "settings.ini"))
-                self.assertEqual(runtime_paths.model_directory(), support / "pretrain")
+                runtime_paths, "_prepare_config_directory", side_effect=OSError(errno.EROFS, "Read-only file system")
+            ):
+                with self.assertRaises(runtime_paths.PortableLocationError) as caught:
+                    runtime_paths.prepare_runtime()
+                self.assertFalse(caught.exception.translocated)
+                self.assertEqual(caught.exception.directory, portable)
+                self.assertEqual(runtime_paths.portable_settings().fileName(), str(portable / "settings.ini"))
+                self.assertEqual(runtime_paths.model_directory(), portable / "pretrain")
+
+    def test_translocation_error_shows_move_instruction(self):
+        type(self)._app = QApplication.instance() or QApplication([])
+        error = runtime_paths.PortableLocationError(Path("/temporary/configs"), translocated=True)
+        with patch.object(main_module, "QApplication", return_value=self._app), patch.object(
+            main_module, "prepare_runtime", side_effect=error
+        ), patch.object(main_module.QMessageBox, "critical") as dialog:
+            self.assertEqual(main_module.main(), 1)
+        message = dialog.call_args.args[2]
+        self.assertIn("configs", message)
+        self.assertNotIn("Read-only file system", message)
 
     def test_startup_does_not_import_old_category_files(self):
         with tempfile.TemporaryDirectory() as directory:

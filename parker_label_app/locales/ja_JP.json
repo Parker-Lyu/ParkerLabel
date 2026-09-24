@@ -1,5 +1,7 @@
 {
   "app.start_failed": "起動に失敗しました",
+  "error.app_translocated": "macOS は ParkerLabel を読み取り専用の一時領域から実行しています。Finder で展開した ParkerLabel フォルダー全体を「ダウンロード」以外の書き込み可能な場所に移動し、アプリを開き直してください。configs はアプリの隣に保存されます。",
+  "error.portable_directory_unavailable": "ParkerLabel は {path} に書き込めません。展開した ParkerLabel フォルダー全体を書き込み可能な場所に移動し、アプリを開き直してください。configs はアプリの隣に保存されます。",
   "model.title": "モデルの準備",
   "model.checking": "モデルファイルと SHA-256 を確認しています…",
   "model.downloading": "モデルの重みをダウンロードしています…",

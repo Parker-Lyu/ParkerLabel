@@ -9,7 +9,13 @@ from PyQt5.QtCore import QSettings
 
 _SOURCE_ROOT = Path(__file__).resolve().parent
 _LOGGER_NAME = "parker_label"
-_runtime_config_directory = None
+
+
+class PortableLocationError(OSError):
+    def __init__(self, directory, translocated=False):
+        self.directory = directory
+        self.translocated = translocated
+        super().__init__(f"Portable data directory is unavailable: {directory}")
 
 
 def resource_root():
@@ -27,20 +33,7 @@ def program_directory():
 
 
 def config_directory():
-    if _runtime_config_directory is not None:
-        return _runtime_config_directory
-    portable = program_directory() / "configs"
-    if sys.platform == "darwin" and getattr(sys, "frozen", False):
-        support = _macos_support_directory()
-        if "AppTranslocation" in Path(sys.executable).parts or (
-            support.exists() and not portable.exists()
-        ):
-            return support
-    return portable
-
-
-def _macos_support_directory():
-    return Path.home() / "Library" / "Application Support" / "ParkerLabel" / "configs"
+    return program_directory() / "configs"
 
 
 def model_directory():
@@ -62,8 +55,13 @@ def portable_settings():
 
 
 def prepare_runtime():
-    global _runtime_config_directory
     directory = config_directory()
+    if (
+        sys.platform == "darwin"
+        and getattr(sys, "frozen", False)
+        and "AppTranslocation" in Path(sys.executable).parts
+    ):
+        raise PortableLocationError(directory, translocated=True)
     logger = logging.getLogger(_LOGGER_NAME)
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
@@ -71,16 +69,9 @@ def prepare_runtime():
     try:
         _prepare_config_directory(directory, logger)
     except OSError as error:
-        if (
-            sys.platform != "darwin"
-            or not getattr(sys, "frozen", False)
-            or directory == _macos_support_directory()
-            or error.errno not in (errno.EROFS, errno.EACCES, errno.EPERM)
-        ):
+        if error.errno not in (errno.EROFS, errno.EACCES, errno.EPERM):
             raise
-        directory = _macos_support_directory()
-        _prepare_config_directory(directory, logger)
-    _runtime_config_directory = directory
+        raise PortableLocationError(directory) from error
     return directory
 
 

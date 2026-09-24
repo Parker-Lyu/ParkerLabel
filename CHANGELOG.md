@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Keep macOS configuration and model downloads writable when Gatekeeper translocates the app or its directory is read-only.
+- Stop startup with a clear message when macOS translocates the app or its directory is read-only; keep all runtime data beside the app for portable builds.
 
 ## 1.0.0
 

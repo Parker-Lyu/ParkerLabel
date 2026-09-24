@@ -1,5 +1,7 @@
 {
   "app.start_failed": "Error al iniciar",
+  "error.app_translocated": "macOS está ejecutando ParkerLabel desde una ubicación temporal de solo lectura. En Finder, mueve toda la carpeta ParkerLabel extraída fuera de Descargas a una ubicación con permiso de escritura y vuelve a abrir la app. configs se guarda junto a la app.",
+  "error.portable_directory_unavailable": "ParkerLabel no puede escribir en {path}. Mueve toda la carpeta ParkerLabel extraída a una ubicación con permiso de escritura y vuelve a abrir la app. configs se guarda junto a la app.",
   "model.title": "Preparación de modelos",
   "model.checking": "Comprobando los archivos de modelo y SHA-256…",
   "model.downloading": "Descargando los pesos de los modelos…",

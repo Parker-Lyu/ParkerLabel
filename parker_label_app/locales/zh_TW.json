@@ -1,5 +1,7 @@
 {
   "app.start_failed": "啟動失敗",
+  "error.app_translocated": "macOS 正在唯讀的暫存位置執行 ParkerLabel。請用 Finder 將解壓縮後的整個 ParkerLabel 資料夾移出「下載」資料夾，放到可寫入的位置，然後重新開啟。ParkerLabel 會在 APP 旁儲存 configs。",
+  "error.portable_directory_unavailable": "ParkerLabel 無法寫入 {path}。請將解壓縮後的整個 ParkerLabel 資料夾移到可寫入的位置，然後重新開啟。ParkerLabel 會在 APP 旁儲存 configs。",
   "model.title": "模型準備",
   "model.checking": "正在檢查模型檔案和 SHA-256……",
   "model.downloading": "正在下載模型權重……",

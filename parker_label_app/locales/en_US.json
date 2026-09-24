@@ -1,5 +1,7 @@
 {
   "app.start_failed": "Startup Failed",
+  "error.app_translocated": "macOS is running ParkerLabel from a read-only temporary location. In Finder, move the entire extracted ParkerLabel folder to a writable location outside Downloads, then open the app again. ParkerLabel stores configs beside the app.",
+  "error.portable_directory_unavailable": "ParkerLabel cannot write to {path}. Move the entire extracted ParkerLabel folder to a writable location, then open the app again. ParkerLabel stores configs beside the app.",
   "model.title": "Model Setup",
   "model.checking": "Checking model files and SHA-256 checksums…",
   "model.downloading": "Downloading model weights…",

@@ -1,7 +1,7 @@
 import json
 from string import Formatter
 
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QLocale, QObject, pyqtSignal
 
 from runtime_paths import portable_settings, resource_root
 
@@ -78,3 +78,17 @@ class LanguageManager(QObject):
 
 
 language_manager = LanguageManager()
+
+
+def startup_text(key, **values):
+    language = language_manager.language
+    if not language_manager.settings.contains("interface/language"):
+        locale = QLocale.system().name()
+        if locale.startswith("zh_"):
+            language = "zh_TW" if locale in ("zh_HK", "zh_MO", "zh_TW") else "zh_CN"
+        else:
+            language = next(
+                (code for code in LANGUAGE_NAMES if code[:2] == locale[:2]),
+                DEFAULT_LANGUAGE,
+            )
+    return _TEXT[language].get(key, key).format(**values)
