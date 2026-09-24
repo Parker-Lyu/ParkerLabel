@@ -36,6 +36,7 @@ from PyQt5.QtWidgets import (
     QStylePainter,
     QTableWidget,
     QTextEdit,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -211,7 +212,6 @@ class MainWindow(QWidget):
     QUALITY_SETTING_KEY = "interface/quality_check_enabled"
     BRUSH_SIZE_SETTING_KEY = "interface/brush_size"
     LAST_IMAGE_SETTING_KEY = "files/last_opened_image"
-    CANVAS_PAN_MARGIN = 96
     TOOLTIPS_SETTING_KEY = "interface/tooltips_enabled"
 
     def __init__(self):
@@ -276,6 +276,7 @@ class MainWindow(QWidget):
         self.canvas_size = (1, 1)
         self.panning = False
         self.pan_origin = None
+        self.native_zoom_value = None
         self.painting = None
         self.morph_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
         self.i18n = language_manager
@@ -378,6 +379,33 @@ class MainWindow(QWidget):
         )
         self.quality_summary_label.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.quality_summary_label.hide()
+        self.view_controls = QWidget(self.scroll_area.viewport())
+        view_layout = QHBoxLayout(self.view_controls)
+        view_layout.setContentsMargins(0, 0, 0, 0)
+        view_layout.setSpacing(4)
+        self.reset_view_button = QToolButton(self.view_controls)
+        self.reset_view_button.setText("⌂")
+        self.zoom_in_button = QToolButton(self.view_controls)
+        self.zoom_in_button.setText("+")
+        self.zoom_out_button = QToolButton(self.view_controls)
+        self.zoom_out_button.setText("−")
+        for button in (self.reset_view_button, self.zoom_in_button, self.zoom_out_button):
+            button.setFixedSize(30, 30)
+            button.setStyleSheet(
+                "QToolButton { background: rgba(255, 255, 255, 230); "
+                "border: 1px solid #777; border-radius: 4px; font-size: 18px; }"
+            )
+            view_layout.addWidget(button)
+        self.reset_view_button.clicked.connect(self.reset_canvas_view)
+        self.zoom_in_button.clicked.connect(
+            lambda: self.zoom_canvas_at_center(self.zoom_step)
+        )
+        self.zoom_out_button.clicked.connect(
+            lambda: self.zoom_canvas_at_center(1 / self.zoom_step)
+        )
+        self.view_controls.adjustSize()
+        self.view_controls.move(8, 8)
+        self.view_controls.hide()
         self.scroll_area.viewport().installEventFilter(self)
         controls = QVBoxLayout()
         self.primary_controls = self.build_primary_controls()
@@ -712,6 +740,14 @@ class MainWindow(QWidget):
         for button in self.view_group.buttons():
             action_id = f"view_{button.property('value')}"
             button.setToolTip(self.shortcut_tooltip("", action_id))
+        for button, key in (
+            (self.reset_view_button, "canvas.reset_view"),
+            (self.zoom_in_button, "canvas.zoom_in"),
+            (self.zoom_out_button, "canvas.zoom_out"),
+        ):
+            label = self.t(key)
+            button.setAccessibleName(label)
+            button.setToolTip(label if self.tooltips_enabled else "")
 
     def shortcut_tooltip(self, base, action_id):
         """Append an active shortcut hint when interface tips are enabled."""
@@ -749,6 +785,7 @@ class MainWindow(QWidget):
         self.tool_controls.activate()
         self.resize_segment_table_columns()
         self.update_quality_overlay()
+        self.update_view_controls()
 
     def build_menus(self):
         """Create Settings and Help menus with explicit native menu roles."""
@@ -1032,6 +1069,7 @@ class MainWindow(QWidget):
         ):
             self.update_canvas_container()
             self.position_quality_overlay()
+            self.view_controls.raise_()
         return super().eventFilter(watched, event)
 
     def position_quality_overlay(self):
@@ -1078,6 +1116,11 @@ class MainWindow(QWidget):
         self.update_canvas_container()
         self.update_editing_state()
         self.update_quality_overlay()
+        self.update_view_controls()
+
+    def update_view_controls(self):
+        self.view_controls.setVisible(self.document is not None)
+        self.view_controls.raise_()
 
     def choose_image(self):
         """Open a file picker and load the selected image."""
@@ -1122,6 +1165,7 @@ class MainWindow(QWidget):
             self.refresh_table()
             self.refresh_canvas()
             self.update_editing_state()
+            self.update_view_controls()
             self.settings.setValue(
                 self.LAST_IMAGE_SETTING_KEY, str(self.document.image_path.resolve())
             )
@@ -1213,14 +1257,15 @@ class MainWindow(QWidget):
 
     def update_canvas_container(self):
         """Keep panning space around canvas edges that exceed the viewport."""
+        viewport = self.scroll_area.viewport()
         horizontal_margin = (
-            self.CANVAS_PAN_MARGIN
-            if self.canvas.width() > self.scroll_area.viewport().width()
+            viewport.width() // 2
+            if self.canvas.width() > viewport.width()
             else 0
         )
         vertical_margin = (
-            self.CANVAS_PAN_MARGIN
-            if self.canvas.height() > self.scroll_area.viewport().height()
+            viewport.height() // 2
+            if self.canvas.height() > viewport.height()
             else 0
         )
         self.canvas.move(horizontal_margin, vertical_margin)
@@ -2214,22 +2259,84 @@ class MainWindow(QWidget):
         self.refresh_canvas()
 
     def canvas_wheel(self, event):
-        """Zoom the canvas while keeping the cursor position anchored."""
+        """Pan with a touchpad and zoom with a mouse wheel or Ctrl-wheel."""
         if self.document is None:
             event.ignore()
             return
+        if event.source() == Qt.MouseEventSynthesizedBySystem and not (
+            event.modifiers() & Qt.ControlModifier
+        ):
+            delta = event.pixelDelta()
+            if delta.isNull():
+                angle = event.angleDelta()
+                delta = QPoint(round(angle.x() / 120 * 40), round(angle.y() / 120 * 40))
+            horizontal = self.scroll_area.horizontalScrollBar()
+            vertical = self.scroll_area.verticalScrollBar()
+            horizontal.setValue(horizontal.value() - delta.x())
+            vertical.setValue(vertical.value() - delta.y())
+            event.accept()
+            return
         steps = event.angleDelta().y() / 120.0
         if not steps:
+            event.accept()
+            return
+        self.zoom_canvas(self.zoom_step ** steps, event.pos())
+        event.accept()
+
+    def canvas_native_gesture(self, event):
+        if event.gestureType() in (Qt.BeginNativeGesture, Qt.EndNativeGesture):
+            self.native_zoom_value = None
+            return False
+        if event.gestureType() != Qt.ZoomNativeGesture or self.document is None:
+            return False
+        if sys.platform == "win32":
+            value = event.value()
+            factor = (
+                value / self.native_zoom_value
+                if self.native_zoom_value and value > 0
+                else 1.0
+            )
+            self.native_zoom_value = value
+        else:
+            factor = 1.0 + event.value()
+        if factor > 0:
+            self.zoom_canvas(factor, event.pos())
+        event.accept()
+        return True
+
+    def zoom_canvas_at_center(self, factor):
+        viewport = self.scroll_area.viewport()
+        anchor = self.canvas.mapFrom(viewport, viewport.rect().center())
+        self.zoom_canvas(factor, anchor)
+
+    def reset_canvas_view(self):
+        if self.document is None:
+            return
+        self.zoom_factor = 1.0
+        self.apply_canvas_size()
+        self.refresh_canvas()
+        for scrollbar in (
+            self.scroll_area.horizontalScrollBar(),
+            self.scroll_area.verticalScrollBar(),
+        ):
+            scrollbar.setValue(scrollbar.maximum() // 2)
+
+    def zoom_canvas(self, factor, anchor):
+        if self.document is None or factor <= 0:
             return
         old_width, old_height = self.canvas_size
-        anchor = event.pos()
         viewport_point = self.canvas.mapTo(self.scroll_area.viewport(), anchor)
         x_ratio = anchor.x() / max(1, old_width)
         y_ratio = anchor.y() / max(1, old_height)
         self.zoom_factor = min(
             self.maximum_zoom,
-            max(self.minimum_zoom, self.zoom_factor * (self.zoom_step ** steps)),
+            max(self.minimum_zoom, self.zoom_factor * factor),
         )
+        if self.canvas_size == (
+            max(1, int(round(self.base_canvas_size[0] * self.zoom_factor))),
+            max(1, int(round(self.base_canvas_size[1] * self.zoom_factor))),
+        ):
+            return
         self.apply_canvas_size()
         self.refresh_canvas()
         new_anchor = QPoint(
@@ -2241,7 +2348,6 @@ class MainWindow(QWidget):
         vertical = self.scroll_area.verticalScrollBar()
         horizontal.setValue(horizontal.value() + new_viewport_point.x() - viewport_point.x())
         vertical.setValue(vertical.value() + new_viewport_point.y() - viewport_point.y())
-        event.accept()
 
     def image_position(self, canvas_position):
         """Map a canvas position to an image pixel."""

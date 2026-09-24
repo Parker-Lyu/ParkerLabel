@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QRectF, Qt
+from PyQt5.QtCore import QEvent, QRectF, Qt
 from PyQt5.QtGui import QColor, QPainter, QPen
 from PyQt5.QtWidgets import QLabel
 
@@ -12,6 +12,12 @@ class AnnotationCanvas(QLabel):
         self.setAcceptDrops(True)
         self.setMouseTracking(True)
         self.brush_cursor_position = None
+
+    def event(self, event):
+        if event.type() == QEvent.NativeGesture:
+            if self.controller.canvas_native_gesture(event):
+                return True
+        return super().event(event)
 
     def mousePressEvent(self, event):
         """Forward mouse press events to the annotation controller."""
