@@ -7,8 +7,8 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, QTimer, QUrl, QUrlQuery, pyqtSignal
-from PyQt5.QtGui import QColor, QDesktopServices, QFont, QPainter, QPalette, QPen, QPixmap
+from PyQt5.QtCore import QEvent, QPoint, QRect, QRectF, QSize, Qt, QTimer, QUrl, QUrlQuery, pyqtSignal
+from PyQt5.QtGui import QColor, QDesktopServices, QFont, QIcon, QPainter, QPalette, QPen, QPixmap
 from PyQt5.QtWidgets import (
     QAction,
     QApplication,
@@ -72,6 +72,28 @@ from .quality import MaskQuality, inspect_mask_quality
 from .shortcut_dialog import ShortcutSettingsDialog
 from .shortcuts import SPECS_BY_ID, ShortcutManager, ShortcutStore
 from .update_dialog import UpdateCheckDialog
+
+
+def view_control_icon(kind):
+    pixmap = QPixmap(48, 48)
+    pixmap.setDevicePixelRatio(2)
+    pixmap.fill(Qt.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.Antialiasing)
+    pen = QPen(QColor("#344054"), 1.7, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+    painter.setPen(pen)
+    if kind == "reset":
+        for x, y, dx, dy in ((4, 4, 1, 1), (20, 4, -1, 1), (4, 20, 1, -1), (20, 20, -1, -1)):
+            painter.drawLine(x, y + 5 * dy, x, y)
+            painter.drawLine(x, y, x + 5 * dx, y)
+    else:
+        painter.drawEllipse(QRectF(4.5, 4.5, 12, 12))
+        painter.drawLine(15, 15, 20, 20)
+        painter.drawLine(7, 10, 14, 10)
+        if kind == "in":
+            painter.drawLine(10, 7, 10, 14)
+    painter.end()
+    return QIcon(pixmap)
 
 
 class CategoryLineEdit(QLineEdit):
@@ -384,16 +406,21 @@ class MainWindow(QWidget):
         view_layout.setContentsMargins(0, 0, 0, 0)
         view_layout.setSpacing(4)
         self.reset_view_button = QToolButton(self.view_controls)
-        self.reset_view_button.setText("⌂")
         self.zoom_in_button = QToolButton(self.view_controls)
-        self.zoom_in_button.setText("+")
         self.zoom_out_button = QToolButton(self.view_controls)
-        self.zoom_out_button.setText("−")
-        for button in (self.reset_view_button, self.zoom_in_button, self.zoom_out_button):
-            button.setFixedSize(30, 30)
+        for button, kind in (
+            (self.reset_view_button, "reset"),
+            (self.zoom_in_button, "in"),
+            (self.zoom_out_button, "out"),
+        ):
+            button.setIcon(view_control_icon(kind))
+            button.setIconSize(QSize(22, 22))
+            button.setFixedSize(32, 32)
             button.setStyleSheet(
-                "QToolButton { background: rgba(255, 255, 255, 230); "
-                "border: 1px solid #777; border-radius: 4px; font-size: 18px; }"
+                "QToolButton { background: rgba(250, 252, 255, 240); "
+                "border: 1px solid #aeb8c2; border-radius: 6px; }"
+                "QToolButton:hover { background: #e7eef7; }"
+                "QToolButton:pressed { background: #d6e5f5; }"
             )
             view_layout.addWidget(button)
         self.reset_view_button.clicked.connect(self.reset_canvas_view)
@@ -1166,6 +1193,7 @@ class MainWindow(QWidget):
             self.refresh_canvas()
             self.update_editing_state()
             self.update_view_controls()
+            self.center_canvas_view()
             self.settings.setValue(
                 self.LAST_IMAGE_SETTING_KEY, str(self.document.image_path.resolve())
             )
@@ -1256,18 +1284,10 @@ class MainWindow(QWidget):
         self.update_canvas_container()
 
     def update_canvas_container(self):
-        """Keep panning space around canvas edges that exceed the viewport."""
+        """Keep panning space around the canvas at every zoom level."""
         viewport = self.scroll_area.viewport()
-        horizontal_margin = (
-            viewport.width() // 2
-            if self.canvas.width() > viewport.width()
-            else 0
-        )
-        vertical_margin = (
-            viewport.height() // 2
-            if self.canvas.height() > viewport.height()
-            else 0
-        )
+        horizontal_margin = viewport.width() // 2 if self.document is not None else 0
+        vertical_margin = viewport.height() // 2 if self.document is not None else 0
         self.canvas.move(horizontal_margin, vertical_margin)
         self.canvas_container.resize(
             self.canvas.width() + 2 * horizontal_margin,
@@ -2315,6 +2335,9 @@ class MainWindow(QWidget):
         self.zoom_factor = 1.0
         self.apply_canvas_size()
         self.refresh_canvas()
+        self.center_canvas_view()
+
+    def center_canvas_view(self):
         for scrollbar in (
             self.scroll_area.horizontalScrollBar(),
             self.scroll_area.verticalScrollBar(),

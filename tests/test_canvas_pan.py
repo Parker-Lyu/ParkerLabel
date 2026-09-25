@@ -100,14 +100,37 @@ class CanvasPanTests(unittest.TestCase):
         self.assertLessEqual(abs(after.x() - before.x()), 1)
         self.assertLessEqual(abs(after.y() - before.y()), 1)
 
-    def test_fitting_image_has_no_extra_scroll(self):
+    def test_fitting_image_can_pan_with_half_viewport_margin(self):
         viewport = self.window.scroll_area.viewport()
         self.window.base_canvas_size = (viewport.width() // 2, viewport.height() // 2)
         self.window.apply_canvas_size()
         self.app.processEvents()
-        self.assertEqual(self.window.canvas.pos(), QPoint(0, 0))
-        self.assertEqual(self.window.scroll_area.horizontalScrollBar().maximum(), 0)
-        self.assertEqual(self.window.scroll_area.verticalScrollBar().maximum(), 0)
+        self.window.center_canvas_view()
+        horizontal = self.window.scroll_area.horizontalScrollBar()
+        vertical = self.window.scroll_area.verticalScrollBar()
+        self.assertGreater(horizontal.maximum(), 0)
+        self.assertGreater(vertical.maximum(), 0)
+        centered = self.window.canvas.mapTo(viewport, QPoint(0, 0))
+        self.assertLessEqual(
+            abs(centered.x() - (viewport.width() - self.window.canvas.width()) // 2), 1
+        )
+        self.assertLessEqual(
+            abs(centered.y() - (viewport.height() - self.window.canvas.height()) // 2), 1
+        )
+
+        horizontal.setValue(0)
+        vertical.setValue(0)
+        self.assertEqual(
+            self.window.canvas.mapTo(viewport, QPoint(0, 0)),
+            QPoint(viewport.width() // 2, viewport.height() // 2),
+        )
+        horizontal.setValue(horizontal.maximum())
+        vertical.setValue(vertical.maximum())
+        right_bottom = self.window.canvas.mapTo(
+            viewport, QPoint(self.window.canvas.width(), self.window.canvas.height())
+        )
+        self.assertEqual(viewport.width() - right_bottom.x(), viewport.width() // 2)
+        self.assertEqual(viewport.height() - right_bottom.y(), viewport.height() // 2)
 
     def test_zoom_into_overflow_preserves_cursor_anchor(self):
         viewport = self.window.scroll_area.viewport()
