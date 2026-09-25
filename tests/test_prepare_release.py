@@ -99,6 +99,35 @@ class PrepareReleaseTests(unittest.TestCase):
                         self.assertEqual(len((output / "SHA256SUMS").read_text().splitlines()), 4)
                         self.assertTrue((output / f"ParkerLabel-1.0.0-{platform_name}.zip").exists())
 
+    def test_stages_downloaded_artifact_with_nested_platform_directory(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            collected = root / "collected"
+            model_hash = prepare_release.sha256(prepare_release.ROOT / "model-bundle.json")
+            self.make_platform(collected, "macos-arm64", model_hash, "a" * 40)
+            output = root / "assets"
+            with patch.object(prepare_release, "verify_tag", return_value="a" * 40):
+                prepare_release.stage(
+                    "v1.0.0", None, None, output, collected=collected
+                )
+            self.assertTrue((output / "ParkerLabel-1.0.0-macos-arm64.zip").exists())
+            self.assertEqual(len(list(output.glob("*.zip"))), 1)
+
+    def test_rejects_duplicate_downloaded_platform_archives(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            collected = root / "collected"
+            model_hash = prepare_release.sha256(prepare_release.ROOT / "model-bundle.json")
+            source = self.make_platform(collected, "macos-arm64", model_hash, "a" * 40)
+            duplicate = collected / "copy" / source.name
+            duplicate.mkdir(parents=True)
+            (duplicate / "ParkerLabel-1.0.0-macos-arm64.zip").write_bytes(b"copy")
+            with patch.object(prepare_release, "verify_tag", return_value="a" * 40):
+                with self.assertRaisesRegex(ValueError, "Multiple macos-arm64"):
+                    prepare_release.stage(
+                        "v1.0.0", None, None, root / "assets", collected=collected
+                    )
+
     def test_rejects_missing_platform_artifacts(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             output = Path(temp_dir) / "assets"

@@ -94,10 +94,21 @@ def release_notes(tag):
     return match.group(1).strip() + "\n"
 
 
-def stage(tag, macos, windows, output):
+def stage(tag, macos, windows, output, collected=None):
     commit = verify_tag(tag)
     model_hash = sha256(ROOT / "model-bundle.json")
     sources = {}
+    if collected is not None:
+        if macos is not None or windows is not None:
+            raise ValueError("Use --collected or explicit platform directories")
+        for platform_name in PLATFORMS:
+            archives = list(
+                collected.rglob(f"ParkerLabel-{tag[1:]}-{platform_name}.zip")
+            )
+            if len(archives) > 1:
+                raise ValueError(f"Multiple {platform_name} archives under {collected}")
+            if archives:
+                sources[platform_name] = archives[0].parent
     if macos is not None:
         sources["macos-arm64"] = locate_source(macos)
     if windows is not None:
@@ -135,6 +146,7 @@ def main():
     prepare.add_argument("--tag", required=True)
     prepare.add_argument("--macos", type=Path)
     prepare.add_argument("--windows", type=Path)
+    prepare.add_argument("--collected", type=Path)
     prepare.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "verify-version":
@@ -142,7 +154,7 @@ def main():
     elif args.command == "verify-tag":
         verify_tag(args.tag)
     else:
-        stage(args.tag, args.macos, args.windows, args.output)
+        stage(args.tag, args.macos, args.windows, args.output, args.collected)
 
 
 if __name__ == "__main__":

@@ -176,7 +176,8 @@ class CanvasPanTests(unittest.TestCase):
             pos=lambda: anchor,
             accept=lambda: None,
         )
-        self.assertTrue(self.window.canvas_native_gesture(event))
+        with patch.object(window_module.sys, "platform", "darwin"):
+            self.assertTrue(self.window.canvas_native_gesture(event))
         self.assertAlmostEqual(self.window.zoom_factor, 1.15)
         scaled_anchor = QPoint(round(anchor.x() * 1.15), round(anchor.y() * 1.15))
         after = self.window.canvas.mapTo(viewport, scaled_anchor)
@@ -205,7 +206,8 @@ class CanvasPanTests(unittest.TestCase):
         event = QNativeGestureEvent(
             Qt.ZoomNativeGesture, point, point, point, 0.15, 1, 0
         )
-        QApplication.sendEvent(self.window.canvas, event)
+        with patch.object(window_module.sys, "platform", "darwin"):
+            QApplication.sendEvent(self.window.canvas, event)
         self.assertTrue(event.isAccepted())
         self.assertAlmostEqual(self.window.zoom_factor, 1.15)
 
