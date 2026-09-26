@@ -359,12 +359,12 @@ class MainWindow(QWidget):
         self.reset_view_button = QToolButton(self.view_controls)
         self.zoom_in_button = QToolButton(self.view_controls)
         self.zoom_out_button = QToolButton(self.view_controls)
-        self.prompt_points_button = QToolButton(self.view_controls)
-        self.quality_button = QToolButton(self.view_controls)
         self.view_group = QButtonGroup(self)
         self.image_view_button = QToolButton(self.view_controls)
         self.mask_view_button = QToolButton(self.view_controls)
         self.overlay_view_button = QToolButton(self.view_controls)
+        self.prompt_points_button = QToolButton(self.view_controls)
+        self.quality_button = QToolButton(self.view_controls)
         self.undo_button = QToolButton(self.view_controls)
         self.redo_button = QToolButton(self.view_controls)
         self.add_button = QToolButton(self.view_controls)
@@ -374,11 +374,11 @@ class MainWindow(QWidget):
             (self.reset_view_button, "reset"),
             (self.zoom_in_button, "in"),
             (self.zoom_out_button, "out"),
-            (self.prompt_points_button, "points_visible" if self.prompt_points_visible else "points_hidden"),
-            (self.quality_button, "quality"),
             (self.image_view_button, "view_image"),
             (self.mask_view_button, "view_mask"),
             (self.overlay_view_button, "view_overlay"),
+            (self.prompt_points_button, "points_visible" if self.prompt_points_visible else "points_hidden"),
+            (self.quality_button, "quality"),
             (self.undo_button, "undo"),
             (self.redo_button, "redo"),
             (self.add_button, "add_target"),

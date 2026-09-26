@@ -60,9 +60,9 @@ class CanvasPanTests(unittest.TestCase):
         shown = self.window.canvas.pixmap().toImage().pixelColor(point)
         self.assertGreater(shown.green(), shown.red())
         layout = self.window.view_controls.layout()
-        self.assertEqual(layout.itemAt(3).spacerItem().sizeHint().width(), 12)
-        self.assertIs(layout.itemAt(4).widget(), self.window.prompt_points_button)
-        self.assertIs(layout.itemAt(5).widget(), self.window.quality_button)
+        self.assertEqual(layout.itemAt(7).spacerItem().sizeHint().width(), 12)
+        self.assertIs(layout.itemAt(8).widget(), self.window.prompt_points_button)
+        self.assertIs(layout.itemAt(9).widget(), self.window.quality_button)
         self.assertIn("S", self.window.prompt_points_button.toolTip())
 
         self.window.prompt_points_button.click()
@@ -124,13 +124,13 @@ class CanvasPanTests(unittest.TestCase):
         self.assertFalse(self.window.redo_button.isEnabled())
         self.window.document.dirty = False
 
-    def test_view_mode_buttons_are_grouped_between_quality_and_undo(self):
+    def test_view_mode_buttons_are_grouped_between_zoom_and_points(self):
         layout = self.window.view_controls.layout()
-        self.assertEqual(layout.itemAt(6).spacerItem().sizeHint().width(), 12)
+        self.assertEqual(layout.itemAt(3).spacerItem().sizeHint().width(), 12)
         for index, button, value, shortcut in (
-            (7, self.window.image_view_button, "image", "1"),
-            (8, self.window.mask_view_button, "mask", "2"),
-            (9, self.window.overlay_view_button, "overlay", "3"),
+            (4, self.window.image_view_button, "image", "1"),
+            (5, self.window.mask_view_button, "mask", "2"),
+            (6, self.window.overlay_view_button, "overlay", "3"),
         ):
             self.assertIs(layout.itemAt(index).widget(), button)
             self.assertIs(button.parentWidget(), self.window.view_controls)
