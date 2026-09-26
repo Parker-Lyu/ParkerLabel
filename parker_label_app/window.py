@@ -99,9 +99,10 @@ def view_control_icon(kind):
         painter.setBrush(QColor("#344054"))
         painter.drawEllipse(QRectF(10, 10, 4, 4))
     elif kind == "reset":
-        for x, y, dx, dy in ((4, 4, 1, 1), (20, 4, -1, 1), (4, 20, 1, -1), (20, 20, -1, -1)):
-            painter.drawLine(x, y + 5 * dy, x, y)
-            painter.drawLine(x, y, x + 5 * dx, y)
+        painter.drawArc(QRectF(4, 4, 16, 16), 140 * 16, 290 * 16)
+        painter.drawLine(15, 4, 19, 4)
+        painter.drawLine(15, 4, 17, 8)
+        painter.drawRoundedRect(QRectF(9, 9, 6, 6), 1, 1)
     else:
         painter.drawEllipse(QRectF(4.5, 4.5, 12, 12))
         painter.drawLine(15, 15, 20, 20)
