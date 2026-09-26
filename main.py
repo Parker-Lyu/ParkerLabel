@@ -1,6 +1,7 @@
 import logging
 import sys
 
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
@@ -39,6 +40,7 @@ def main():
                     str(model_directory() / filename), providers=["CPUExecutionProvider"]
                 )
         return 0
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
     app = QApplication(sys.argv)
     app.setApplicationName("ParkerLabel")
     app.setWindowIcon(QIcon(str(application_icon_path())))

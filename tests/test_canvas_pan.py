@@ -9,7 +9,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import numpy as np
 from PyQt5.QtCore import QPoint, QPointF, QSettings, Qt
-from PyQt5.QtGui import QNativeGestureEvent
+from PyQt5.QtGui import QImage, QNativeGestureEvent
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication, QToolButton
 
@@ -125,15 +125,23 @@ class CanvasPanTests(unittest.TestCase):
         self.window.document.dirty = False
 
     def test_canvas_icon_assets_load(self):
-        for kind in window_module.CANVAS_ICON_NAMES:
+        directory = window_module.resource_root() / "parker_label_app" / "assets" / "canvas-icons"
+        for kind, name in window_module.CANVAS_ICON_NAMES.items():
             icon = window_module.view_control_icon(kind)
             self.assertFalse(icon.isNull(), kind)
-            image = icon.pixmap(22, 22).toImage()
+            self.assertTrue({24, 48, 72}.issubset({size.width() for size in icon.availableSizes()}))
+            image = icon.pixmap(24, 24).toImage()
             self.assertGreater(
-                sum(image.pixelColor(x, y).alpha() > 0 for x in range(22) for y in range(22)),
+                sum(image.pixelColor(x, y).alpha() > 0 for x in range(24) for y in range(24)),
                 0,
                 kind,
             )
+            for scale in (1, 2, 3):
+                suffix = f"@{scale}x" if scale > 1 else ""
+                asset = QImage(str(directory / f"{name}{suffix}.png"))
+                self.assertFalse(asset.isNull(), f"{kind} {scale}x")
+                self.assertEqual(asset.width(), 24 * scale)
+                self.assertEqual(asset.height(), 24 * scale)
 
     def test_middle_button_pan_moves_image_edges_into_viewport(self):
         viewport = self.window.scroll_area.viewport()

@@ -88,7 +88,10 @@ CANVAS_ICON_NAMES = {
 def view_control_icon(kind):
     name = CANVAS_ICON_NAMES[kind]
     path = resource_root() / "parker_label_app" / "assets" / "canvas-icons" / f"{name}.png"
-    return QIcon(str(path))
+    icon = QIcon(str(path))
+    for scale in (2, 3):
+        icon.addFile(str(path.with_name(f"{name}@{scale}x.png")))
+    return icon
 
 
 class CategoryLineEdit(QLineEdit):
@@ -373,7 +376,7 @@ class MainWindow(QWidget):
             (self.commit_button, "commit"),
         ):
             button.setIcon(view_control_icon(kind))
-            button.setIconSize(QSize(22, 22))
+            button.setIconSize(QSize(24, 24))
             button.setFixedSize(32, 32)
             button.setStyleSheet(
                 "QToolButton { background: rgba(250, 252, 255, 240); "

@@ -12,13 +12,17 @@ def render_icons(directory):
         renderer = QSvgRenderer(QByteArray(svg))
         if not renderer.isValid():
             raise ValueError(f"invalid SVG: {source}")
-        image = QImage(96, 96, QImage.Format_ARGB32_Premultiplied)
-        image.fill(Qt.transparent)
-        painter = QPainter(image)
-        renderer.render(painter)
-        painter.end()
-        if not image.save(str(source.with_suffix(".png"))):
-            raise OSError(f"could not render {source}")
+        for scale in (1, 2, 3):
+            size = 24 * scale
+            image = QImage(size, size, QImage.Format_ARGB32_Premultiplied)
+            image.fill(Qt.transparent)
+            painter = QPainter(image)
+            renderer.render(painter)
+            painter.end()
+            suffix = f"@{scale}x" if scale > 1 else ""
+            output = source.with_name(f"{source.stem}{suffix}.png")
+            if not image.save(str(output)):
+                raise OSError(f"could not render {source}")
 
 
 if __name__ == "__main__":
