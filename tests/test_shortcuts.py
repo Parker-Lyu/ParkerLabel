@@ -38,8 +38,10 @@ class ShortcutStoreTests(unittest.TestCase):
         self.assertEqual(mac["mode_smart"], "Q")
         self.assertEqual(mac["mode_brush"], "W")
         self.assertEqual(mac["mode_query"], "E")
-        self.assertEqual(mac["toggle_prompt_points"], "R")
-        self.assertEqual(windows["toggle_prompt_points"], "R")
+        self.assertEqual(mac["toggle_prompt_points"], "S")
+        self.assertEqual(windows["toggle_prompt_points"], "S")
+        self.assertEqual(mac["toggle_quality"], "C")
+        self.assertEqual(windows["toggle_quality"], "C")
         self.assertEqual(mac["open_image"], "Ctrl+O")
         self.assertEqual(mac["redo_edit"], "Ctrl+Shift+Z")
         self.assertEqual(windows["redo_edit"], "Ctrl+Y")
@@ -101,15 +103,15 @@ class ShortcutWindowTests(unittest.TestCase):
     def test_primary_grid_and_localized_menus(self):
         buttons = (
             self.window.open_button,
-            self.window.quality_button,
             self.window.category_button,
             self.window.save_button,
         )
-        self.assertEqual(len({button.width() for button in buttons}), 1)
         self.assertEqual(len({button.height() for button in buttons}), 1)
         self.assertEqual(buttons[0].y(), buttons[1].y())
-        self.assertEqual(buttons[2].y(), buttons[3].y())
         self.assertLess(buttons[0].y(), buttons[2].y())
+        self.assertEqual(buttons[0].width(), buttons[1].width())
+        self.assertEqual(buttons[2].width(), buttons[0].width() * 2 + self.window.PRIMARY_COLUMN_SPACING)
+        self.assertIs(self.window.quality_button.parentWidget(), self.window.view_controls)
         self.assertFalse(hasattr(self.window, "language_button"))
         self.assertFalse(hasattr(self.window, "tooltip_button"))
         self.assertEqual(
@@ -273,13 +275,14 @@ class ShortcutWindowTests(unittest.TestCase):
                     self.app.processEvents()
                     buttons = (
                         self.window.open_button,
-                        self.window.quality_button,
                         self.window.category_button,
-                        self.window.save_button,
                     )
                     self.assertEqual(len({button.width() for button in buttons}), 1)
                     for button in buttons:
                         self.assertGreaterEqual(button.width(), button.sizeHint().width())
+                    self.assertGreaterEqual(
+                        self.window.save_button.width(), self.window.save_button.sizeHint().width()
+                    )
                     self.assertLessEqual(
                         self.window.category_config_label.width(),
                         self.window.control_panel.width(),

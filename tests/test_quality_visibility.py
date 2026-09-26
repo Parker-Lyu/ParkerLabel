@@ -66,6 +66,21 @@ class QualityVisibilityTests(unittest.TestCase):
             self.window.set_all_segments_visible(False)
             draw_boxes.assert_not_called()
 
+    def test_quality_button_controls_overlay_boxes(self):
+        self.window.quality_button.click()
+        self.assertFalse(self.window.quality_check_enabled)
+        self.assertEqual(self.window.mask_quality.boxes, ())
+        with patch.object(self.window, "draw_quality_boxes") as draw_boxes:
+            self.window.refresh_canvas()
+            draw_boxes.assert_not_called()
+
+        self.window.quality_button.click()
+        self.assertTrue(self.window.quality_check_enabled)
+        self.assertTrue(self.window.mask_quality.boxes)
+        with patch.object(self.window, "draw_quality_boxes") as draw_boxes:
+            self.window.refresh_canvas()
+            draw_boxes.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

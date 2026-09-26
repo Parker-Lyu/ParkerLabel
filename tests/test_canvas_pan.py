@@ -36,7 +36,6 @@ class CanvasPanTests(unittest.TestCase):
             np.zeros((200, 300, 3), dtype=np.uint8),
             (200, 300),
         )
-        self.window.quality_check_enabled = False
         self.window.show()
         self.app.processEvents()
         viewport = self.window.scroll_area.viewport()
@@ -60,8 +59,11 @@ class CanvasPanTests(unittest.TestCase):
         )
         shown = self.window.canvas.pixmap().toImage().pixelColor(point)
         self.assertGreater(shown.green(), shown.red())
-        self.assertIs(self.window.view_controls.layout().itemAt(3).widget(), self.window.prompt_points_button)
-        self.assertIn("R", self.window.prompt_points_button.toolTip())
+        layout = self.window.view_controls.layout()
+        self.assertEqual(layout.itemAt(3).spacerItem().sizeHint().width(), 12)
+        self.assertIs(layout.itemAt(4).widget(), self.window.prompt_points_button)
+        self.assertIs(layout.itemAt(5).widget(), self.window.quality_button)
+        self.assertIn("S", self.window.prompt_points_button.toolTip())
 
         self.window.prompt_points_button.click()
         hidden = self.window.canvas.pixmap().toImage().pixelColor(point)
@@ -72,11 +74,24 @@ class CanvasPanTests(unittest.TestCase):
         self.assertFalse(self.window.settings.value(self.window.PROMPT_POINTS_SETTING_KEY, type=bool))
 
         self.window.canvas.setFocus()
-        QTest.keyClick(self.window.canvas, Qt.Key_R)
+        QTest.keyClick(self.window.canvas, Qt.Key_S)
         self.assertTrue(self.window.prompt_points_button.isChecked())
         self.assertGreater(
             self.window.canvas.pixmap().toImage().pixelColor(point).green(), 0
         )
+
+    def test_quality_button_and_shortcut(self):
+        self.assertTrue(self.window.quality_button.isChecked())
+        self.assertIn("C", self.window.quality_button.toolTip())
+        self.window.quality_button.click()
+        self.assertFalse(self.window.quality_check_enabled)
+        self.assertFalse(self.window.quality_button.isChecked())
+        self.assertFalse(self.window.settings.value(self.window.QUALITY_SETTING_KEY, type=bool))
+        self.assertIn(self.window.t("canvas.enable_quality"), self.window.quality_button.toolTip())
+        self.window.canvas.setFocus()
+        QTest.keyClick(self.window.canvas, Qt.Key_C)
+        self.assertTrue(self.window.quality_check_enabled)
+        self.assertTrue(self.window.quality_button.isChecked())
 
     def test_middle_button_pan_moves_image_edges_into_viewport(self):
         viewport = self.window.scroll_area.viewport()

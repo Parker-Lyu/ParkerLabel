@@ -7,8 +7,8 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PyQt5.QtCore import QEvent, QPoint, QRect, QRectF, QSize, Qt, QTimer, QUrl, QUrlQuery, pyqtSignal
-from PyQt5.QtGui import QColor, QDesktopServices, QFont, QIcon, QPainter, QPainterPath, QPalette, QPen, QPixmap
+from PyQt5.QtCore import QEvent, QPoint, QRectF, QSize, Qt, QTimer, QUrl, QUrlQuery, pyqtSignal
+from PyQt5.QtGui import QColor, QDesktopServices, QFont, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from PyQt5.QtWidgets import (
     QAction,
     QApplication,
@@ -31,9 +31,6 @@ from PyQt5.QtWidgets import (
     QRadioButton,
     QScrollArea,
     QSlider,
-    QStyle,
-    QStyleOptionButton,
-    QStylePainter,
     QTableWidget,
     QTextEdit,
     QToolButton,
@@ -95,6 +92,12 @@ def view_control_icon(kind):
             painter.drawLine(4, 21, 20, 3)
             painter.setPen(pen)
             painter.drawLine(4, 21, 20, 3)
+    elif kind == "quality":
+        for x, y, dx, dy in ((3, 3, 1, 1), (21, 3, -1, 1), (3, 21, 1, -1), (21, 21, -1, -1)):
+            painter.drawLine(x, y, x + 5 * dx, y)
+            painter.drawLine(x, y, x, y + 5 * dy)
+        painter.setBrush(QColor("#344054"))
+        painter.drawEllipse(QRectF(10, 10, 4, 4))
     elif kind == "reset":
         for x, y, dx, dy in ((4, 4, 1, 1), (20, 4, -1, 1), (4, 20, 1, -1), (20, 20, -1, -1)):
             painter.drawLine(x, y + 5 * dy, x, y)
@@ -133,61 +136,6 @@ class CategoryLineEdit(QLineEdit):
                 combo.setCurrentText(combo.committed_text)
             self.setReadOnly(True)
         super().focusOutEvent(event)
-
-
-class StateToggleButton(QPushButton):
-    def __init__(self, text, parent=None):
-        """Create a button with a colored enabled-state word."""
-        super().__init__(text, parent)
-        self.active = False
-
-    def set_active(self, active):
-        """Update the painted active state without changing button metrics."""
-        self.active = active
-        self.update()
-
-    def paintEvent(self, event):
-        """Paint only the enabled-state word in green."""
-        if not self.active:
-            super().paintEvent(event)
-            return
-
-        option = QStyleOptionButton()
-        self.initStyleOption(option)
-        text = option.text
-        prefix, separator, state_text = text.rpartition(" ")
-        if not separator:
-            super().paintEvent(event)
-            return
-
-        prefix += separator
-        option.text = ""
-        painter = QStylePainter(self)
-        painter.drawControl(QStyle.CE_PushButton, option)
-
-        content_rect = self.style().subElementRect(
-            QStyle.SE_PushButtonContents, option, self
-        )
-        if option.state & QStyle.State_Sunken:
-            content_rect.translate(
-                self.style().pixelMetric(QStyle.PM_ButtonShiftHorizontal, option, self),
-                self.style().pixelMetric(QStyle.PM_ButtonShiftVertical, option, self),
-            )
-
-        prefix_width = option.fontMetrics.horizontalAdvance(prefix)
-        state_width = option.fontMetrics.horizontalAdvance(state_text)
-        left = content_rect.center().x() - (prefix_width + state_width) // 2
-        prefix_rect = QRect(left, content_rect.y(), prefix_width, content_rect.height())
-        state_rect = QRect(
-            left + prefix_width,
-            content_rect.y(),
-            state_width,
-            content_rect.height(),
-        )
-        painter.setPen(option.palette.color(QPalette.ButtonText))
-        painter.drawText(prefix_rect, Qt.AlignCenter, prefix)
-        painter.setPen(QColor("#15803d"))
-        painter.drawText(state_rect, Qt.AlignCenter, state_text)
 
 
 class VisibilityHeader(QHeaderView):
@@ -426,11 +374,13 @@ class MainWindow(QWidget):
         self.zoom_in_button = QToolButton(self.view_controls)
         self.zoom_out_button = QToolButton(self.view_controls)
         self.prompt_points_button = QToolButton(self.view_controls)
+        self.quality_button = QToolButton(self.view_controls)
         for button, kind in (
             (self.reset_view_button, "reset"),
             (self.zoom_in_button, "in"),
             (self.zoom_out_button, "out"),
             (self.prompt_points_button, "points_visible" if self.prompt_points_visible else "points_hidden"),
+            (self.quality_button, "quality"),
         ):
             button.setIcon(view_control_icon(kind))
             button.setIconSize(QSize(22, 22))
@@ -442,9 +392,13 @@ class MainWindow(QWidget):
                 "QToolButton:pressed { background: #d6e5f5; }"
                 "QToolButton:checked { background: #dceaf9; border-color: #7b9bbd; }"
             )
+            if button is self.prompt_points_button:
+                view_layout.addSpacing(12)
             view_layout.addWidget(button)
         self.prompt_points_button.setCheckable(True)
         self.prompt_points_button.setChecked(self.prompt_points_visible)
+        self.quality_button.setCheckable(True)
+        self.quality_button.setChecked(self.quality_check_enabled)
         self.reset_view_button.clicked.connect(self.reset_canvas_view)
         self.zoom_in_button.clicked.connect(
             lambda: self.zoom_canvas_at_center(self.zoom_step)
@@ -453,6 +407,7 @@ class MainWindow(QWidget):
             lambda: self.zoom_canvas_at_center(1 / self.zoom_step)
         )
         self.prompt_points_button.clicked.connect(self.toggle_prompt_points)
+        self.quality_button.clicked.connect(self.toggle_quality_check)
         self.view_controls.adjustSize()
         self.view_controls.move(8, 8)
         self.view_controls.hide()
@@ -492,12 +447,9 @@ class MainWindow(QWidget):
         button_layout.setHorizontalSpacing(self.PRIMARY_COLUMN_SPACING)
         button_layout.setVerticalSpacing(6)
         self.open_button = QPushButton()
-        self.quality_button = StateToggleButton("")
-        self.quality_button.set_active(self.quality_check_enabled)
         self.category_button = QPushButton()
         self.save_button = QPushButton()
         self.open_button.clicked.connect(self.choose_image)
-        self.quality_button.clicked.connect(self.toggle_quality_check)
         self.category_button.clicked.connect(self.configure_categories)
         self.save_button.clicked.connect(self.save_document)
         self.category_config_label = QLabel()
@@ -506,9 +458,8 @@ class MainWindow(QWidget):
         self.update_primary_control_text()
         self.resize_primary_buttons()
         button_layout.addWidget(self.open_button, 0, 0)
-        button_layout.addWidget(self.quality_button, 0, 1)
-        button_layout.addWidget(self.category_button, 1, 0)
-        button_layout.addWidget(self.save_button, 1, 1)
+        button_layout.addWidget(self.category_button, 0, 1)
+        button_layout.addWidget(self.save_button, 1, 0, 1, 2)
         button_layout.setColumnStretch(2, 1)
         layout.addLayout(button_layout)
         layout.addWidget(self.category_config_label, 0, Qt.AlignLeft)
@@ -644,9 +595,6 @@ class MainWindow(QWidget):
     def update_primary_control_text(self):
         """Refresh localized text for primary and status controls."""
         self.open_button.setText(self.t("main.open_image"))
-        self.quality_button.setText(
-            self.t("main.quality.on" if self.quality_check_enabled else "main.quality.off")
-        )
         self.category_button.setText(self.t("main.category_config"))
         self.save_button.setText(self.t("main.save_disk"))
         self.update_category_config_label()
@@ -674,25 +622,13 @@ class MainWindow(QWidget):
         self.category_config_label.setText(label)
 
     def resize_primary_buttons(self):
-        """Keep the four primary buttons aligned across languages and toggle states."""
+        """Keep primary buttons aligned across languages."""
         buttons = (
             self.open_button,
-            self.quality_button,
             self.category_button,
-            self.save_button,
         )
         width = max(button.sizeHint().width() for button in buttons)
-        height = max(button.sizeHint().height() for button in buttons)
-        padding = self.quality_button.sizeHint().width() - self.quality_button.fontMetrics().horizontalAdvance(
-            self.quality_button.text()
-        )
-        width = max(
-            width,
-            *(
-                self.quality_button.fontMetrics().horizontalAdvance(self.t(key)) + padding
-                for key in ("main.quality.off", "main.quality.on")
-            ),
-        )
+        height = max(button.sizeHint().height() for button in (*buttons, self.save_button))
         for button in buttons:
             button.setFixedSize(width, height)
         label_width = width * 2 + self.PRIMARY_COLUMN_SPACING
@@ -714,6 +650,7 @@ class MainWindow(QWidget):
                     + name_width
                     + self.WINDOWS_LABEL_PADDING,
                 )
+        self.save_button.setFixedSize(label_width, height)
         self.category_config_label.setFixedWidth(label_width)
         self.update_category_config_label()
 
@@ -765,7 +702,6 @@ class MainWindow(QWidget):
         """Refresh localized hints for controls that need extra clarification."""
         tooltip_map = (
             (self.open_button, None, "open_image"),
-            (self.quality_button, "tooltip.quality", "toggle_quality"),
             (self.category_button, None, "category_config"),
             (self.save_button, None, "save_document"),
             (self.undo_button, None, "undo_edit"),
@@ -801,6 +737,11 @@ class MainWindow(QWidget):
         key = "canvas.hide_prompt_points" if self.prompt_points_visible else "canvas.show_prompt_points"
         self.prompt_points_button.setAccessibleName(self.t(key))
         self.prompt_points_button.setToolTip(self.shortcut_tooltip(self.t(key), "toggle_prompt_points"))
+        key = "canvas.disable_quality" if self.quality_check_enabled else "canvas.enable_quality"
+        self.quality_button.setAccessibleName(self.t(key))
+        self.quality_button.setToolTip(
+            self.shortcut_tooltip(f"{self.t(key)}\n{self.t('tooltip.quality')}", "toggle_quality")
+        )
 
     def shortcut_tooltip(self, base, action_id):
         """Append an active shortcut hint when interface tips are enabled."""
@@ -2004,10 +1945,8 @@ class MainWindow(QWidget):
         self.quality_check_enabled = not self.quality_check_enabled
         self.settings.setValue(self.QUALITY_SETTING_KEY, self.quality_check_enabled)
         self.settings.sync()
-        self.quality_button.setText(
-            self.t("main.quality.on" if self.quality_check_enabled else "main.quality.off")
-        )
-        self.quality_button.set_active(self.quality_check_enabled)
+        self.quality_button.setChecked(self.quality_check_enabled)
+        self.update_tooltips()
         self.update_mask_quality()
         self.refresh_canvas()
 
