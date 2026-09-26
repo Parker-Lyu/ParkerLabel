@@ -77,6 +77,9 @@ CANVAS_ICON_NAMES = {
     "points_visible": "eye",
     "points_hidden": "eye-off",
     "quality": "scan-eye",
+    "view_image": "image",
+    "view_mask": "image-mask",
+    "view_overlay": "blend",
     "undo": "undo-2",
     "redo": "redo-2",
     "add_target": "square-plus",
@@ -358,6 +361,10 @@ class MainWindow(QWidget):
         self.zoom_out_button = QToolButton(self.view_controls)
         self.prompt_points_button = QToolButton(self.view_controls)
         self.quality_button = QToolButton(self.view_controls)
+        self.view_group = QButtonGroup(self)
+        self.image_view_button = QToolButton(self.view_controls)
+        self.mask_view_button = QToolButton(self.view_controls)
+        self.overlay_view_button = QToolButton(self.view_controls)
         self.undo_button = QToolButton(self.view_controls)
         self.redo_button = QToolButton(self.view_controls)
         self.add_button = QToolButton(self.view_controls)
@@ -369,6 +376,9 @@ class MainWindow(QWidget):
             (self.zoom_out_button, "out"),
             (self.prompt_points_button, "points_visible" if self.prompt_points_visible else "points_hidden"),
             (self.quality_button, "quality"),
+            (self.image_view_button, "view_image"),
+            (self.mask_view_button, "view_mask"),
+            (self.overlay_view_button, "view_overlay"),
             (self.undo_button, "undo"),
             (self.redo_button, "redo"),
             (self.add_button, "add_target"),
@@ -385,13 +395,27 @@ class MainWindow(QWidget):
                 "QToolButton:pressed { background: #d6e5f5; }"
                 "QToolButton:checked { background: #dceaf9; border-color: #7b9bbd; }"
             )
-            if button in (self.prompt_points_button, self.undo_button):
+            if button in (
+                self.prompt_points_button,
+                self.image_view_button,
+                self.undo_button,
+            ):
                 view_layout.addSpacing(12)
             view_layout.addWidget(button)
         self.prompt_points_button.setCheckable(True)
         self.prompt_points_button.setChecked(self.prompt_points_visible)
         self.quality_button.setCheckable(True)
         self.quality_button.setChecked(self.quality_check_enabled)
+        for button, value in (
+            (self.image_view_button, "image"),
+            (self.mask_view_button, "mask"),
+            (self.overlay_view_button, "overlay"),
+        ):
+            button.setCheckable(True)
+            button.setProperty("value", value)
+            self.view_group.addButton(button)
+            button.setChecked(value == self.view_mode)
+        self.view_group.buttonClicked.connect(self.change_view)
         self.reset_view_button.clicked.connect(self.reset_canvas_view)
         self.zoom_in_button.clicked.connect(
             lambda: self.zoom_canvas_at_center(self.zoom_step)
@@ -465,23 +489,10 @@ class MainWindow(QWidget):
         return layout
 
     def build_tool_controls(self):
-        """Create drawing, viewing, morphology, and brush controls."""
+        """Create drawing, morphology, and brush controls."""
         outer = QVBoxLayout()
         if sys.platform == "win32":
             outer.setSpacing(14)
-
-        self.view_group_box = QGroupBox()
-        view_layout = QHBoxLayout(self.view_group_box)
-        self.view_group = QButtonGroup(self)
-        views = ("image", "mask", "overlay")
-        for value in views:
-            button = QRadioButton()
-            button.setProperty("value", value)
-            self.view_group.addButton(button)
-            view_layout.addWidget(button, 1, Qt.AlignCenter)
-            if value == self.view_mode:
-                button.setChecked(True)
-        self.view_group.buttonClicked.connect(self.change_view)
 
         self.interaction_group = QGroupBox()
         interaction_layout = QVBoxLayout(self.interaction_group)
@@ -540,13 +551,11 @@ class MainWindow(QWidget):
             "margin-top: 8px; padding-top: 6px; } "
             "QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }"
         )
-        for group in (self.view_group_box, self.interaction_group):
-            group.setStyleSheet(group_style)
+        self.interaction_group.setStyleSheet(group_style)
         lower_row = QHBoxLayout()
         self.tool_control_row = lower_row
         lower_row.addWidget(self.interaction_group)
         lower_row.addStretch(1)
-        outer.addWidget(self.view_group_box, 0, Qt.AlignLeft)
         outer.addLayout(lower_row)
         self.update_tool_control_text()
         self.update_tool_controls()
@@ -630,11 +639,8 @@ class MainWindow(QWidget):
         self.update_category_config_label()
 
     def update_tool_control_text(self):
-        """Refresh localized text for editing and viewing controls."""
-        self.view_group_box.setTitle(self.t("main.group.view"))
+        """Refresh localized text for drawing controls."""
         self.interaction_group.setTitle(self.t("main.group.interaction"))
-        for button in self.view_group.buttons():
-            button.setText(self.t(f"main.view.{button.property('value')}"))
         for button in self.mode_group.buttons():
             button.setText(self.t(f"main.mode.{button.property('value')}"))
         self.brush_label.setText(
@@ -701,7 +707,9 @@ class MainWindow(QWidget):
             button.setToolTip(self.shortcut_tooltip(self.t(key), action_id))
         for button in self.view_group.buttons():
             action_id = f"view_{button.property('value')}"
-            button.setToolTip(self.shortcut_tooltip("", action_id))
+            label = self.t(f"main.view.{button.property('value')}")
+            button.setAccessibleName(label)
+            button.setToolTip(self.shortcut_tooltip(label, action_id))
         for button, key in (
             (self.reset_view_button, "canvas.reset_view"),
             (self.zoom_in_button, "canvas.zoom_in"),
@@ -1014,7 +1022,7 @@ class MainWindow(QWidget):
                 return
 
     def activate_view(self, value):
-        """Switch view through the same handler used by radio buttons."""
+        """Switch view through the same handler used by toolbar buttons."""
         for button in self.view_group.buttons():
             if button.property("value") == value:
                 self.change_view(button)

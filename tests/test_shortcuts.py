@@ -267,6 +267,10 @@ class ShortcutWindowTests(unittest.TestCase):
                 language_manager.set_language(next_language)
                 self.assertEqual(self.window.settings_menu.title(), _TEXT[next_language]["menu.settings"])
                 self.assertEqual(self.window.help_menu.title(), _TEXT[next_language]["menu.help"])
+                for button in self.window.view_group.buttons():
+                    label = _TEXT[next_language][f"main.view.{button.property('value')}"]
+                    self.assertEqual(button.accessibleName(), label)
+                    self.assertIn(label, button.toolTip())
                 self.assertEqual(self.window.shortcut_manager.config, original_bindings)
             finally:
                 language_manager.set_language(original_language)

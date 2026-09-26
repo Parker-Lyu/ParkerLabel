@@ -95,13 +95,13 @@ class CanvasPanTests(unittest.TestCase):
 
     def test_target_editing_buttons_are_on_canvas(self):
         layout = self.window.view_controls.layout()
-        self.assertEqual(layout.itemAt(6).spacerItem().sizeHint().width(), 12)
+        self.assertEqual(layout.itemAt(10).spacerItem().sizeHint().width(), 12)
         for index, button, key in (
-            (7, self.window.undo_button, "main.undo"),
-            (8, self.window.redo_button, "main.redo"),
-            (9, self.window.add_button, "main.add_target"),
-            (10, self.window.discard_button, "main.discard_changes"),
-            (11, self.window.commit_button, "main.commit_target"),
+            (11, self.window.undo_button, "main.undo"),
+            (12, self.window.redo_button, "main.redo"),
+            (13, self.window.add_button, "main.add_target"),
+            (14, self.window.discard_button, "main.discard_changes"),
+            (15, self.window.commit_button, "main.commit_target"),
         ):
             self.assertIs(layout.itemAt(index).widget(), button)
             self.assertIsInstance(button, QToolButton)
@@ -123,6 +123,34 @@ class CanvasPanTests(unittest.TestCase):
         self.assertFalse(self.window.undo_button.isEnabled())
         self.assertFalse(self.window.redo_button.isEnabled())
         self.window.document.dirty = False
+
+    def test_view_mode_buttons_are_grouped_between_quality_and_undo(self):
+        layout = self.window.view_controls.layout()
+        self.assertEqual(layout.itemAt(6).spacerItem().sizeHint().width(), 12)
+        for index, button, value, shortcut in (
+            (7, self.window.image_view_button, "image", "1"),
+            (8, self.window.mask_view_button, "mask", "2"),
+            (9, self.window.overlay_view_button, "overlay", "3"),
+        ):
+            self.assertIs(layout.itemAt(index).widget(), button)
+            self.assertIs(button.parentWidget(), self.window.view_controls)
+            self.assertEqual(button.text(), "")
+            self.assertEqual(button.accessibleName(), self.window.t(f"main.view.{value}"))
+            self.assertIn(button.accessibleName(), button.toolTip())
+            self.assertIn(shortcut, button.toolTip())
+        self.assertFalse(hasattr(self.window, "view_group_box"))
+        self.assertTrue(self.window.overlay_view_button.isChecked())
+
+        self.window.mask_view_button.click()
+        self.assertEqual(self.window.view_mode, "mask")
+        self.assertTrue(self.window.mask_view_button.isChecked())
+        self.assertFalse(self.window.overlay_view_button.isChecked())
+
+        self.window.canvas.setFocus()
+        QTest.keyClick(self.window.canvas, Qt.Key_1)
+        self.assertEqual(self.window.view_mode, "image")
+        self.assertTrue(self.window.image_view_button.isChecked())
+        self.assertFalse(self.window.mask_view_button.isChecked())
 
     def test_canvas_icon_assets_load(self):
         directory = window_module.resource_root() / "parker_label_app" / "assets" / "canvas-icons"
