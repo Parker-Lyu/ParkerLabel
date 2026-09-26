@@ -107,6 +107,7 @@
   "table.category_edit_hint": "ダブルクリックまたは F2 キーでカテゴリを入力するか、一覧から選択します。",
   "table.category_missing_title": "カテゴリが見つかりません",
   "table.category_missing": "「{name}」は現在のカテゴリ一覧にありません。",
+  "table.iscrowd": "iscrowd",
   "table.color": "色",
   "table.delete": "削除",
   "table.edit": "編集",

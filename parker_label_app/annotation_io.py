@@ -151,7 +151,6 @@ class AnnotationRepository:
                     "image_id": 1,
                     "bbox": bbox,
                     "area": area,
-                    "iscrowd": 0,
                     "segmentation": encode_uncompressed_rle(mask),
                 }
             )

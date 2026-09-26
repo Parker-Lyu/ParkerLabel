@@ -18,6 +18,7 @@ class EditSnapshot:
     category_id: int
     category_name: str
     color_id: int
+    iscrowd: int
 
 
 def arrays_equal(first, second):

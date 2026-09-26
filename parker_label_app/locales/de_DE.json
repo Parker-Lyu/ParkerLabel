@@ -107,6 +107,7 @@
   "table.category_edit_hint": "Doppelklicken oder F2 drücken, um eine Kategorie einzugeben, oder aus der Liste auswählen.",
   "table.category_missing_title": "Kategorie nicht gefunden",
   "table.category_missing": "„{name}“ ist nicht in der aktuellen Kategorienliste enthalten.",
+  "table.iscrowd": "iscrowd",
   "table.color": "Farbe",
   "table.delete": "Löschen",
   "table.edit": "Bearbeiten",

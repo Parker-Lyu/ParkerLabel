@@ -19,7 +19,7 @@ from parker_label_app.category_store import (
     CategoryStore,
 )
 from parker_label_app.image_utils import load_rgb_image
-from parker_label_app.models import AnnotationDocument, Category
+from parker_label_app.models import AnnotationDocument, Category, Segment
 
 
 class CategoryStoreTests(unittest.TestCase):
@@ -254,6 +254,7 @@ class DocumentTests(unittest.TestCase):
             second_mask[3:7, 3:8] = 1
             document.commit_mask(0, first_mask)
             document.commit_mask(1, second_mask)
+            document.change_segment_iscrowd(1, 1)
             repository = AnnotationRepository(target_size=10)
             document.category_config_uuid = "11111111-1111-4111-8111-111111111111"
             document.category_config_sha256 = "a" * 64
@@ -268,10 +269,19 @@ class DocumentTests(unittest.TestCase):
             self.assertEqual(preview.shape[:2], (8, 10))
             self.assertEqual(preview[3, 3].tolist(), [0, 0, 200])
             self.assertEqual(payload["annotations"][0]["bbox"], [1, 1, 4, 4])
+            self.assertEqual([item["iscrowd"] for item in payload["annotations"]], [0, 1])
             loaded = repository.open(image_path)
             self.assertEqual(len(loaded.segments), 2)
             self.assertEqual(loaded.segments[0].mask[3, 3], 1)
             self.assertEqual(loaded.segments[1].mask[3, 3], 1)
+            self.assertEqual([segment.iscrowd for segment in loaded.segments], [0, 1])
+
+    def test_iscrowd_defaults_for_older_annotations_and_rejects_invalid_values(self):
+        annotation = {"category_id": 1, "category_name": "person", "color_id": 100}
+        self.assertEqual(Segment.from_dict(annotation).iscrowd, 0)
+        for value in (True, -1, 2, "1"):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "iscrowd"):
+                Segment.from_dict({**annotation, "iscrowd": value})
 
     def test_repository_rejects_unsupported_annotation_format(self):
         """Verify the repository does not load legacy annotation data."""

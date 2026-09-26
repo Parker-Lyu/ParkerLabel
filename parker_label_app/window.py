@@ -198,8 +198,9 @@ class MainWindow(QWidget):
     COL_EDIT = 1
     COL_SHOW = 2
     COL_CATEGORY = 3
-    COL_COLOR = 4
-    COL_DELETE = 5
+    COL_ISCROWD = 4
+    COL_COLOR = 5
+    COL_DELETE = 6
     PRIMARY_COLUMN_SPACING = 8
     WINDOWS_CATEGORY_NAME_CHARACTERS = 24
     WINDOWS_LABEL_PADDING = 16
@@ -592,7 +593,7 @@ class MainWindow(QWidget):
 
     def build_segment_table(self):
         """Create the segment table used to edit document-backed records."""
-        table = QTableWidget(0, 6, self)
+        table = QTableWidget(0, 7, self)
         header = VisibilityHeader(self.COL_SHOW, self.t("table.show"), table)
         table.setHorizontalHeader(header)
         self.update_table_headers(table)
@@ -695,6 +696,7 @@ class MainWindow(QWidget):
                 self.t("table.edit"),
                 "",
                 self.t("table.category"),
+                self.t("table.iscrowd"),
                 self.t("table.color"),
                 self.t("table.delete"),
             ]
@@ -1305,6 +1307,17 @@ class MainWindow(QWidget):
                 lambda row=index, combo=category: self.submit_segment_category(row, combo)
             )
             self.table.setCellWidget(index, self.COL_CATEGORY, category)
+            iscrowd = QCheckBox()
+            iscrowd.setChecked(bool(segment.iscrowd))
+            iscrowd.setEnabled(
+                self.document_is_editable() and index == self.current_index
+            )
+            iscrowd.toggled.connect(
+                lambda checked, row=index: self.set_segment_iscrowd(row, checked)
+            )
+            self.table.setCellWidget(
+                index, self.COL_ISCROWD, self.create_centered_control(iscrowd)
+            )
             color = QPushButton(self.color_button_text(segment.color_id))
             color.setStyleSheet(self.color_button_style(segment.color_id))
             color.setEnabled(
@@ -1599,6 +1612,7 @@ class MainWindow(QWidget):
             segment.category_id,
             segment.category_name,
             segment.color_id,
+            segment.iscrowd,
             self.document.dirty,
         )
 
@@ -1607,11 +1621,16 @@ class MainWindow(QWidget):
         if self.metadata_snapshot is None or self.document is None or index != self.current_index:
             return
         segment = self.document.segments[index]
-        original = self.metadata_snapshot[:3]
-        current = (segment.category_id, segment.category_name, segment.color_id)
+        original = self.metadata_snapshot[:4]
+        current = (
+            segment.category_id,
+            segment.category_name,
+            segment.color_id,
+            segment.iscrowd,
+        )
         self.metadata_dirty = current != original
         if not self.metadata_dirty:
-            self.document.dirty = self.metadata_snapshot[3]
+            self.document.dirty = self.metadata_snapshot[4]
             self.metadata_snapshot = None
 
     def set_segment_visibility(self, index, visible):
@@ -1670,6 +1689,22 @@ class MainWindow(QWidget):
         self.record_history(snapshot)
         self.refresh_table()
         self.refresh_canvas()
+
+    def set_segment_iscrowd(self, index, checked):
+        if (
+            self.document is None
+            or index != self.current_index
+            or not self.document_is_editable()
+        ):
+            return
+        iscrowd = int(checked)
+        if self.document.segments[index].iscrowd == iscrowd:
+            return
+        snapshot = self.capture_edit_snapshot()
+        self.begin_metadata_edit(index)
+        self.document.change_segment_iscrowd(index, iscrowd)
+        self.update_metadata_dirty(index)
+        self.record_history(snapshot)
 
     def delete_segment(self, index):
         """Delete a segment after user confirmation."""
@@ -1764,6 +1799,7 @@ class MainWindow(QWidget):
             category_id=segment.category_id,
             category_name=segment.category_name,
             color_id=segment.color_id,
+            iscrowd=segment.iscrowd,
         )
 
     def restore_edit_snapshot(self, snapshot):
@@ -1797,6 +1833,7 @@ class MainWindow(QWidget):
         segment.category_id = snapshot.category_id
         segment.category_name = snapshot.category_name
         segment.color_id = snapshot.color_id
+        segment.iscrowd = snapshot.iscrowd
         self.document.dirty = snapshot.document_dirty
         self.update_mask_quality()
         self.refresh_table()
@@ -1996,11 +2033,18 @@ class MainWindow(QWidget):
             and self.current_index is not None
             and self.current_index < len(self.document.segments)
         ):
-            category_id, category_name, color_id, document_dirty = self.metadata_snapshot
+            (
+                category_id,
+                category_name,
+                color_id,
+                iscrowd,
+                document_dirty,
+            ) = self.metadata_snapshot
             segment = self.document.segments[self.current_index]
             segment.category_id = category_id
             segment.category_name = category_name
             segment.color_id = color_id
+            segment.iscrowd = iscrowd
             self.document.dirty = document_dirty
         self.clear_edit_state()
         self.update_mask_quality()

@@ -40,15 +40,20 @@ class Segment:
     category_name: str
     color_id: int
     visible: bool = True
+    iscrowd: int = 0
     mask: np.ndarray | None = field(default=None, repr=False, compare=False)
 
     @classmethod
     def from_dict(cls, value):
         """Build a segment from a saved annotation mapping."""
+        iscrowd = value.get("iscrowd", 0)
+        if type(iscrowd) is not int or iscrowd not in (0, 1):
+            raise ValueError("iscrowd must be 0 or 1")
         return cls(
             category_id=int(value["category_id"]),
             category_name=str(value["category_name"]),
             color_id=int(value["color_id"]),
+            iscrowd=iscrowd,
         )
 
     def to_dict(self):
@@ -57,6 +62,7 @@ class Segment:
             "category_name": self.category_name,
             "category_id": self.category_id,
             "color_id": self.color_id,
+            "iscrowd": self.iscrowd,
         }
 
 
@@ -93,6 +99,10 @@ class AnnotationDocument:
     def change_segment_color(self, index: int, color_id: int):
         """Replace a segment color identifier without changing its pixels."""
         self.segments[index].color_id = color_id
+        self.dirty = True
+
+    def change_segment_iscrowd(self, index: int, iscrowd: int):
+        self.segments[index].iscrowd = iscrowd
         self.dirty = True
 
     def change_segment_category(self, index: int, category: Category):

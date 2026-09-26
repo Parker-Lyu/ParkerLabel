@@ -107,6 +107,7 @@
   "table.category_edit_hint": "双击或按 F2 手输类别；也可从下拉列表选择。",
   "table.category_missing_title": "类别不存在",
   "table.category_missing": "类别“{name}”不在当前列表中。",
+  "table.iscrowd": "iscrowd",
   "table.color": "颜色",
   "table.delete": "删除",
   "table.edit": "编辑",
