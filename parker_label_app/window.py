@@ -18,7 +18,6 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QDialog,
     QFileDialog,
-    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
@@ -453,12 +452,11 @@ class MainWindow(QWidget):
         self.resize_segment_table_columns()
 
     def build_primary_controls(self):
-        """Create the compact primary action grid."""
+        """Create the compact primary action row."""
         layout = QVBoxLayout()
         layout.setSpacing(0)
-        button_layout = QGridLayout()
-        button_layout.setHorizontalSpacing(self.PRIMARY_COLUMN_SPACING)
-        button_layout.setVerticalSpacing(6)
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(self.PRIMARY_COLUMN_SPACING)
         self.open_button = QPushButton()
         self.category_button = QPushButton()
         self.save_button = QPushButton()
@@ -470,10 +468,10 @@ class MainWindow(QWidget):
         self.category_config_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.update_primary_control_text()
         self.resize_primary_buttons()
-        button_layout.addWidget(self.open_button, 0, 0)
-        button_layout.addWidget(self.category_button, 0, 1)
-        button_layout.addWidget(self.save_button, 0, 2)
-        button_layout.setColumnStretch(3, 1)
+        button_layout.addWidget(self.open_button)
+        button_layout.addWidget(self.category_button)
+        button_layout.addStretch(1)
+        button_layout.addWidget(self.save_button)
         layout.addLayout(button_layout)
         layout.addWidget(self.category_config_label, 0, Qt.AlignLeft)
         if sys.platform == "win32":
