@@ -11,7 +11,7 @@ import numpy as np
 from PyQt5.QtCore import QPoint, QPointF, QSettings, Qt
 from PyQt5.QtGui import QNativeGestureEvent
 from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QToolButton
 
 from parker_label_app.models import AnnotationDocument
 import parker_label_app.window as window_module
@@ -92,6 +92,36 @@ class CanvasPanTests(unittest.TestCase):
         QTest.keyClick(self.window.canvas, Qt.Key_C)
         self.assertTrue(self.window.quality_check_enabled)
         self.assertTrue(self.window.quality_button.isChecked())
+
+    def test_target_editing_buttons_are_on_canvas(self):
+        layout = self.window.view_controls.layout()
+        self.assertEqual(layout.itemAt(6).spacerItem().sizeHint().width(), 12)
+        for index, button, key in (
+            (7, self.window.undo_button, "main.undo"),
+            (8, self.window.redo_button, "main.redo"),
+            (9, self.window.add_button, "main.add_target"),
+            (10, self.window.discard_button, "main.discard_changes"),
+            (11, self.window.commit_button, "main.commit_target"),
+        ):
+            self.assertIs(layout.itemAt(index).widget(), button)
+            self.assertIsInstance(button, QToolButton)
+            self.assertEqual(button.parentWidget(), self.window.view_controls)
+            self.assertEqual(button.text(), "")
+            self.assertEqual(button.accessibleName(), self.window.t(key))
+            self.assertIn(self.window.t(key), button.toolTip())
+        self.assertIn(self.window.t("tooltip.discard_changes"), self.window.discard_button.toolTip())
+        self.assertIn(self.window.t("tooltip.commit_target"), self.window.commit_button.toolTip())
+        self.assertFalse(hasattr(self.window, "edit_group"))
+
+        self.window.update_editing_state()
+        self.assertTrue(self.window.add_button.isEnabled())
+        with patch.object(self.window, "show_warning") as warning:
+            self.window.add_button.click()
+        warning.assert_not_called()
+        self.assertEqual(len(self.window.document.segments), 1)
+        self.assertFalse(self.window.undo_button.isEnabled())
+        self.assertFalse(self.window.redo_button.isEnabled())
+        self.window.document.dirty = False
 
     def test_middle_button_pan_moves_image_edges_into_viewport(self):
         viewport = self.window.scroll_area.viewport()

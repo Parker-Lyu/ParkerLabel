@@ -76,9 +76,41 @@ def view_control_icon(kind):
     pixmap.fill(Qt.transparent)
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.Antialiasing)
-    pen = QPen(QColor("#344054"), 1.7, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+    color = QColor({"discard": "#b42318", "commit": "#067647"}.get(kind, "#344054"))
+    pen = QPen(color, 1.7, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
     painter.setPen(pen)
-    if kind in ("points_visible", "points_hidden"):
+    if kind in ("undo", "redo"):
+        painter.save()
+        if kind == "redo":
+            painter.translate(24, 0)
+            painter.scale(-1, 1)
+        arrow = QPainterPath()
+        arrow.moveTo(8, 7)
+        arrow.lineTo(3, 12)
+        arrow.lineTo(8, 17)
+        painter.drawPath(arrow)
+        turn = QPainterPath()
+        turn.moveTo(4, 12)
+        turn.lineTo(14, 12)
+        turn.cubicTo(21, 12, 21, 20, 16, 21)
+        painter.drawPath(turn)
+        painter.restore()
+    elif kind == "add_target":
+        painter.drawRoundedRect(QRectF(3, 3, 18, 18), 2, 2)
+        painter.drawLine(12, 7, 12, 17)
+        painter.drawLine(7, 12, 17, 12)
+    elif kind == "discard":
+        painter.drawRoundedRect(QRectF(3, 3, 18, 18), 2, 2)
+        painter.drawLine(8, 8, 16, 16)
+        painter.drawLine(16, 8, 8, 16)
+    elif kind == "commit":
+        painter.drawRoundedRect(QRectF(3, 3, 18, 18), 2, 2)
+        check = QPainterPath()
+        check.moveTo(7, 12)
+        check.lineTo(10.5, 15.5)
+        check.lineTo(17, 8.5)
+        painter.drawPath(check)
+    elif kind in ("points_visible", "points_hidden"):
         eye = QPainterPath()
         eye.moveTo(2, 12)
         eye.cubicTo(7, 4, 17, 4, 22, 12)
@@ -387,12 +419,22 @@ class MainWindow(QWidget):
         self.zoom_out_button = QToolButton(self.view_controls)
         self.prompt_points_button = QToolButton(self.view_controls)
         self.quality_button = QToolButton(self.view_controls)
+        self.undo_button = QToolButton(self.view_controls)
+        self.redo_button = QToolButton(self.view_controls)
+        self.add_button = QToolButton(self.view_controls)
+        self.discard_button = QToolButton(self.view_controls)
+        self.commit_button = QToolButton(self.view_controls)
         for button, kind in (
             (self.reset_view_button, "reset"),
             (self.zoom_in_button, "in"),
             (self.zoom_out_button, "out"),
             (self.prompt_points_button, "points_visible" if self.prompt_points_visible else "points_hidden"),
             (self.quality_button, "quality"),
+            (self.undo_button, "undo"),
+            (self.redo_button, "redo"),
+            (self.add_button, "add_target"),
+            (self.discard_button, "discard"),
+            (self.commit_button, "commit"),
         ):
             button.setIcon(view_control_icon(kind))
             button.setIconSize(QSize(22, 22))
@@ -404,7 +446,7 @@ class MainWindow(QWidget):
                 "QToolButton:pressed { background: #d6e5f5; }"
                 "QToolButton:checked { background: #dceaf9; border-color: #7b9bbd; }"
             )
-            if button is self.prompt_points_button:
+            if button in (self.prompt_points_button, self.undo_button):
                 view_layout.addSpacing(12)
             view_layout.addWidget(button)
         self.prompt_points_button.setCheckable(True)
@@ -420,6 +462,11 @@ class MainWindow(QWidget):
         )
         self.prompt_points_button.clicked.connect(self.toggle_prompt_points)
         self.quality_button.clicked.connect(self.toggle_quality_check)
+        self.undo_button.clicked.connect(self.undo_edit)
+        self.redo_button.clicked.connect(self.redo_edit)
+        self.add_button.clicked.connect(self.add_segment)
+        self.discard_button.clicked.connect(self.discard_edit)
+        self.commit_button.clicked.connect(self.commit_current_segment)
         self.view_controls.adjustSize()
         self.view_controls.move(8, 8)
         self.view_controls.hide()
@@ -483,27 +530,6 @@ class MainWindow(QWidget):
         outer = QVBoxLayout()
         if sys.platform == "win32":
             outer.setSpacing(14)
-
-        self.edit_group = QGroupBox()
-        edit_layout = QVBoxLayout(self.edit_group)
-        edit_layout.setSpacing(2)
-        self.undo_button = QPushButton()
-        self.redo_button = QPushButton()
-        self.add_button = QPushButton()
-        self.commit_button = QPushButton()
-        self.discard_button = QPushButton()
-        self.undo_button.clicked.connect(self.undo_edit)
-        self.redo_button.clicked.connect(self.redo_edit)
-        self.add_button.clicked.connect(self.add_segment)
-        self.commit_button.clicked.connect(self.commit_current_segment)
-        self.discard_button.clicked.connect(self.discard_edit)
-        undo_redo_layout = QHBoxLayout()
-        undo_redo_layout.addWidget(self.undo_button)
-        undo_redo_layout.addWidget(self.redo_button)
-        edit_layout.addLayout(undo_redo_layout)
-        edit_layout.addWidget(self.add_button)
-        edit_layout.addWidget(self.discard_button)
-        edit_layout.addWidget(self.commit_button)
 
         self.view_group_box = QGroupBox()
         view_layout = QHBoxLayout(self.view_group_box)
@@ -575,11 +601,10 @@ class MainWindow(QWidget):
             "margin-top: 8px; padding-top: 6px; } "
             "QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }"
         )
-        for group in (self.edit_group, self.view_group_box, self.interaction_group):
+        for group in (self.view_group_box, self.interaction_group):
             group.setStyleSheet(group_style)
         lower_row = QHBoxLayout()
         self.tool_control_row = lower_row
-        lower_row.addWidget(self.edit_group)
         lower_row.addWidget(self.interaction_group)
         lower_row.addStretch(1)
         outer.addWidget(self.view_group_box, 0, Qt.AlignLeft)
@@ -667,14 +692,8 @@ class MainWindow(QWidget):
 
     def update_tool_control_text(self):
         """Refresh localized text for editing and viewing controls."""
-        self.edit_group.setTitle(self.t("main.group.edit"))
         self.view_group_box.setTitle(self.t("main.group.view"))
         self.interaction_group.setTitle(self.t("main.group.interaction"))
-        self.undo_button.setText(self.t("main.undo"))
-        self.redo_button.setText(self.t("main.redo"))
-        self.add_button.setText(self.t("main.add_target"))
-        self.commit_button.setText(self.t("main.commit_target"))
-        self.discard_button.setText(self.t("main.discard_changes"))
         for button in self.view_group.buttons():
             button.setText(self.t(f"main.view.{button.property('value')}"))
         for button in self.mode_group.buttons():
@@ -716,17 +735,23 @@ class MainWindow(QWidget):
             (self.open_button, None, "open_image"),
             (self.category_button, None, "category_config"),
             (self.save_button, None, "save_document"),
-            (self.undo_button, None, "undo_edit"),
-            (self.redo_button, None, "redo_edit"),
-            (self.add_button, None, "add_target"),
-            (self.commit_button, "tooltip.commit_target", "commit_target"),
-            (self.discard_button, "tooltip.discard_changes", "discard_edit"),
             (self.erode_button, "tooltip.erode", "erode"),
             (self.dilate_button, "tooltip.dilate", "dilate"),
         )
         for control, key, action_id in tooltip_map:
             base = self.t(key) if key else ""
             control.setToolTip(self.shortcut_tooltip(base, action_id))
+        for button, title_key, detail_key, action_id in (
+            (self.undo_button, "main.undo", None, "undo_edit"),
+            (self.redo_button, "main.redo", None, "redo_edit"),
+            (self.add_button, "main.add_target", None, "add_target"),
+            (self.discard_button, "main.discard_changes", "tooltip.discard_changes", "discard_edit"),
+            (self.commit_button, "main.commit_target", "tooltip.commit_target", "commit_target"),
+        ):
+            title = self.t(title_key)
+            detail = f"\n{self.t(detail_key)}" if detail_key else ""
+            button.setAccessibleName(title)
+            button.setToolTip(self.shortcut_tooltip(title + detail, action_id))
         for button in self.mode_group.buttons():
             key = f"tooltip.mode.{button.property('value')}"
             action_id = {
@@ -770,12 +795,11 @@ class MainWindow(QWidget):
         self.retranslate_menus()
         self.update_primary_control_text()
         self.update_tool_control_text()
-        for group in (self.edit_group, self.interaction_group):
-            for index in range(group.layout().count()):
-                child_layout = group.layout().itemAt(index).layout()
-                if child_layout is not None:
-                    child_layout.invalidate()
-            group.layout().invalidate()
+        for index in range(self.interaction_group.layout().count()):
+            child_layout = self.interaction_group.layout().itemAt(index).layout()
+            if child_layout is not None:
+                child_layout.invalidate()
+        self.interaction_group.layout().invalidate()
         self.update_table_headers()
         self.update_tooltips()
         if self.document is None:
