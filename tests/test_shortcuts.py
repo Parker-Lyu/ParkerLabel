@@ -107,10 +107,10 @@ class ShortcutWindowTests(unittest.TestCase):
             self.window.save_button,
         )
         self.assertEqual(len({button.height() for button in buttons}), 1)
-        self.assertEqual(buttons[0].y(), buttons[1].y())
-        self.assertLess(buttons[0].y(), buttons[2].y())
-        self.assertEqual(buttons[0].width(), buttons[1].width())
-        self.assertEqual(buttons[2].width(), buttons[0].width() * 2 + self.window.PRIMARY_COLUMN_SPACING)
+        self.assertEqual(len({button.y() for button in buttons}), 1)
+        self.assertEqual(len({button.width() for button in buttons}), 1)
+        self.assertLess(buttons[0].x(), buttons[1].x())
+        self.assertLess(buttons[1].x(), buttons[2].x())
         self.assertIs(self.window.quality_button.parentWidget(), self.window.view_controls)
         self.assertFalse(hasattr(self.window, "language_button"))
         self.assertFalse(hasattr(self.window, "tooltip_button"))
@@ -276,13 +276,11 @@ class ShortcutWindowTests(unittest.TestCase):
                     buttons = (
                         self.window.open_button,
                         self.window.category_button,
+                        self.window.save_button,
                     )
                     self.assertEqual(len({button.width() for button in buttons}), 1)
                     for button in buttons:
                         self.assertGreaterEqual(button.width(), button.sizeHint().width())
-                    self.assertGreaterEqual(
-                        self.window.save_button.width(), self.window.save_button.sizeHint().width()
-                    )
                     self.assertLessEqual(
                         self.window.category_config_label.width(),
                         self.window.control_panel.width(),

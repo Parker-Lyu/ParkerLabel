@@ -471,8 +471,8 @@ class MainWindow(QWidget):
         self.resize_primary_buttons()
         button_layout.addWidget(self.open_button, 0, 0)
         button_layout.addWidget(self.category_button, 0, 1)
-        button_layout.addWidget(self.save_button, 1, 0, 1, 2)
-        button_layout.setColumnStretch(2, 1)
+        button_layout.addWidget(self.save_button, 0, 2)
+        button_layout.setColumnStretch(3, 1)
         layout.addLayout(button_layout)
         layout.addWidget(self.category_config_label, 0, Qt.AlignLeft)
         if sys.platform == "win32":
@@ -638,12 +638,13 @@ class MainWindow(QWidget):
         buttons = (
             self.open_button,
             self.category_button,
+            self.save_button,
         )
         width = max(button.sizeHint().width() for button in buttons)
-        height = max(button.sizeHint().height() for button in (*buttons, self.save_button))
+        height = max(button.sizeHint().height() for button in buttons)
         for button in buttons:
             button.setFixedSize(width, height)
-        label_width = width * 2 + self.PRIMARY_COLUMN_SPACING
+        label_width = width * 3 + self.PRIMARY_COLUMN_SPACING * 2
         if sys.platform == "win32":
             name = self.category_config_display_name()
             label = self.t("category.current", name=name)
@@ -662,7 +663,6 @@ class MainWindow(QWidget):
                     + name_width
                     + self.WINDOWS_LABEL_PADDING,
                 )
-        self.save_button.setFixedSize(label_width, height)
         self.category_config_label.setFixedWidth(label_width)
         self.update_category_config_label()
 
