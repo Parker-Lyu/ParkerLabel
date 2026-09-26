@@ -7,8 +7,8 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PyQt5.QtCore import QEvent, QPoint, QRectF, QSize, Qt, QTimer, QUrl, QUrlQuery, pyqtSignal
-from PyQt5.QtGui import QColor, QDesktopServices, QFont, QIcon, QPainter, QPainterPath, QPen, QPixmap
+from PyQt5.QtCore import QEvent, QPoint, QSize, Qt, QTimer, QUrl, QUrlQuery, pyqtSignal
+from PyQt5.QtGui import QColor, QDesktopServices, QFont, QIcon, QPainter, QPen, QPixmap
 from PyQt5.QtWidgets import (
     QAction,
     QApplication,
@@ -70,89 +70,25 @@ from .shortcuts import SPECS_BY_ID, ShortcutManager, ShortcutStore
 from .update_dialog import UpdateCheckDialog
 
 
+CANVAS_ICON_NAMES = {
+    "reset": "house",
+    "in": "zoom-in",
+    "out": "zoom-out",
+    "points_visible": "eye",
+    "points_hidden": "eye-off",
+    "quality": "scan-eye",
+    "undo": "undo-2",
+    "redo": "redo-2",
+    "add_target": "square-plus",
+    "discard": "square-x",
+    "commit": "square-check-big",
+}
+
+
 def view_control_icon(kind):
-    pixmap = QPixmap(48, 48)
-    pixmap.setDevicePixelRatio(2)
-    pixmap.fill(Qt.transparent)
-    painter = QPainter(pixmap)
-    painter.setRenderHint(QPainter.Antialiasing)
-    color = QColor({"discard": "#b42318", "commit": "#067647"}.get(kind, "#344054"))
-    pen = QPen(color, 1.7, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
-    painter.setPen(pen)
-    if kind in ("undo", "redo"):
-        painter.save()
-        if kind == "redo":
-            painter.translate(24, 0)
-            painter.scale(-1, 1)
-        arrow = QPainterPath()
-        arrow.moveTo(8, 7)
-        arrow.lineTo(3, 12)
-        arrow.lineTo(8, 17)
-        painter.drawPath(arrow)
-        turn = QPainterPath()
-        turn.moveTo(4, 12)
-        turn.lineTo(14, 12)
-        turn.cubicTo(21, 12, 21, 20, 16, 21)
-        painter.drawPath(turn)
-        painter.restore()
-    elif kind == "add_target":
-        painter.drawRoundedRect(QRectF(3, 3, 18, 18), 2, 2)
-        painter.drawLine(12, 7, 12, 17)
-        painter.drawLine(7, 12, 17, 12)
-    elif kind == "discard":
-        painter.drawRoundedRect(QRectF(3, 3, 18, 18), 2, 2)
-        painter.drawLine(8, 8, 16, 16)
-        painter.drawLine(16, 8, 8, 16)
-    elif kind == "commit":
-        painter.drawRoundedRect(QRectF(3, 3, 18, 18), 2, 2)
-        check = QPainterPath()
-        check.moveTo(7, 12)
-        check.lineTo(10.5, 15.5)
-        check.lineTo(17, 8.5)
-        painter.drawPath(check)
-    elif kind in ("points_visible", "points_hidden"):
-        eye = QPainterPath()
-        eye.moveTo(2, 12)
-        eye.cubicTo(7, 4, 17, 4, 22, 12)
-        eye.cubicTo(17, 20, 7, 20, 2, 12)
-        painter.drawPath(eye)
-        painter.setBrush(QColor("#344054"))
-        painter.drawEllipse(QRectF(10, 10, 4, 4))
-        if kind == "points_hidden":
-            painter.setPen(QPen(QColor("#fafcff"), 4, Qt.SolidLine, Qt.RoundCap))
-            painter.drawLine(4, 21, 20, 3)
-            painter.setPen(pen)
-            painter.drawLine(4, 21, 20, 3)
-    elif kind == "quality":
-        for x, y, dx, dy in ((3, 3, 1, 1), (21, 3, -1, 1), (3, 21, 1, -1), (21, 21, -1, -1)):
-            painter.drawLine(x, y, x + 5 * dx, y)
-            painter.drawLine(x, y, x, y + 5 * dy)
-        painter.setBrush(QColor("#344054"))
-        painter.drawEllipse(QRectF(10, 10, 4, 4))
-    elif kind == "reset":
-        home = QPainterPath()
-        home.moveTo(3.5, 11)
-        home.lineTo(12, 4)
-        home.lineTo(20.5, 11)
-        home.moveTo(6, 9.5)
-        home.lineTo(6, 20)
-        home.lineTo(10, 20)
-        home.moveTo(10, 20)
-        home.lineTo(10, 14.5)
-        home.lineTo(14, 14.5)
-        home.lineTo(14, 20)
-        home.moveTo(14, 20)
-        home.lineTo(18, 20)
-        home.lineTo(18, 9.5)
-        painter.drawPath(home)
-    else:
-        painter.drawEllipse(QRectF(4.5, 4.5, 12, 12))
-        painter.drawLine(15, 15, 20, 20)
-        painter.drawLine(7, 10, 14, 10)
-        if kind == "in":
-            painter.drawLine(10, 7, 10, 14)
-    painter.end()
-    return QIcon(pixmap)
+    name = CANVAS_ICON_NAMES[kind]
+    path = resource_root() / "parker_label_app" / "assets" / "canvas-icons" / f"{name}.png"
+    return QIcon(str(path))
 
 
 class CategoryLineEdit(QLineEdit):

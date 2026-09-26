@@ -32,6 +32,10 @@ models. Their Apache 2.0 license, TinyViT notices, checkpoint
 source, and original checkpoint SHA-256 are included in `MobileSAM/`; complete
 conversion provenance is maintained in `docs/model-provenance.md`.
 
+The canvas toolbar uses Lucide SVG icons and PNG renderings from commit
+`66d8f9fc394b8530377e5f6112f0b8908ba01280`. The upstream ISC and MIT
+license notices and source record are in `Lucide/`.
+
 OpenCV and ONNX Runtime include their upstream third-party notice files in
 their respective directories. The Qt `attributions/` directory preserves the
 qtbase attribution manifests and associated license texts. It is intentionally

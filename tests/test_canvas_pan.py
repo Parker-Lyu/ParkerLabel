@@ -109,6 +109,7 @@ class CanvasPanTests(unittest.TestCase):
             self.assertEqual(button.text(), "")
             self.assertEqual(button.accessibleName(), self.window.t(key))
             self.assertIn(self.window.t(key), button.toolTip())
+            self.assertFalse(button.icon().isNull())
         self.assertIn(self.window.t("tooltip.discard_changes"), self.window.discard_button.toolTip())
         self.assertIn(self.window.t("tooltip.commit_target"), self.window.commit_button.toolTip())
         self.assertFalse(hasattr(self.window, "edit_group"))
@@ -122,6 +123,17 @@ class CanvasPanTests(unittest.TestCase):
         self.assertFalse(self.window.undo_button.isEnabled())
         self.assertFalse(self.window.redo_button.isEnabled())
         self.window.document.dirty = False
+
+    def test_canvas_icon_assets_load(self):
+        for kind in window_module.CANVAS_ICON_NAMES:
+            icon = window_module.view_control_icon(kind)
+            self.assertFalse(icon.isNull(), kind)
+            image = icon.pixmap(22, 22).toImage()
+            self.assertGreater(
+                sum(image.pixelColor(x, y).alpha() > 0 for x in range(22) for y in range(22)),
+                0,
+                kind,
+            )
 
     def test_middle_button_pan_moves_image_edges_into_viewport(self):
         viewport = self.window.scroll_area.viewport()

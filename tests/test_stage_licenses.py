@@ -19,6 +19,7 @@ class StageLicensesTests(unittest.TestCase):
             self.assertFalse((output / "Qt" / "SOURCE.md").exists())
             self.assertFalse((output / "NCurses").exists())
             self.assertTrue((output / "MicrosoftWindowsSDK" / "LICENSE.txt").is_file())
+            self.assertTrue((output / "Lucide" / "LICENSE").is_file())
 
 
 if __name__ == "__main__":

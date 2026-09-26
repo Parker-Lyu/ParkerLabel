@@ -30,6 +30,7 @@ def stage_licenses(source, inventory_path, output):
         "OPEN_SOURCE_LICENSES.html",
         "THIRD_PARTY_NOTICES.md",
         "MobileSAM",
+        "Lucide",
     ):
         copy_path(source / relative_path, output / relative_path)
     copy_path(inventory_path, output / f"{platform}-inventory.json")
