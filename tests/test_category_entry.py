@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+import cv2
 import numpy as np
 from PyQt5.QtCore import QSettings, Qt
 from PyQt5.QtTest import QTest
@@ -110,6 +111,27 @@ class CategoryEntryTests(unittest.TestCase):
         QTest.mouseClick(view.viewport(), Qt.LeftButton, pos=point)
         self.app.processEvents()
         self.assertEqual(self.window.document.segments[0].category_name, self.second.name)
+
+    def test_open_image_displays_saved_categories(self):
+        image_path = Path(self.directory.name) / "saved.png"
+        cv2.imwrite(str(image_path), np.zeros((20, 20, 3), dtype=np.uint8))
+        document = self.window.document
+        document.image_path = image_path
+        document.category_config_uuid = self.window.active_category_config_id
+        document.category_config_sha256 = self.window.active_category_config_sha256
+        document.segments.append(Segment(self.second.id, self.second.name, 254))
+        self.window.repository.save(document)
+
+        with patch.object(self.window, "ensure_embedding"):
+            self.window.open_image(image_path)
+
+        self.assertEqual(self.window.table.rowCount(), 2)
+        for row, expected in enumerate((self.window.categories[0].name, self.second.name)):
+            self.assertEqual(self.window.document.segments[row].category_name, expected)
+            self.assertEqual(
+                self.window.table.cellWidget(row, self.window.COL_CATEGORY).currentText(),
+                expected,
+            )
 
 
 if __name__ == "__main__":

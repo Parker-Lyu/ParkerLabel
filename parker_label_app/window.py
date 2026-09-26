@@ -1428,7 +1428,7 @@ class MainWindow(QWidget):
         if current_name and current_name not in names:
             names.insert(0, current_name)
         combo.addItems(names)
-        combo.setCurrentText(current_name)
+        combo.setCurrentIndex(combo.findText(current_name, Qt.MatchExactly))
         combo.committed_text = current_name
         for index, name in enumerate(names):
             category = self.categories_by_name.get(name)
