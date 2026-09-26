@@ -8,7 +8,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from PyQt5.QtCore import QEvent, QPoint, QRect, QRectF, QSize, Qt, QTimer, QUrl, QUrlQuery, pyqtSignal
-from PyQt5.QtGui import QColor, QDesktopServices, QFont, QIcon, QPainter, QPalette, QPen, QPixmap
+from PyQt5.QtGui import QColor, QDesktopServices, QFont, QIcon, QPainter, QPainterPath, QPalette, QPen, QPixmap
 from PyQt5.QtWidgets import (
     QAction,
     QApplication,
@@ -82,7 +82,20 @@ def view_control_icon(kind):
     painter.setRenderHint(QPainter.Antialiasing)
     pen = QPen(QColor("#344054"), 1.7, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
     painter.setPen(pen)
-    if kind == "reset":
+    if kind in ("points_visible", "points_hidden"):
+        eye = QPainterPath()
+        eye.moveTo(2, 12)
+        eye.cubicTo(7, 4, 17, 4, 22, 12)
+        eye.cubicTo(17, 20, 7, 20, 2, 12)
+        painter.drawPath(eye)
+        painter.setBrush(QColor("#344054"))
+        painter.drawEllipse(QRectF(10, 10, 4, 4))
+        if kind == "points_hidden":
+            painter.setPen(QPen(QColor("#fafcff"), 4, Qt.SolidLine, Qt.RoundCap))
+            painter.drawLine(4, 21, 20, 3)
+            painter.setPen(pen)
+            painter.drawLine(4, 21, 20, 3)
+    elif kind == "reset":
         for x, y, dx, dy in ((4, 4, 1, 1), (20, 4, -1, 1), (4, 20, 1, -1), (20, 20, -1, -1)):
             painter.drawLine(x, y + 5 * dy, x, y)
             painter.drawLine(x, y, x + 5 * dx, y)
@@ -235,6 +248,7 @@ class MainWindow(QWidget):
     BRUSH_SIZE_SETTING_KEY = "interface/brush_size"
     LAST_IMAGE_SETTING_KEY = "files/last_opened_image"
     TOOLTIPS_SETTING_KEY = "interface/tooltips_enabled"
+    PROMPT_POINTS_SETTING_KEY = "interface/prompt_points_visible"
 
     def __init__(self):
         """Initialize application services, state, and interface."""
@@ -286,6 +300,9 @@ class MainWindow(QWidget):
         )
         self.tooltips_enabled = self.settings.value(
             self.TOOLTIPS_SETTING_KEY, True, type=bool
+        )
+        self.prompt_points_visible = self.settings.value(
+            self.PROMPT_POINTS_SETTING_KEY, True, type=bool
         )
         self.mask_quality = MaskQuality()
         self.mode = "query"
@@ -408,10 +425,12 @@ class MainWindow(QWidget):
         self.reset_view_button = QToolButton(self.view_controls)
         self.zoom_in_button = QToolButton(self.view_controls)
         self.zoom_out_button = QToolButton(self.view_controls)
+        self.prompt_points_button = QToolButton(self.view_controls)
         for button, kind in (
             (self.reset_view_button, "reset"),
             (self.zoom_in_button, "in"),
             (self.zoom_out_button, "out"),
+            (self.prompt_points_button, "points_visible" if self.prompt_points_visible else "points_hidden"),
         ):
             button.setIcon(view_control_icon(kind))
             button.setIconSize(QSize(22, 22))
@@ -421,8 +440,11 @@ class MainWindow(QWidget):
                 "border: 1px solid #aeb8c2; border-radius: 6px; }"
                 "QToolButton:hover { background: #e7eef7; }"
                 "QToolButton:pressed { background: #d6e5f5; }"
+                "QToolButton:checked { background: #dceaf9; border-color: #7b9bbd; }"
             )
             view_layout.addWidget(button)
+        self.prompt_points_button.setCheckable(True)
+        self.prompt_points_button.setChecked(self.prompt_points_visible)
         self.reset_view_button.clicked.connect(self.reset_canvas_view)
         self.zoom_in_button.clicked.connect(
             lambda: self.zoom_canvas_at_center(self.zoom_step)
@@ -430,6 +452,7 @@ class MainWindow(QWidget):
         self.zoom_out_button.clicked.connect(
             lambda: self.zoom_canvas_at_center(1 / self.zoom_step)
         )
+        self.prompt_points_button.clicked.connect(self.toggle_prompt_points)
         self.view_controls.adjustSize()
         self.view_controls.move(8, 8)
         self.view_controls.hide()
@@ -775,6 +798,9 @@ class MainWindow(QWidget):
             label = self.t(key)
             button.setAccessibleName(label)
             button.setToolTip(label if self.tooltips_enabled else "")
+        key = "canvas.hide_prompt_points" if self.prompt_points_visible else "canvas.show_prompt_points"
+        self.prompt_points_button.setAccessibleName(self.t(key))
+        self.prompt_points_button.setToolTip(self.shortcut_tooltip(self.t(key), "toggle_prompt_points"))
 
     def shortcut_tooltip(self, base, action_id):
         """Append an active shortcut hint when interface tips are enabled."""
@@ -1029,6 +1055,7 @@ class MainWindow(QWidget):
         bind("view_image", lambda: self.activate_view("image"), lambda: self.document is not None)
         bind("view_mask", lambda: self.activate_view("mask"), lambda: self.document is not None)
         bind("view_overlay", lambda: self.activate_view("overlay"), lambda: self.document is not None)
+        bind("toggle_prompt_points", self.toggle_prompt_points)
         bind("brush_smaller", lambda: self.adjust_brush(-1), lambda: self.brush_slider.isEnabled())
         bind("brush_larger", lambda: self.adjust_brush(1), lambda: self.brush_slider.isEnabled())
         bind("erode", self.erode_edit_mask, lambda: self.erode_button.isEnabled())
@@ -1962,6 +1989,16 @@ class MainWindow(QWidget):
         self.mask_quality = MaskQuality()
         self.update_history_controls()
 
+    def toggle_prompt_points(self, _checked=False):
+        self.prompt_points_visible = not self.prompt_points_visible
+        self.prompt_points_button.setChecked(self.prompt_points_visible)
+        kind = "points_visible" if self.prompt_points_visible else "points_hidden"
+        self.prompt_points_button.setIcon(view_control_icon(kind))
+        self.settings.setValue(self.PROMPT_POINTS_SETTING_KEY, self.prompt_points_visible)
+        self.settings.sync()
+        self.update_tooltips()
+        self.refresh_canvas()
+
     def toggle_quality_check(self, _checked=False):
         """Toggle visual quality hints for the active mask."""
         self.quality_check_enabled = not self.quality_check_enabled
@@ -2437,7 +2474,7 @@ class MainWindow(QWidget):
                 and self.document.segments[self.current_index].visible
             ):
                 self.draw_quality_boxes(pixmap)
-            if self.view_mode == "overlay":
+            if self.view_mode == "overlay" and self.prompt_points_visible:
                 self.draw_prompt_points(pixmap)
         self.canvas.setPixmap(pixmap)
 

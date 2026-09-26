@@ -52,6 +52,7 @@ ACTION_SPECS = (
     ActionSpec("view_image", "shortcut.action.view_image", "shortcut.group.view", "shortcut.scope.workspace", "1", "1"),
     ActionSpec("view_mask", "shortcut.action.view_mask", "shortcut.group.view", "shortcut.scope.workspace", "2", "2"),
     ActionSpec("view_overlay", "shortcut.action.view_overlay", "shortcut.group.view", "shortcut.scope.workspace", "3", "3"),
+    ActionSpec("toggle_prompt_points", "shortcut.action.toggle_prompt_points", "shortcut.group.view", "shortcut.scope.workspace", "R", "R"),
     ActionSpec("brush_smaller", "shortcut.action.brush_smaller", "shortcut.group.brush", "shortcut.scope.workspace", "[", "[", repeat=True),
     ActionSpec("brush_larger", "shortcut.action.brush_larger", "shortcut.group.brush", "shortcut.scope.workspace", "]", "]", repeat=True),
     ActionSpec("erode", "shortcut.action.erode", "shortcut.group.brush", "shortcut.scope.workspace", disruptive=True),

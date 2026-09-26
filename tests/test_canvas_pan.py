@@ -10,6 +10,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import numpy as np
 from PyQt5.QtCore import QPoint, QPointF, QSettings, Qt
 from PyQt5.QtGui import QNativeGestureEvent
+from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication
 
 from parker_label_app.models import AnnotationDocument
@@ -48,6 +49,34 @@ class CanvasPanTests(unittest.TestCase):
         self.window.close()
         self.app.processEvents()
         self.directory.cleanup()
+
+    def test_prompt_point_visibility_button_and_shortcut(self):
+        self.window.prompt_points = [(50, 60)]
+        self.window.prompt_labels = [1]
+        self.window.refresh_canvas()
+        point = QPoint(
+            int(50 * self.window.canvas_size[0] / 300),
+            int(60 * self.window.canvas_size[1] / 200),
+        )
+        shown = self.window.canvas.pixmap().toImage().pixelColor(point)
+        self.assertGreater(shown.green(), shown.red())
+        self.assertIs(self.window.view_controls.layout().itemAt(3).widget(), self.window.prompt_points_button)
+        self.assertIn("R", self.window.prompt_points_button.toolTip())
+
+        self.window.prompt_points_button.click()
+        hidden = self.window.canvas.pixmap().toImage().pixelColor(point)
+        self.assertEqual(hidden.red(), 0)
+        self.assertEqual(hidden.green(), 0)
+        self.assertFalse(self.window.prompt_points_button.isChecked())
+        self.assertEqual(len(self.window.prompt_points), 1)
+        self.assertFalse(self.window.settings.value(self.window.PROMPT_POINTS_SETTING_KEY, type=bool))
+
+        self.window.canvas.setFocus()
+        QTest.keyClick(self.window.canvas, Qt.Key_R)
+        self.assertTrue(self.window.prompt_points_button.isChecked())
+        self.assertGreater(
+            self.window.canvas.pixmap().toImage().pixelColor(point).green(), 0
+        )
 
     def test_middle_button_pan_moves_image_edges_into_viewport(self):
         viewport = self.window.scroll_area.viewport()

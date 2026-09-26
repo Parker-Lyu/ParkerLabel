@@ -38,6 +38,8 @@ class ShortcutStoreTests(unittest.TestCase):
         self.assertEqual(mac["mode_smart"], "Q")
         self.assertEqual(mac["mode_brush"], "W")
         self.assertEqual(mac["mode_query"], "E")
+        self.assertEqual(mac["toggle_prompt_points"], "R")
+        self.assertEqual(windows["toggle_prompt_points"], "R")
         self.assertEqual(mac["open_image"], "Ctrl+O")
         self.assertEqual(mac["redo_edit"], "Ctrl+Shift+Z")
         self.assertEqual(windows["redo_edit"], "Ctrl+Y")
@@ -63,7 +65,7 @@ class ShortcutStoreTests(unittest.TestCase):
         store = ShortcutStore(self.settings, is_macos=True)
         config = store.defaults()
         config["add_target"] = ""
-        config["mode_smart"] = "R"
+        config["mode_smart"] = "T"
         store.save(config)
         self.assertEqual(ShortcutStore(self.settings, True).load(), config)
         self.settings.setValue("shortcuts/mode_smart", "Ctrl+Q")
@@ -307,17 +309,17 @@ class ShortcutWindowTests(unittest.TestCase):
         dialog.draft["add_target"] = "Q"
         dialog.validate()
         self.assertFalse(dialog.save_button.isEnabled())
-        dialog.draft["add_target"] = "R"
+        dialog.draft["add_target"] = "T"
         dialog.validate()
         self.assertTrue(dialog.save_button.isEnabled())
         dialog.reject()
         self.assertEqual(self.window.shortcut_manager.config["add_target"], original)
         dialog = ShortcutSettingsDialog(self.window, self.window.shortcut_manager)
-        dialog.draft["add_target"] = "R"
+        dialog.draft["add_target"] = "T"
         dialog.validate()
         dialog.save()
-        self.assertEqual(self.window.shortcut_manager.config["add_target"], "R")
-        self.assertEqual(ShortcutStore(self.settings, is_macos=os.sys.platform == "darwin").load()["add_target"], "R")
+        self.assertEqual(self.window.shortcut_manager.config["add_target"], "T")
+        self.assertEqual(ShortcutStore(self.settings, is_macos=os.sys.platform == "darwin").load()["add_target"], "T")
         dialog = ShortcutSettingsDialog(self.window, self.window.shortcut_manager)
         dialog.restore_all_defaults()
         dialog.save()
