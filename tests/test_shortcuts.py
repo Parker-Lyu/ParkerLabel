@@ -116,7 +116,7 @@ class ShortcutWindowTests(unittest.TestCase):
         left_gap = buttons[1].x() - buttons[0].geometry().right()
         right_gap = buttons[2].x() - buttons[1].geometry().right()
         self.assertGreater(right_gap, left_gap)
-        self.assertIs(self.window.quality_button.parentWidget(), self.window.view_controls)
+        self.assertIs(self.window.quality_button.parentWidget(), self.window.toolbar_cards[2])
         self.assertFalse(hasattr(self.window, "language_button"))
         self.assertFalse(hasattr(self.window, "tooltip_button"))
         self.assertEqual(

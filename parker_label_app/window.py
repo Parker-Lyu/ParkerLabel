@@ -19,11 +19,13 @@ from PyQt5.QtWidgets import (
     QDialog,
     QFileDialog,
     QFrame,
+    QGraphicsDropShadowEffect,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QLineEdit,
+    QLayout,
     QMenu,
     QMenuBar,
     QMessageBox,
@@ -355,9 +357,18 @@ class MainWindow(QWidget):
         self.quality_summary_label.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.quality_summary_label.hide()
         self.view_controls = QWidget(self.scroll_area.viewport())
-        view_layout = QHBoxLayout(self.view_controls)
-        view_layout.setContentsMargins(0, 0, 0, 0)
-        view_layout.setSpacing(4)
+        view_layout = QVBoxLayout(self.view_controls)
+        view_layout.setContentsMargins(8, 8, 8, 8)
+        view_layout.setSpacing(8)
+        self.toolbar_rows = []
+        for _ in range(5):
+            row = QWidget(self.view_controls)
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.setSpacing(16)
+            row_layout.setSizeConstraint(QLayout.SetFixedSize)
+            view_layout.addWidget(row)
+            self.toolbar_rows.append(row)
         self.reset_view_button = QToolButton(self.view_controls)
         self.zoom_in_button = QToolButton(self.view_controls)
         self.zoom_out_button = QToolButton(self.view_controls)
@@ -389,26 +400,38 @@ class MainWindow(QWidget):
         ):
             button.setIcon(view_control_icon(kind))
             button.setIconSize(QSize(24, 24))
-            button.setFixedSize(32, 32)
+            button.setFixedSize(34, 34)
             button.setStyleSheet(
-                "QToolButton { background: rgba(250, 252, 255, 240); "
-                "border: 1px solid #aeb8c2; border-radius: 6px; }"
-                "QToolButton:hover { background: #e7eef7; }"
-                "QToolButton:pressed { background: #d6e5f5; }"
-                "QToolButton:checked { background: #dceaf9; border-color: #7b9bbd; }"
+                "QToolButton { background: transparent; border: none; border-radius: 9px; }"
+                "QToolButton:hover { background: rgba(223, 235, 249, 220); }"
+                "QToolButton:pressed { background: rgba(198, 220, 245, 230); }"
+                "QToolButton:checked { background: rgba(211, 231, 251, 235); }"
             )
-            if button in (
-                self.prompt_points_button,
-                self.image_view_button,
-                self.undo_button,
-            ):
-                divider = QFrame(self.view_controls)
-                divider.setFrameShape(QFrame.VLine)
-                divider.setFrameShadow(QFrame.Plain)
-                divider.setStyleSheet("color: #aeb8c2;")
-                divider.setFixedSize(16, 24)
-                view_layout.addWidget(divider)
-            view_layout.addWidget(button)
+        self.toolbar_cards = []
+        for buttons in (
+            (self.reset_view_button, self.zoom_in_button, self.zoom_out_button),
+            (self.image_view_button, self.mask_view_button, self.overlay_view_button),
+            (self.prompt_points_button, self.quality_button),
+            (self.undo_button, self.redo_button),
+            (self.add_button, self.discard_button, self.commit_button),
+        ):
+            card = QFrame(self.view_controls)
+            card.setObjectName("toolbarCard")
+            card.setStyleSheet(
+                "QFrame#toolbarCard { background: rgba(255, 255, 255, 235); "
+                "border-radius: 14px; }"
+            )
+            card_layout = QHBoxLayout(card)
+            card_layout.setContentsMargins(5, 5, 5, 5)
+            card_layout.setSpacing(3)
+            for button in buttons:
+                card_layout.addWidget(button)
+            shadow = QGraphicsDropShadowEffect(card)
+            shadow.setBlurRadius(12)
+            shadow.setOffset(0, 2)
+            shadow.setColor(QColor(0, 0, 0, 38))
+            card.setGraphicsEffect(shadow)
+            self.toolbar_cards.append(card)
         self.prompt_points_button.setCheckable(True)
         self.prompt_points_button.setChecked(self.prompt_points_visible)
         self.quality_button.setCheckable(True)
@@ -437,7 +460,7 @@ class MainWindow(QWidget):
         self.add_button.clicked.connect(self.add_segment)
         self.discard_button.clicked.connect(self.discard_edit)
         self.commit_button.clicked.connect(self.commit_current_segment)
-        self.view_controls.adjustSize()
+        self.layout_toolbar_cards()
         self.view_controls.move(8, 8)
         self.view_controls.hide()
         self.scroll_area.viewport().installEventFilter(self)
@@ -1073,8 +1096,41 @@ class MainWindow(QWidget):
         ):
             self.update_canvas_container()
             self.position_quality_overlay()
+            self.layout_toolbar_cards()
             self.view_controls.raise_()
         return super().eventFilter(watched, event)
+
+    def layout_toolbar_cards(self):
+        if not hasattr(self, "toolbar_cards"):
+            return
+        available = self.scroll_area.viewport().width() - 24
+        widths = [card.sizeHint().width() for card in self.toolbar_cards]
+        gap = 16
+        if sum(widths) + gap * 4 > available and available >= sum(widths) + 12:
+            gap = max(3, (available - sum(widths)) // 4)
+        for row in self.toolbar_rows:
+            row_layout = row.layout()
+            while row_layout.count():
+                row_layout.takeAt(0)
+            row_layout.setSpacing(gap)
+        row_index = 0
+        row_width = 0
+        for card, width in zip(self.toolbar_cards, widths):
+            added_width = width + (gap if row_width else 0)
+            if row_width and row_width + added_width > available:
+                row_index += 1
+                row_width = 0
+                added_width = width
+            self.toolbar_rows[row_index].layout().addWidget(card)
+            row_width += added_width
+        for index, row in enumerate(self.toolbar_rows):
+            row.setVisible(index <= row_index)
+            row.layout().invalidate()
+            row.layout().activate()
+            row.adjustSize()
+        self.view_controls.layout().invalidate()
+        self.view_controls.layout().activate()
+        self.view_controls.resize(self.view_controls.layout().sizeHint())
 
     def position_quality_overlay(self):
         """Anchor the quality summary to the viewport's upper-right corner."""

@@ -59,10 +59,9 @@ class CanvasPanTests(unittest.TestCase):
         )
         shown = self.window.canvas.pixmap().toImage().pixelColor(point)
         self.assertGreater(shown.green(), shown.red())
-        layout = self.window.view_controls.layout()
-        self.assertEqual(layout.itemAt(7).widget().frameShape(), QFrame.VLine)
-        self.assertIs(layout.itemAt(8).widget(), self.window.prompt_points_button)
-        self.assertIs(layout.itemAt(9).widget(), self.window.quality_button)
+        layout = self.window.toolbar_cards[2].layout()
+        self.assertIs(layout.itemAt(0).widget(), self.window.prompt_points_button)
+        self.assertIs(layout.itemAt(1).widget(), self.window.quality_button)
         self.assertIn("S", self.window.prompt_points_button.toolTip())
 
         self.window.prompt_points_button.click()
@@ -94,18 +93,16 @@ class CanvasPanTests(unittest.TestCase):
         self.assertTrue(self.window.quality_button.isChecked())
 
     def test_target_editing_buttons_are_on_canvas(self):
-        layout = self.window.view_controls.layout()
-        self.assertEqual(layout.itemAt(10).widget().frameShape(), QFrame.VLine)
-        for index, button, key in (
-            (11, self.window.undo_button, "main.undo"),
-            (12, self.window.redo_button, "main.redo"),
-            (13, self.window.add_button, "main.add_target"),
-            (14, self.window.discard_button, "main.discard_changes"),
-            (15, self.window.commit_button, "main.commit_target"),
+        for card_index, index, button, key in (
+            (3, 0, self.window.undo_button, "main.undo"),
+            (3, 1, self.window.redo_button, "main.redo"),
+            (4, 0, self.window.add_button, "main.add_target"),
+            (4, 1, self.window.discard_button, "main.discard_changes"),
+            (4, 2, self.window.commit_button, "main.commit_target"),
         ):
-            self.assertIs(layout.itemAt(index).widget(), button)
+            self.assertIs(self.window.toolbar_cards[card_index].layout().itemAt(index).widget(), button)
             self.assertIsInstance(button, QToolButton)
-            self.assertEqual(button.parentWidget(), self.window.view_controls)
+            self.assertEqual(button.parentWidget(), self.window.toolbar_cards[card_index])
             self.assertEqual(button.text(), "")
             self.assertEqual(button.accessibleName(), self.window.t(key))
             self.assertIn(self.window.t(key), button.toolTip())
@@ -125,15 +122,14 @@ class CanvasPanTests(unittest.TestCase):
         self.window.document.dirty = False
 
     def test_view_mode_buttons_are_grouped_between_zoom_and_points(self):
-        layout = self.window.view_controls.layout()
-        self.assertEqual(layout.itemAt(3).widget().frameShape(), QFrame.VLine)
+        layout = self.window.toolbar_cards[1].layout()
         for index, button, value, shortcut in (
-            (4, self.window.image_view_button, "image", "1"),
-            (5, self.window.mask_view_button, "mask", "2"),
-            (6, self.window.overlay_view_button, "overlay", "3"),
+            (0, self.window.image_view_button, "image", "1"),
+            (1, self.window.mask_view_button, "mask", "2"),
+            (2, self.window.overlay_view_button, "overlay", "3"),
         ):
             self.assertIs(layout.itemAt(index).widget(), button)
-            self.assertIs(button.parentWidget(), self.window.view_controls)
+            self.assertIs(button.parentWidget(), self.window.toolbar_cards[1])
             self.assertEqual(button.text(), "")
             self.assertEqual(button.accessibleName(), self.window.t(f"main.view.{value}"))
             self.assertIn(button.accessibleName(), button.toolTip())
@@ -141,10 +137,12 @@ class CanvasPanTests(unittest.TestCase):
         self.assertFalse(hasattr(self.window, "view_group_box"))
         self.assertTrue(self.window.overlay_view_button.isChecked())
 
-        self.assertEqual(
-            [layout.itemAt(index).widget().frameShape() for index in (3, 7, 10)],
-            [QFrame.VLine] * 3,
-        )
+        self.assertEqual(len(self.window.toolbar_cards), 5)
+        self.assertEqual([card.layout().count() for card in self.window.toolbar_cards], [3, 3, 2, 2, 3])
+        self.assertTrue(all(isinstance(card, QFrame) for card in self.window.toolbar_cards))
+        self.assertTrue(all(card.graphicsEffect() is not None for card in self.window.toolbar_cards))
+        self.assertEqual([card.layout().spacing() for card in self.window.toolbar_cards], [3] * 5)
+        self.assertEqual(self.window.image_view_button.size().width(), 34)
 
         self.window.mask_view_button.click()
         self.assertEqual(self.window.view_mode, "mask")
@@ -156,6 +154,29 @@ class CanvasPanTests(unittest.TestCase):
         self.assertEqual(self.window.view_mode, "image")
         self.assertTrue(self.window.image_view_button.isChecked())
         self.assertFalse(self.window.mask_view_button.isChecked())
+
+    def test_toolbar_cards_fit_narrow_and_wide_viewports(self):
+        self.window.update_view_controls()
+        self.window.setMinimumWidth(700)
+        self.window.resize(850, 720)
+        self.app.processEvents()
+        self.assertGreater(sum(row.isVisible() for row in self.window.toolbar_rows), 1)
+        self.assertLessEqual(
+            self.window.view_controls.geometry().right(),
+            self.window.scroll_area.viewport().width(),
+        )
+        self.assertEqual(
+            sum(row.layout().count() for row in self.window.toolbar_rows), 5
+        )
+
+        self.window.resize(1300, 720)
+        self.app.processEvents()
+        self.assertEqual(self.window.toolbar_rows[0].layout().count(), 5)
+        self.assertEqual(self.window.toolbar_rows[0].layout().spacing(), 16)
+        self.assertLessEqual(
+            self.window.view_controls.geometry().right(),
+            self.window.scroll_area.viewport().width(),
+        )
 
     def test_canvas_icon_assets_load(self):
         directory = window_module.resource_root() / "parker_label_app" / "assets" / "canvas-icons"
