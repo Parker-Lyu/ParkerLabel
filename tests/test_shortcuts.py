@@ -134,6 +134,15 @@ class ShortcutWindowTests(unittest.TestCase):
         self.assertIn(self.window.about_action, self.window.help_menu.actions())
         self.assertIn(self.window.check_updates_action, self.window.help_menu.actions())
         self.assertIn(self.window.licenses_action, self.window.help_menu.actions())
+        self.assertEqual(
+            [action.text() for action in self.window.help_menu.actions() if not action.isSeparator()],
+            [
+                self.window.t("menu.changelog"),
+                self.window.t("menu.check_updates"),
+                self.window.t("menu.licenses"),
+                self.window.t("menu.about"),
+            ],
+        )
         for code in LANGUAGE_NAMES:
             self.assertIn("shortcut.title", _TEXT[code])
             self.assertIn("menu.settings", _TEXT[code])
@@ -162,6 +171,10 @@ class ShortcutWindowTests(unittest.TestCase):
         self.window.show_about_dialog()
 
         self.assertTrue(
+            any(window_module.REPOSITORY_URL in text for text in dialog_text),
+            dialog_text,
+        )
+        self.assertTrue(
             any(GITEE_REPOSITORY_URL in text for text in dialog_text), dialog_text
         )
         self.assertTrue(
@@ -179,8 +192,8 @@ class ShortcutWindowTests(unittest.TestCase):
             any(self.window.t("menu.licenses") in text for text in dialog_text),
             dialog_text,
         )
-        self.assertIn(self.window.t("menu.check_updates"), button_text)
-        self.assertNotIn(self.window.t("menu.licenses"), button_text)
+        self.assertFalse(any(window_module.CHANGELOG_URL in text for text in dialog_text))
+        self.assertEqual(button_text, [self.window.t("common.close")])
 
     @patch.object(window_module.QDesktopServices, "openUrl", return_value=True)
     def test_open_source_licenses_uses_local_bundled_notice(self, open_url):

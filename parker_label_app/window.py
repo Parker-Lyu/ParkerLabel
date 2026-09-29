@@ -796,10 +796,6 @@ class MainWindow(QWidget):
         self.settings_menu.addAction(self.tooltip_action)
 
         self.help_menu = self.menu_bar.addMenu("")
-        self.github_action = QAction(self)
-        self.github_action.setMenuRole(QAction.NoRole)
-        self.github_action.triggered.connect(lambda: self.open_external_url(REPOSITORY_URL))
-        self.help_menu.addAction(self.github_action)
         self.changelog_action = QAction(self)
         self.changelog_action.setMenuRole(QAction.NoRole)
         self.changelog_action.triggered.connect(lambda: self.open_external_url(CHANGELOG_URL))
@@ -833,7 +829,6 @@ class MainWindow(QWidget):
         self.help_menu.setTitle(self.t("menu.help"))
         self.language_menu.setTitle(self.t("menu.language"))
         self.tooltip_action.setText(self.t("menu.tooltips"))
-        self.github_action.setText(self.t("menu.github"))
         self.changelog_action.setText(self.t("menu.changelog"))
         self.check_updates_action.setText(self.t("menu.check_updates"))
         self.licenses_action.setText(self.t("menu.licenses"))
@@ -897,8 +892,6 @@ class MainWindow(QWidget):
             f'<a href="{REPOSITORY_URL}">{self.t("menu.github")}</a>'
             f'&nbsp;&nbsp;·&nbsp;&nbsp;'
             f'<a href="{GITEE_REPOSITORY_URL}">{self.t("menu.gitee")}</a>'
-            f'&nbsp;&nbsp;·&nbsp;&nbsp;'
-            f'<a href="{CHANGELOG_URL}">{self.t("menu.changelog")}</a>'
         )
         model_references_title = QLabel(self.t("about.model_references"))
         model_references = QLabel(
@@ -921,9 +914,6 @@ class MainWindow(QWidget):
             font = heading.font()
             font.setBold(True)
             heading.setFont(font)
-        update_button = QPushButton(self.t("menu.check_updates"))
-        update_button.clicked.connect(dialog.accept)
-        update_button.clicked.connect(lambda: QTimer.singleShot(0, self.open_update_check))
         close_button = QPushButton(self.t("common.close"))
         close_button.clicked.connect(dialog.accept)
         layout.addWidget(title)
@@ -937,7 +927,6 @@ class MainWindow(QWidget):
         layout.addWidget(legal_title)
         layout.addWidget(licenses_link)
         button_layout = QHBoxLayout()
-        button_layout.addWidget(update_button)
         button_layout.addStretch(1)
         button_layout.addWidget(close_button)
         layout.addLayout(button_layout)
