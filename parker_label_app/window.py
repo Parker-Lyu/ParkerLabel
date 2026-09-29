@@ -427,9 +427,9 @@ class MainWindow(QWidget):
             for button in buttons:
                 card_layout.addWidget(button)
             shadow = QGraphicsDropShadowEffect(card)
-            shadow.setBlurRadius(12)
-            shadow.setOffset(0, 2)
-            shadow.setColor(QColor(0, 0, 0, 38))
+            shadow.setBlurRadius(14)
+            shadow.setOffset(0, 0)
+            shadow.setColor(QColor(0, 0, 0, 42))
             card.setGraphicsEffect(shadow)
             self.toolbar_cards.append(card)
         self.prompt_points_button.setCheckable(True)
