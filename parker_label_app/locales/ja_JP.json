@@ -23,6 +23,7 @@
   "model.exit": "終了",
   "canvas.open_image": "画像を開いてください",
   "canvas.drop_image": "画像をここにドラッグするか、「画像を開く」をクリック",
+  "canvas.recent_images": "最近開いた画像",
   "canvas.open_shortcut": "開くショートカット：{shortcut}",
   "canvas.reset_view": "初期表示に戻す",
   "canvas.zoom_in": "拡大",

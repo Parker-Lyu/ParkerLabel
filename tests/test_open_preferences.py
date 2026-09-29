@@ -75,6 +75,49 @@ class OpenPreferencesTests(unittest.TestCase):
             window.open_image(str(Path(self.directory.name) / "other.png"))
         self.assertEqual(window.settings.value(window.LAST_IMAGE_SETTING_KEY), str(existing))
 
+    def test_recent_images_show_five_valid_paths_and_open_on_click(self):
+        window = self.create_window()
+        images = []
+        for index in range(7):
+            image = Path(self.directory.name) / f"image-{index}.png"
+            cv2.imwrite(str(image), np.zeros((12, 12, 3), dtype=np.uint8))
+            images.append(image.resolve())
+            with patch.object(window, "ensure_embedding"):
+                window.open_image(str(image))
+
+        images[-1].unlink()
+        restarted = self.create_window()
+        restarted.show()
+        self.app.processEvents()
+        self.assertEqual(restarted.canvas.recent_paths, list(reversed(images[1:6])))
+        self.assertEqual(restarted.canvas.recent_label.text(), restarted.t("canvas.recent_images"))
+        self.assertEqual(sum(button.isVisible() for button in restarted.canvas.recent_buttons), 5)
+        with patch.object(restarted, "open_image") as open_image:
+            restarted.canvas.recent_buttons[0].click()
+        open_image.assert_called_once_with(str(images[5]))
+
+        with patch.object(window, "ensure_embedding"):
+            window.open_image(str(images[2]))
+        newest = self.create_window()
+        self.assertEqual(newest.canvas.recent_paths[0], images[2])
+        self.assertEqual(len(set(newest.canvas.recent_paths)), 5)
+
+    def test_existing_last_image_seeds_recent_history(self):
+        previous = Path(self.directory.name) / "previous.png"
+        current = Path(self.directory.name) / "current.png"
+        for image in (previous, current):
+            cv2.imwrite(str(image), np.zeros((12, 12, 3), dtype=np.uint8))
+        window = self.create_window()
+        window.settings.setValue(window.LAST_IMAGE_SETTING_KEY, str(previous))
+        window.update_empty_canvas()
+        self.assertEqual(window.canvas.recent_paths, [previous.resolve()])
+        with patch.object(window, "ensure_embedding"):
+            window.open_image(str(current))
+        self.assertEqual(
+            self.create_window().canvas.recent_paths,
+            [current.resolve(), previous.resolve()],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -182,6 +182,7 @@ class MainWindow(QWidget):
     QUALITY_SETTING_KEY = "interface/quality_check_enabled"
     BRUSH_SIZE_SETTING_KEY = "interface/brush_size"
     LAST_IMAGE_SETTING_KEY = "files/last_opened_image"
+    RECENT_IMAGES_SETTING_KEY = "files/recent_images"
     TOOLTIPS_SETTING_KEY = "interface/tooltips_enabled"
     PROMPT_POINTS_SETTING_KEY = "interface/prompt_points_visible"
 
@@ -1008,6 +1009,26 @@ class MainWindow(QWidget):
             self.t("canvas.drop_image"),
             self.t("canvas.open_shortcut", shortcut=shortcut) if shortcut else "",
         )
+        self.canvas.set_recent_images(self.t("canvas.recent_images"), self.recent_image_paths())
+
+    def recent_image_paths(self, limit=5):
+        saved = self.settings.value(self.RECENT_IMAGES_SETTING_KEY, [])
+        if isinstance(saved, str):
+            saved = [saved]
+        if not saved:
+            saved = [self.settings.value(self.LAST_IMAGE_SETTING_KEY, "", type=str)]
+        paths = []
+        for value in saved:
+            path = Path(value).expanduser()
+            if path.is_file() and path.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp"}:
+                resolved = path.resolve()
+                if resolved not in paths:
+                    paths.append(resolved)
+        return paths[:limit]
+
+    def remember_recent_image(self, path):
+        recent = [str(path), *(str(item) for item in self.recent_image_paths(19))]
+        self.settings.setValue(self.RECENT_IMAGES_SETTING_KEY, list(dict.fromkeys(recent))[:20])
 
     def mode_enabled(self, value):
         """Return whether a mode can currently be entered."""
@@ -1139,6 +1160,7 @@ class MainWindow(QWidget):
             return
         try:
             self.document = self.repository.open(Path(path))
+            self.canvas.recent_panel.hide()
             self.resolve_open_document_configuration()
             self.current_index = None
             self.clear_edit_state()
@@ -1150,6 +1172,7 @@ class MainWindow(QWidget):
             self.update_editing_state()
             self.update_view_controls()
             self.center_canvas_view()
+            self.remember_recent_image(self.document.image_path.resolve())
             self.settings.setValue(
                 self.LAST_IMAGE_SETTING_KEY, str(self.document.image_path.resolve())
             )

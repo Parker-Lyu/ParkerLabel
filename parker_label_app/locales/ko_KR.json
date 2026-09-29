@@ -23,6 +23,7 @@
   "model.exit": "종료",
   "canvas.open_image": "이미지를 여세요",
   "canvas.drop_image": "이미지를 여기로 드래그하거나 이미지 열기를 클릭하세요",
+  "canvas.recent_images": "최근 연 이미지",
   "canvas.open_shortcut": "열기 단축키: {shortcut}",
   "canvas.reset_view": "초기 화면으로 돌아가기",
   "canvas.zoom_in": "확대",

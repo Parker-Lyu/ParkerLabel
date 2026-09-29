@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QEvent, QPointF, QRectF, Qt
 from PyQt5.QtGui import QColor, QFont, QPainter, QPen
-from PyQt5.QtWidgets import QLabel
+from PyQt5.QtWidgets import QFrame, QLabel, QPushButton, QVBoxLayout
 
 
 class AnnotationCanvas(QLabel):
@@ -13,10 +13,60 @@ class AnnotationCanvas(QLabel):
         self.setMouseTracking(True)
         self.brush_cursor_position = None
         self.empty_state = ("", "", "")
+        self.recent_paths = []
+        self.recent_panel = QFrame(self)
+        self.recent_panel.setFixedWidth(420)
+        recent_layout = QVBoxLayout(self.recent_panel)
+        recent_layout.setContentsMargins(0, 0, 0, 0)
+        recent_layout.setSpacing(4)
+        self.recent_label = QLabel(self.recent_panel)
+        self.recent_label.setStyleSheet("color: #34495e; font-weight: bold;")
+        recent_layout.addWidget(self.recent_label)
+        self.recent_buttons = []
+        for index in range(5):
+            button = QPushButton(self.recent_panel)
+            button.setFixedHeight(30)
+            button.setStyleSheet(
+                "QPushButton { text-align: left; padding: 3px 10px; color: #34495e; "
+                "background: white; border: 1px solid #cbd6e2; border-radius: 5px; }"
+                "QPushButton:hover { background: #e7eef7; }"
+            )
+            button.clicked.connect(lambda _checked=False, row=index: self.open_recent_image(row))
+            recent_layout.addWidget(button)
+            self.recent_buttons.append(button)
+        self.recent_panel.hide()
 
     def set_empty_state(self, title, hint, shortcut):
         self.empty_state = (title, hint, shortcut)
         self.update()
+
+    def set_recent_images(self, title, paths):
+        self.recent_paths = list(paths[:5])
+        self.recent_label.setText(title)
+        for index, button in enumerate(self.recent_buttons):
+            visible = index < len(self.recent_paths)
+            button.setVisible(visible)
+            if visible:
+                path = self.recent_paths[index]
+                button.setText(button.fontMetrics().elidedText(path.name, Qt.ElideMiddle, 390))
+                button.setToolTip(str(path))
+        self.recent_panel.setVisible(bool(self.recent_paths))
+        self.recent_panel.adjustSize()
+        self.position_recent_panel()
+
+    def open_recent_image(self, index):
+        if index < len(self.recent_paths):
+            self.controller.open_image(str(self.recent_paths[index]))
+
+    def position_recent_panel(self):
+        self.recent_panel.move(
+            max(0, (self.width() - self.recent_panel.width()) // 2),
+            min(self.height() // 2 + 90, max(8, self.height() - self.recent_panel.height() - 8)),
+        )
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.position_recent_panel()
 
     def event(self, event):
         if event.type() == QEvent.NativeGesture:

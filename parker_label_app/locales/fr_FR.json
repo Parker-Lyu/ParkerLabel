@@ -23,6 +23,7 @@
   "model.exit": "Quitter",
   "canvas.open_image": "Ouvrez une image",
   "canvas.drop_image": "Glissez une image ici ou cliquez sur Ouvrir une image",
+  "canvas.recent_images": "Images récentes",
   "canvas.open_shortcut": "Raccourci d’ouverture : {shortcut}",
   "canvas.reset_view": "Réinitialiser la vue",
   "canvas.zoom_in": "Agrandir",

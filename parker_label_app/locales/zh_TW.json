@@ -23,6 +23,7 @@
   "model.exit": "結束",
   "canvas.open_image": "請開啟圖片",
   "canvas.drop_image": "將圖片拖到這裡，或點選「開啟圖片」",
+  "canvas.recent_images": "最近開啟",
   "canvas.open_shortcut": "開啟快捷鍵：{shortcut}",
   "canvas.reset_view": "返回初始檢視",
   "canvas.zoom_in": "放大",
