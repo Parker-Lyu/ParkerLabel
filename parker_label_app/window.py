@@ -18,6 +18,7 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QDialog,
     QFileDialog,
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
@@ -336,7 +337,7 @@ class MainWindow(QWidget):
         screen = QApplication.primaryScreen().availableSize()
         self.resize(max(1100, screen.width() - 80), max(720, screen.height() - 80))
         self.canvas = AnnotationCanvas(self)
-        self.canvas.setText(self.t("canvas.open_image"))
+        self.update_empty_canvas()
         self.canvas_container = QWidget(self)
         self.canvas.setParent(self.canvas_container)
         self.scroll_area = QScrollArea(self)
@@ -400,7 +401,12 @@ class MainWindow(QWidget):
                 self.image_view_button,
                 self.undo_button,
             ):
-                view_layout.addSpacing(12)
+                divider = QFrame(self.view_controls)
+                divider.setFrameShape(QFrame.VLine)
+                divider.setFrameShadow(QFrame.Plain)
+                divider.setStyleSheet("color: #aeb8c2;")
+                divider.setFixedSize(16, 24)
+                view_layout.addWidget(divider)
             view_layout.addWidget(button)
         self.prompt_points_button.setCheckable(True)
         self.prompt_points_button.setChecked(self.prompt_points_visible)
@@ -750,7 +756,7 @@ class MainWindow(QWidget):
         self.update_table_headers()
         self.update_tooltips()
         if self.document is None:
-            self.canvas.setText(self.t("canvas.open_image"))
+            self.update_empty_canvas()
             if self.log_area.document().blockCount() == 1:
                 self.log_area.setPlainText(self.t("log.ready"))
         self.refresh_table()
@@ -992,6 +998,16 @@ class MainWindow(QWidget):
         """Refresh UI elements that show active shortcut bindings."""
         self.retranslate_menus()
         self.update_tooltips()
+        if self.document is None:
+            self.update_empty_canvas()
+
+    def update_empty_canvas(self):
+        shortcut = self.shortcut_manager.shortcut_text("open_image")
+        self.canvas.set_empty_state(
+            self.t("canvas.open_image"),
+            self.t("canvas.drop_image"),
+            self.t("canvas.open_shortcut", shortcut=shortcut) if shortcut else "",
+        )
 
     def mode_enabled(self, value):
         """Return whether a mode can currently be entered."""
@@ -1078,8 +1094,8 @@ class MainWindow(QWidget):
         self.set_checked_button(self.mode_group, self.mode)
         self.clear_edit_state()
         self.table.setRowCount(0)
-        self.canvas.setText(self.t("canvas.open_image"))
-        self.canvas.setFixedSize(640, 480)
+        self.canvas.setPixmap(QPixmap())
+        self.update_empty_canvas()
         self.update_canvas_container()
         self.update_editing_state()
         self.update_quality_overlay()
@@ -1226,6 +1242,8 @@ class MainWindow(QWidget):
     def update_canvas_container(self):
         """Keep panning space around the canvas at every zoom level."""
         viewport = self.scroll_area.viewport()
+        if self.document is None:
+            self.canvas.setFixedSize(viewport.size())
         horizontal_margin = viewport.width() // 2 if self.document is not None else 0
         vertical_margin = viewport.height() // 2 if self.document is not None else 0
         self.canvas.move(horizontal_margin, vertical_margin)

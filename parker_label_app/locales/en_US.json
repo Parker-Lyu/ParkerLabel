@@ -22,6 +22,8 @@
   "model.copy": "Copy Addresses and Path",
   "model.exit": "Exit",
   "canvas.open_image": "Open an image to begin",
+  "canvas.drop_image": "Drag an image here, or click Open Image",
+  "canvas.open_shortcut": "Open shortcut: {shortcut}",
   "canvas.reset_view": "Reset view",
   "canvas.zoom_in": "Zoom in",
   "canvas.zoom_out": "Zoom out",

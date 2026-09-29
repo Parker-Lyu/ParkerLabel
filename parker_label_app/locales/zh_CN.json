@@ -22,6 +22,8 @@
   "model.copy": "复制地址和路径",
   "model.exit": "退出",
   "canvas.open_image": "请打开图片",
+  "canvas.drop_image": "将图片拖到这里，或点击“打开图片”",
+  "canvas.open_shortcut": "打开快捷键：{shortcut}",
   "canvas.reset_view": "回到初始视图",
   "canvas.zoom_in": "放大",
   "canvas.zoom_out": "缩小",

@@ -22,6 +22,8 @@
   "model.copy": "Adressen und Pfad kopieren",
   "model.exit": "Beenden",
   "canvas.open_image": "Bitte ein Bild öffnen",
+  "canvas.drop_image": "Bild hierher ziehen oder auf Bild öffnen klicken",
+  "canvas.open_shortcut": "Tastenkürzel zum Öffnen: {shortcut}",
   "canvas.reset_view": "Ansicht zurücksetzen",
   "canvas.zoom_in": "Vergrößern",
   "canvas.zoom_out": "Verkleinern",

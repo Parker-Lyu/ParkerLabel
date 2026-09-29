@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QEvent, QRectF, Qt
-from PyQt5.QtGui import QColor, QPainter, QPen
+from PyQt5.QtCore import QEvent, QPointF, QRectF, Qt
+from PyQt5.QtGui import QColor, QFont, QPainter, QPen
 from PyQt5.QtWidgets import QLabel
 
 
@@ -12,6 +12,11 @@ class AnnotationCanvas(QLabel):
         self.setAcceptDrops(True)
         self.setMouseTracking(True)
         self.brush_cursor_position = None
+        self.empty_state = ("", "", "")
+
+    def set_empty_state(self, title, hint, shortcut):
+        self.empty_state = (title, hint, shortcut)
+        self.update()
 
     def event(self, event):
         if event.type() == QEvent.NativeGesture:
@@ -62,6 +67,9 @@ class AnnotationCanvas(QLabel):
     def paintEvent(self, event):
         """Render the image and the active brush outline."""
         super().paintEvent(event)
+        if self.controller.document is None:
+            self.paint_empty_state()
+            return
         if (
             self.brush_cursor_position is None
             or self.controller.mode != "brush"
@@ -90,6 +98,35 @@ class AnnotationCanvas(QLabel):
         inner_pen.setCosmetic(True)
         painter.setPen(inner_pen)
         painter.drawEllipse(ellipse)
+        painter.end()
+
+    def paint_empty_state(self):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.fillRect(self.rect(), QColor("#f8fafc"))
+        center = QPointF(self.width() / 2, self.height() / 2)
+        icon = QRectF(center.x() - 38, center.y() - 105, 76, 66)
+        painter.setBrush(QColor("#eef4fb"))
+        painter.setPen(QPen(QColor("#8ba2ba"), 1.5, Qt.DashLine))
+        painter.drawRoundedRect(icon, 10, 10)
+        painter.setPen(QPen(QColor("#52708f"), 2.5, Qt.SolidLine, Qt.RoundCap))
+        painter.drawLine(QPointF(center.x(), icon.top() + 15), QPointF(center.x(), icon.top() + 40))
+        painter.drawLine(QPointF(center.x() - 8, icon.top() + 32), QPointF(center.x(), icon.top() + 40))
+        painter.drawLine(QPointF(center.x() + 8, icon.top() + 32), QPointF(center.x(), icon.top() + 40))
+        painter.drawLine(QPointF(center.x() - 15, icon.bottom() - 14), QPointF(center.x() + 15, icon.bottom() - 14))
+        title, hint, shortcut = self.empty_state
+        font = QFont(self.font())
+        font.setPointSize(16)
+        font.setBold(True)
+        painter.setFont(font)
+        painter.setPen(QColor("#34495e"))
+        painter.drawText(QRectF(20, center.y() - 20, self.width() - 40, 32), Qt.AlignCenter, title)
+        font.setPointSize(11)
+        font.setBold(False)
+        painter.setFont(font)
+        painter.setPen(QColor("#65788d"))
+        painter.drawText(QRectF(20, center.y() + 18, self.width() - 40, 28), Qt.AlignCenter, hint)
+        painter.drawText(QRectF(20, center.y() + 48, self.width() - 40, 28), Qt.AlignCenter, shortcut)
         painter.end()
 
     def dragEnterEvent(self, event):

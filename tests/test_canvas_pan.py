@@ -11,7 +11,7 @@ import numpy as np
 from PyQt5.QtCore import QPoint, QPointF, QSettings, Qt
 from PyQt5.QtGui import QImage, QNativeGestureEvent
 from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication, QToolButton
+from PyQt5.QtWidgets import QApplication, QFrame, QToolButton
 
 from parker_label_app.models import AnnotationDocument
 import parker_label_app.window as window_module
@@ -60,7 +60,7 @@ class CanvasPanTests(unittest.TestCase):
         shown = self.window.canvas.pixmap().toImage().pixelColor(point)
         self.assertGreater(shown.green(), shown.red())
         layout = self.window.view_controls.layout()
-        self.assertEqual(layout.itemAt(7).spacerItem().sizeHint().width(), 12)
+        self.assertEqual(layout.itemAt(7).widget().frameShape(), QFrame.VLine)
         self.assertIs(layout.itemAt(8).widget(), self.window.prompt_points_button)
         self.assertIs(layout.itemAt(9).widget(), self.window.quality_button)
         self.assertIn("S", self.window.prompt_points_button.toolTip())
@@ -95,7 +95,7 @@ class CanvasPanTests(unittest.TestCase):
 
     def test_target_editing_buttons_are_on_canvas(self):
         layout = self.window.view_controls.layout()
-        self.assertEqual(layout.itemAt(10).spacerItem().sizeHint().width(), 12)
+        self.assertEqual(layout.itemAt(10).widget().frameShape(), QFrame.VLine)
         for index, button, key in (
             (11, self.window.undo_button, "main.undo"),
             (12, self.window.redo_button, "main.redo"),
@@ -126,7 +126,7 @@ class CanvasPanTests(unittest.TestCase):
 
     def test_view_mode_buttons_are_grouped_between_zoom_and_points(self):
         layout = self.window.view_controls.layout()
-        self.assertEqual(layout.itemAt(3).spacerItem().sizeHint().width(), 12)
+        self.assertEqual(layout.itemAt(3).widget().frameShape(), QFrame.VLine)
         for index, button, value, shortcut in (
             (4, self.window.image_view_button, "image", "1"),
             (5, self.window.mask_view_button, "mask", "2"),
@@ -140,6 +140,11 @@ class CanvasPanTests(unittest.TestCase):
             self.assertIn(shortcut, button.toolTip())
         self.assertFalse(hasattr(self.window, "view_group_box"))
         self.assertTrue(self.window.overlay_view_button.isChecked())
+
+        self.assertEqual(
+            [layout.itemAt(index).widget().frameShape() for index in (3, 7, 10)],
+            [QFrame.VLine] * 3,
+        )
 
         self.window.mask_view_button.click()
         self.assertEqual(self.window.view_mode, "mask")
@@ -170,6 +175,27 @@ class CanvasPanTests(unittest.TestCase):
                 self.assertFalse(asset.isNull(), f"{kind} {scale}x")
                 self.assertEqual(asset.width(), 24 * scale)
                 self.assertEqual(asset.height(), 24 * scale)
+
+    def test_empty_canvas_shows_drag_guidance_and_current_shortcut(self):
+        self.window.document = None
+        self.window.reset_document_view()
+        self.app.processEvents()
+        self.assertEqual(self.window.canvas.size(), self.window.scroll_area.viewport().size())
+        self.assertEqual(
+            self.window.canvas.empty_state,
+            (
+                self.window.t("canvas.open_image"),
+                self.window.t("canvas.drop_image"),
+                self.window.t("canvas.open_shortcut", shortcut=self.window.shortcut_manager.shortcut_text("open_image")),
+            ),
+        )
+        self.assertFalse(self.window.view_controls.isVisible())
+        self.window.shortcut_manager.config["open_image"] = "Ctrl+P"
+        self.window.shortcuts_changed()
+        self.assertIn(self.window.shortcut_manager.shortcut_text("open_image"), self.window.canvas.empty_state[2])
+        self.window.shortcut_manager.config["open_image"] = ""
+        self.window.shortcuts_changed()
+        self.assertEqual(self.window.canvas.empty_state[2], "")
 
     def test_middle_button_pan_moves_image_edges_into_viewport(self):
         viewport = self.window.scroll_area.viewport()
