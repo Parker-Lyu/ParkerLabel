@@ -11,7 +11,7 @@
     <a href="builds/SOP.md"><img src="https://img.shields.io/badge/build%20target-Windows%20x64-0078D4?style=flat-square&amp;logo=windows" alt="Windows x64 build target"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--only-green?style=flat-square" alt="GPL-3.0-only license"></a>
   </p>
-  <img src="docs/images/interactive-mask-demo.gif" width="960" alt="ParkerLabel interactive annotation demo">
+  <img src="docs/images/parkerlabel-ui-demo.gif" width="960" alt="ParkerLabel interactive annotation demo">
 </div>
 
 ## Run
