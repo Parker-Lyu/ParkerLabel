@@ -56,7 +56,7 @@ ParkerLabel automatically verifies and downloads missing ONNX models into `pretr
 
 ParkerLabel supports 中文（简体）, 中文（繁體）, English, 日本語, 한국어, Deutsch, Français, Italiano, and Español. Use **Settings → Interface Language** to change the interface language and **Settings → Tooltips** to control contextual hints.
 
-Use **Settings → Keyboard Shortcuts** to view, change, clear, or restore key bindings. Smart, Manual, and Inspect modes use `Q`, `W`, and `E` by default. The image toolbar uses `S` to toggle smart click points in the overlay view and `C` to toggle quality checks. Saved bindings take effect immediately and persist across launches.
+Use **Settings → Keyboard Shortcuts** to view, change, clear, or restore key bindings. AI, Manual, and Inspect modes use `Q`, `W`, and `E` by default. In AI mode, positive and negative clicks guide MobileSAM to generate a mask for the current target. The image toolbar uses `S` to toggle AI prompt points in the overlay view and `C` to toggle quality checks. Saved bindings take effect immediately and persist across launches.
 
 ### Category configurations
 

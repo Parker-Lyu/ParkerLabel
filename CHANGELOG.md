@@ -2,18 +2,15 @@
 
 ## Unreleased
 
-- Bundle verified MobileSAM encoder and decoder models in portable macOS and Windows packages so packaged apps start offline without model downloads.
-- Create a draft GitHub Release when either platform build succeeds, with only verified assets from successful platforms.
-- Resolve the original macOS app location under App Translocation so portable settings, categories, and logs remain beside the extracted app; retain a clear startup error if the original location cannot be resolved or written.
-
 ## 1.0.0
 
 ### Initial release
 
-- Add CPU-based, MobileSAM-assisted image annotation with smart clicks, manual editing, and mask inspection. Overlay view preserves the brightness of unlabeled image areas.
+- Add CPU-based, MobileSAM-assisted image annotation with an AI mode guided by positive and negative clicks, manual editing, and mask inspection. Overlay view preserves the brightness of unlabeled image areas.
 - Save per-image instance annotations with category, bounding box, area, and COCO RLE mask data, alongside an image embedding cache and mask preview.
 - Include the 80-category COCO configuration and support versioned, immutable custom category configurations with integrity checks for saved annotations.
 - Provide nine interface languages, configurable keyboard shortcuts, and persistent settings.
-- Provide portable macOS arm64 and Windows x64 builds, with program-adjacent configuration and verified ONNX model downloads from GitHub or Gitee.
+- Provide portable macOS arm64 and Windows x64 builds with bundled MobileSAM models for offline use and program-adjacent configuration.
+- Keep macOS settings, categories, and logs beside the extracted app when its original location can be resolved under App Translocation; show a startup error otherwise.
 - Build both platforms from a version tag and collect verified assets in a draft GitHub Release for manual acceptance.
 - Add manual update checks and offline access to third-party license information.
