@@ -15,15 +15,26 @@
 
 ## Run
 
-### Download a portable release
+### Use a portable release
 
-Download a published application package for your platform from [GitHub Releases](https://github.com/Parker-Lyu/ParkerLabel/releases) or [Gitee Releases](https://gitee.com/Parker-Lyu/ParkerLabel/releases). Releases named `models-*` contain ONNX models, not application packages. Gitee application packages are uploaded separately and may appear later. Check the package against the release's `SHA256SUMS` and extract the complete archive. On macOS, use Finder to move the entire extracted ParkerLabel folder out of Downloads to a writable location before opening `ParkerLabel.app`; on Windows, run `ParkerLabel.exe` from a writable folder. Python, Conda, and project dependencies are not required.
+1. Download a published application package for your platform from [GitHub Releases](https://github.com/Parker-Lyu/ParkerLabel/releases) or [baiduyun](later). Releases named `models-*` contain ONNX models, not application packages. 
 
-ParkerLabel creates `configs/` beside the program for settings, category configurations, and logs. Existing files there are retained; a missing directory is created at startup, and `settings.ini` is written when a setting changes. The ONNX models are included in the application and need no separate download. If macOS starts the app from a read-only App Translocation copy, ParkerLabel resolves the original app location and writes `configs/` beside that original app. Allowing the app in Privacy & Security does not necessarily disable App Translocation. If the original location cannot be resolved or is not writable, startup stops with instructions to move the entire extracted folder. Each newly extracted version has its own `configs/` directory.
+1. On macOS and Windows, you need to  move the entire extracted ParkerLabel folder to a writable location before opening it.
 
-The macOS package is ad-hoc signed but is not notarized by Apple. The first launch may therefore be blocked by macOS. After attempting to open the app once, open **System Settings → Privacy & Security**, scroll to the security section, and choose **Open Anyway**.
+1. The macOS package is ad-hoc signed but is not notarized by Apple. The first launch may therefore be blocked by macOS. After attempting to open the app once, open **System Settings → Privacy & Security**, scroll to the security section, and choose **Open Anyway**.
 
-Portable macOS arm64 and Windows x64 build commands, prerequisites, artifact layouts, OpenCV minimization, and verification steps are maintained in [`builds/SOP.md`](builds/SOP.md).
+1. On Windows, Microsoft Defender SmartScreen may show **Windows protected your PC** when you first launch the app. Click **More info**, then **Run anyway**.
+
+<p align="center">
+  <a href="docs/images/portable-macos-open-1.png"><img src="docs/images/portable-macos-open-1.png" width="35.2%" alt="macOS first-launch warning: click Done"></a>
+  <a href="docs/images/portable-macos-open-2.png"><img src="docs/images/portable-macos-open-2.png" width="45%" alt="macOS Privacy and Security: click Open Anyway"></a><br>
+  <a href="docs/images/portable-windows-open-1.png"><img src="docs/images/portable-windows-open-1.png" width="45%" alt="Windows SmartScreen: click More info"></a>
+  <a href="docs/images/portable-windows-open-2.png"><img src="docs/images/portable-windows-open-2.png" width="45%" alt="Windows SmartScreen: click Run anyway"></a>
+</p>
+
+These warnings alone do not mean ParkerLabel is malicious. Portable releases are built with GitHub Actions; you can review the [build workflow](.github/workflows/release.yml) and [build instructions](builds/SOP.md).
+
+
 
 ### Run from source
 
