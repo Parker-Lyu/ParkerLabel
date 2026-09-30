@@ -157,25 +157,32 @@ class CanvasPanTests(unittest.TestCase):
 
     def test_toolbar_cards_fit_narrow_and_wide_viewports(self):
         self.window.update_view_controls()
-        self.window.setMinimumWidth(700)
-        self.window.resize(850, 720)
-        self.app.processEvents()
+        viewport = self.window.scroll_area.viewport()
+
+        def resize_viewport(width):
+            for _ in range(3):
+                self.window.resize(
+                    self.window.width() + width - viewport.width(), 720
+                )
+                self.app.processEvents()
+            self.assertAlmostEqual(viewport.width(), width, delta=2)
+
+        resize_viewport(400)
         self.assertGreater(sum(row.isVisible() for row in self.window.toolbar_rows), 1)
         self.assertLessEqual(
             self.window.view_controls.geometry().right(),
-            self.window.scroll_area.viewport().width(),
+            viewport.width(),
         )
         self.assertEqual(
             sum(row.layout().count() for row in self.window.toolbar_rows), 5
         )
 
-        self.window.resize(1300, 720)
-        self.app.processEvents()
+        resize_viewport(900)
         self.assertEqual(self.window.toolbar_rows[0].layout().count(), 5)
         self.assertEqual(self.window.toolbar_rows[0].layout().spacing(), 16)
         self.assertLessEqual(
             self.window.view_controls.geometry().right(),
-            self.window.scroll_area.viewport().width(),
+            viewport.width(),
         )
 
     def test_canvas_icon_assets_load(self):
