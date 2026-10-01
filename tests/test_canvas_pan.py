@@ -204,6 +204,31 @@ class CanvasPanTests(unittest.TestCase):
                 self.assertEqual(asset.width(), 24 * scale)
                 self.assertEqual(asset.height(), 24 * scale)
 
+    def test_empty_canvas_icon_opens_image_only_on_left_click(self):
+        self.window.document = None
+        self.window.reset_document_view()
+        self.app.processEvents()
+        canvas = self.window.canvas
+        point = canvas.empty_icon_rect().center().toPoint()
+        with patch.object(self.window, "choose_image") as choose_image:
+            QTest.mouseMove(canvas, point)
+            self.assertEqual(canvas.cursor().shape(), Qt.PointingHandCursor)
+            QTest.mouseClick(canvas, Qt.RightButton, pos=point)
+            QTest.mouseClick(canvas, Qt.LeftButton, pos=QPoint(10, 10))
+            choose_image.assert_not_called()
+            QTest.mouseClick(canvas, Qt.LeftButton, pos=point)
+            choose_image.assert_called_once_with()
+
+    def test_loaded_canvas_icon_position_keeps_annotation_action(self):
+        canvas = self.window.canvas
+        point = canvas.empty_icon_rect().center().toPoint()
+        with patch.object(self.window, "choose_image") as choose_image, patch.object(
+            self.window, "canvas_mouse_press"
+        ) as canvas_mouse_press:
+            QTest.mouseClick(canvas, Qt.LeftButton, pos=point)
+            choose_image.assert_not_called()
+            canvas_mouse_press.assert_called_once()
+
     def test_empty_canvas_shows_drag_guidance_and_current_shortcut(self):
         self.window.document = None
         self.window.reset_document_view()

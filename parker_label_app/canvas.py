@@ -76,11 +76,25 @@ class AnnotationCanvas(QLabel):
 
     def mousePressEvent(self, event):
         """Forward mouse press events to the annotation controller."""
+        if (
+            self.controller.document is None
+            and event.button() == Qt.LeftButton
+            and self.empty_icon_rect().contains(QPointF(event.pos()))
+        ):
+            self.unsetCursor()
+            self.controller.choose_image()
+            return
         self.update_brush_cursor(event.pos())
         self.controller.canvas_mouse_press(event)
 
     def mouseMoveEvent(self, event):
         """Forward mouse move events to the annotation controller."""
+        if self.controller.document is None:
+            self.setCursor(
+                Qt.PointingHandCursor
+                if self.empty_icon_rect().contains(QPointF(event.pos()))
+                else Qt.ArrowCursor
+            )
         self.update_brush_cursor(event.pos())
         self.controller.canvas_mouse_move(event)
 
@@ -150,12 +164,15 @@ class AnnotationCanvas(QLabel):
         painter.drawEllipse(ellipse)
         painter.end()
 
+    def empty_icon_rect(self):
+        return QRectF(self.width() / 2 - 38, self.height() / 2 - 105, 76, 66)
+
     def paint_empty_state(self):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.fillRect(self.rect(), QColor("#f8fafc"))
         center = QPointF(self.width() / 2, self.height() / 2)
-        icon = QRectF(center.x() - 38, center.y() - 105, 76, 66)
+        icon = self.empty_icon_rect()
         painter.setBrush(QColor("#eef4fb"))
         painter.setPen(QPen(QColor("#8ba2ba"), 1.5, Qt.DashLine))
         painter.drawRoundedRect(icon, 10, 10)

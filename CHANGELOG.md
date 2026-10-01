@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Open the image picker when clicking the empty canvas icon.
+
 ## 1.0.0
 
 ### Initial release
