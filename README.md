@@ -17,7 +17,7 @@
 
 ### Use a portable release
 
-1. Download a published application package for your platform from [GitHub Releases](https://github.com/Parker-Lyu/ParkerLabel/releases) or [Baiduyun](later). Releases named `models-*` contain ONNX models, not application packages.
+1. Download a published application package for your platform from [GitHub Releases](https://github.com/Parker-Lyu/ParkerLabel/releases) or [Baiduyun](https://pan.baidu.com/s/1gcTGtPI4Q837Q63FULq5UQ?pwd=fnka) (extraction code: `fnka`). Releases named `models-*` contain ONNX models, not application packages.
 
 1. On macOS and Windows, you need to  move the entire extracted ParkerLabel folder to a writable location before opening it.
 
@@ -72,7 +72,7 @@ Use **Settings → Keyboard Shortcuts** to view, change, clear, or restore key b
 
 ParkerLabel includes a read-only configuration containing the 80 standard COCO object-detection categories. Users can create an empty category configuration or copy any existing configuration—including the built-in COCO configuration—to create a new version. Saved configurations are immutable; further changes are made by copying a configuration into another version. User-created configurations are stored in the selected `configs/categories/` directory.
 
-Each annotation is bound to an exact category configuration by its UUID and SHA-256 digest. If that configuration is missing, does not match, or has been modified outside ParkerLabel, the annotation opens read-only so that its category meanings cannot silently change.
+Each annotation is bound to a category configuration by its UUID and SHA-256 digest. If another configuration is active, ParkerLabel offers to switch to the required one. The annotation opens read-only if that configuration is unavailable, fails integrity checks, or the user declines the switch.
 
 Portable settings, including the startup category selection, are stored in `configs/settings.ini`. The application log is `configs/app.log`; it is cleared on each launch and limited to two 1 MB files while the app runs.
 
@@ -116,7 +116,7 @@ python -m mobile_sam.export_mobilesam_encoder --checkpoint pretrain/mobile_sam.p
 python -m mobile_sam.export_mobilesam_decoder --checkpoint pretrain/mobile_sam.pt --model-type vit_t --output pretrain/decoder.onnx
 ```
 
-The application runs the resulting ONNX files. `mobile_sam.pt` and the export dependencies are not needed at runtime. Model files in `pretrain/` are excluded from Git.
+These commands regenerate the ONNX models for development. At startup, ParkerLabel checks their sizes and SHA-256 hashes against `model-bundle.json` and replaces mismatched files with the published models. Custom exports require a matching model manifest. `mobile_sam.pt` and the export dependencies are not needed at runtime. Model files in `pretrain/` are excluded from Git.
 
 ## Licenses
 
