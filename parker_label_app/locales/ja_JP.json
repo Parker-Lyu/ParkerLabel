@@ -196,7 +196,7 @@
   "update.version_summary": "現在のバージョン：{current}\n最新バージョン：{latest}",
   "update.no_notes": "このバージョンの更新内容はありません。",
   "update.open_github": "GitHub ダウンロードページを開く",
-  "update.open_gitee": "Gitee ダウンロードページを開く",
+  "update.open_baidu": "Baidu Netdisk ダウンロードページを開く",
   "link.open_failed": "リンクを開けません",
   "link.open_failed_detail": "システムブラウザーでリンクを開けません。",
   "tooltip.shortcut": "ショートカット：{shortcut}",

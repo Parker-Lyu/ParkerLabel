@@ -196,7 +196,7 @@
   "update.version_summary": "현재 버전: {current}\n최신 버전: {latest}",
   "update.no_notes": "이 버전의 업데이트 설명이 없습니다.",
   "update.open_github": "GitHub 다운로드 페이지 열기",
-  "update.open_gitee": "Gitee 다운로드 페이지 열기",
+  "update.open_baidu": "Baidu Netdisk 다운로드 페이지 열기",
   "link.open_failed": "링크를 열 수 없음",
   "link.open_failed_detail": "시스템 브라우저에서 링크를 열 수 없습니다.",
   "tooltip.shortcut": "단축키: {shortcut}",

@@ -196,7 +196,7 @@
   "update.version_summary": "Versione attuale: {current}\nUltima versione: {latest}",
   "update.no_notes": "Non sono disponibili note per questa versione.",
   "update.open_github": "Apri la pagina di download GitHub",
-  "update.open_gitee": "Apri la pagina di download Gitee",
+  "update.open_baidu": "Apri la pagina di download Baidu Netdisk",
   "link.open_failed": "Impossibile aprire il collegamento",
   "link.open_failed_detail": "Il browser di sistema non è riuscito ad aprire il collegamento.",
   "tooltip.shortcut": "Scorciatoia: {shortcut}",

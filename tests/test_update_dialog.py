@@ -53,11 +53,17 @@ class UpdateDialogTests(unittest.TestCase):
         self.checker.completed.emit(UpdateResult("0.9.0", release, "gitee"))
 
         self.assertTrue(self.dialog.github_button.isVisibleTo(self.dialog))
-        self.assertTrue(self.dialog.gitee_button.isVisibleTo(self.dialog))
+        self.assertTrue(self.dialog.baidu_button.isVisibleTo(self.dialog))
         self.assertEqual(self.dialog.notes.toPlainText(), "Changes")
         self.dialog.github_button.click()
-        self.dialog.gitee_button.click()
-        self.assertEqual(len(self.opened), 2)
+        self.dialog.baidu_button.click()
+        self.assertEqual(
+            self.opened,
+            [
+                "https://github.com/Parker-Lyu/ParkerLabel/releases",
+                "https://pan.baidu.com/s/1mGc8w11JHbTnERI_yztVWA?pwd=md7r",
+            ],
+        )
 
     def test_latest_and_failure_are_distinct_states(self):
         self.checker.completed.emit(UpdateResult("0.9.0", None, "github"))

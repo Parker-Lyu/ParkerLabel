@@ -7,7 +7,7 @@ MOBILE_SAM_REPOSITORY_URL = "https://github.com/ChaoningZhang/MobileSAM"
 SAM_REPOSITORY_URL = "https://github.com/facebookresearch/segment-anything"
 CHANGELOG_URL = f"{REPOSITORY_URL}/blob/main/CHANGELOG.md"
 GITHUB_RELEASES_URL = f"{REPOSITORY_URL}/releases"
-GITEE_RELEASES_URL = f"{GITEE_REPOSITORY_URL}/releases"
+BAIDU_NETDISK_URL = "https://pan.baidu.com/s/1mGc8w11JHbTnERI_yztVWA?pwd=md7r"
 
 
 def source_code_url(version=APP_VERSION):

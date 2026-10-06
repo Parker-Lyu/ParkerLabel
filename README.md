@@ -17,7 +17,7 @@
 
 ### Use a portable release
 
-1. Download a published application package for your platform from [GitHub Releases](https://github.com/Parker-Lyu/ParkerLabel/releases) or [Baiduyun](https://pan.baidu.com/s/1gcTGtPI4Q837Q63FULq5UQ?pwd=fnka) (extraction code: `fnka`). Releases named `models-*` contain ONNX models, not application packages.
+1. Download a published application package for your platform from [GitHub Releases](https://github.com/Parker-Lyu/ParkerLabel/releases) or [Baiduyun](https://pan.baidu.com/s/1mGc8w11JHbTnERI_yztVWA?pwd=md7r) (extraction code: `md7r`). Releases named `models-*` contain ONNX models, not application packages.
 
 1. On macOS and Windows, you need to  move the entire extracted ParkerLabel folder to a writable location before opening it.
 

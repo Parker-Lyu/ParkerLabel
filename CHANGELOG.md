@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Replace the Gitee application download link with a fixed Baidu Netdisk link in update dialogs and refresh the README download link.
+
 ## 1.0.0 - 2026-10-01
 
 Initial release of ParkerLabel.

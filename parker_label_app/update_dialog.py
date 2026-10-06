@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
-from .app_info import APP_VERSION, GITEE_RELEASES_URL, GITHUB_RELEASES_URL
+from .app_info import APP_VERSION, BAIDU_NETDISK_URL, GITHUB_RELEASES_URL
 from .i18n import language_manager
 from .update_checker import UpdateChecker
 
@@ -32,18 +32,18 @@ class UpdateCheckDialog(QDialog):
         self.notes.hide()
 
         self.github_button = QPushButton(self.t("update.open_github"))
-        self.gitee_button = QPushButton(self.t("update.open_gitee"))
+        self.baidu_button = QPushButton(self.t("update.open_baidu"))
         self.close_button = QPushButton(self.t("common.close"))
         self.github_button.clicked.connect(lambda: self.open_url(GITHUB_RELEASES_URL))
-        self.gitee_button.clicked.connect(lambda: self.open_url(GITEE_RELEASES_URL))
+        self.baidu_button.clicked.connect(lambda: self.open_url(BAIDU_NETDISK_URL))
         self.close_button.clicked.connect(self.accept)
         self.github_button.hide()
-        self.gitee_button.hide()
+        self.baidu_button.hide()
         self.close_button.setEnabled(False)
 
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.github_button)
-        button_layout.addWidget(self.gitee_button)
+        button_layout.addWidget(self.baidu_button)
         button_layout.addStretch(1)
         button_layout.addWidget(self.close_button)
 
@@ -87,7 +87,7 @@ class UpdateCheckDialog(QDialog):
         self.notes.setPlainText(release.notes or self.t("update.no_notes"))
         self.notes.show()
         self.github_button.show()
-        self.gitee_button.show()
+        self.baidu_button.show()
 
     def show_failure(self, error):
         self.status_label.setText(self.t("update.failed"))

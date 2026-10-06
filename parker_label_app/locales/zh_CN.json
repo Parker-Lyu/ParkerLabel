@@ -196,7 +196,7 @@
   "update.version_summary": "当前版本：{current}\n最新版本：{latest}",
   "update.no_notes": "此版本没有更新说明。",
   "update.open_github": "打开 GitHub 下载页",
-  "update.open_gitee": "打开 Gitee 下载页面",
+  "update.open_baidu": "打开百度网盘下载页",
   "link.open_failed": "无法打开链接",
   "link.open_failed_detail": "无法在系统浏览器中打开此链接。",
   "tooltip.shortcut": "快捷键：{shortcut}",
