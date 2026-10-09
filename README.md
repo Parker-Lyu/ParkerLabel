@@ -16,8 +16,8 @@
 ## 🎬 Project Overview
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=B1eu6EKgbUI"><img src="docs/images/parkerlabel-video-youtube.jpg" width="45%" alt="Watch the ParkerLabel introduction on YouTube"></a>
-  <a href="https://www.bilibili.com/video/BV1omps6dEqP"><img src="docs/images/parkerlabel-video-bilibili.jpg" width="45%" alt="Watch the ParkerLabel introduction on Bilibili"></a>
+  <a href="https://www.youtube.com/watch?v=B1eu6EKgbUI"><img src="docs/images/parkerlabel-video-youtube.jpg" width="43%" alt="Watch the ParkerLabel introduction on YouTube"></a>&emsp;&emsp;
+  <a href="https://www.bilibili.com/video/BV1omps6dEqP"><img src="docs/images/parkerlabel-video-bilibili.jpg" width="43%" alt="Watch the ParkerLabel introduction on Bilibili"></a>
 </p>
 
 ## Run
