@@ -1,3 +1,5 @@
+**English** | [简体中文](docs/README.zh-CN.md) | [繁體中文](docs/README.zh-TW.md) | [日本語](docs/README.ja.md) | [한국어](docs/README.ko.md)
+
 <div align="center">
   <img src="parker_label_app/assets/app-icon.png" width="144" alt="ParkerLabel icon">
   <h1>ParkerLabel</h1>
