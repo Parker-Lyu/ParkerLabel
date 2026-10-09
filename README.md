@@ -13,6 +13,11 @@
   <img src="docs/images/parkerlabel-ui-demo.gif" width="960" alt="ParkerLabel interactive annotation demo">
 </div>
 
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=B1eu6EKgbUI"><img src="docs/images/parkerlabel-video-youtube.jpg" width="45%" alt="Watch the ParkerLabel introduction on YouTube"></a>
+  <a href="https://www.bilibili.com/video/BV1omps6dEqP"><img src="docs/images/parkerlabel-video-bilibili.jpg" width="45%" alt="Watch the ParkerLabel introduction on Bilibili"></a>
+</p>
+
 ## Run
 
 ### Use a portable release
